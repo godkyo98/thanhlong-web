@@ -1,65 +1,74 @@
-import Image from "next/image";
+// app/page.tsx
+'use client';
+
+import { useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
+import useFirebaseData from "@/hooks/useFirebaseData";
+
+import Header from "@/components/layout/Header";
+import HomeTab from "@/components/tabs/HomeTab"; // 🟢 Import Chính Điện
+import DanhLucTab from "@/components/tabs/DanhLucTab";
+import TuViTab from "@/components/tabs/TuViTab";
+import SoiAccTab from "@/components/tabs/SoiAccTab";
+import TalentTab from "@/components/tabs/TalentTab";
+import AdminTab from "@/components/tabs/AdminTab";
+import GiftcodeTab from "@/components/tabs/GiftcodeTab";
+import PointTab from "@/components/tabs/PointTab";
+import SatTuongTab from "@/components/tabs/SatTuongTab";
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    const { data: session, status } = useSession();
+    
+    // 🟢 SỬA LẠI TAB MẶC ĐỊNH LÀ 'home' ĐỂ VỪA VÀO LÀ THẤY TRANG CHỦ
+    const [activeTab, setActiveTab] = useState<'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point'>('home');
+    const [displayLang, setDisplayLang] = useState<'vi' | 'en'>('vi');
+
+    const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData } = useFirebaseData();
+    
+
+    if (status === "loading") return <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-amber-400 animate-pulse text-xl">🔮 Đang soi xét lệnh bài...</div>;
+
+    if (!session) {
+        return (
+            <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-center">
+                <div className="text-7xl mb-6">🐉</div>
+                <h1 className="text-4xl font-bold text-amber-400 mb-4 tracking-widest">THANH LONG SƠN TRANG</h1>
+                <p className="text-zinc-400 mb-10 max-w-md leading-relaxed">Khách vãng lai xin vui lòng xuất trình lệnh bài Discord để tiến vào.</p>
+                <button onClick={() => signIn('discord')} className="px-8 py-4 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-xl font-bold mt-4 transition-all shadow-[0_0_20px_rgba(88,101,242,0.3)]">Tiến Vào Bằng Discord</button>
+            </div>
+        );
+    }
+
+    const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
+
+    return (
+        <main className="min-h-screen bg-zinc-950 text-zinc-100 pb-12 relative overflow-x-hidden">
+            <Header 
+                activeTab={activeTab} setActiveTab={setActiveTab} 
+                displayLang={displayLang} setDisplayLang={setDisplayLang} 
+                isMaster={isMaster} signOut={signOut} 
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+
+            <div className="max-w-7xl mx-auto px-4 py-8">
+                {/* 🟢 KHẢM CHÍNH ĐIỆN VÀO ĐÂY */}
+                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
+                
+                {activeTab === 'danhluc' && <DanhLucTab data={danhLuc} />}
+                {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
+                {activeTab === 'soi_acc' && <SoiAccTab profiles={playerProfiles} wwmData={wwmData} lang={displayLang} />}
+                {activeTab === 'talent' && <TalentTab data={talent} danhLuc={danhLuc} />}
+                {activeTab === 'admin' && isMaster && <AdminTab wwmData={wwmData} />}
+                {activeTab === 'giftcode' && (
+                    <GiftcodeTab 
+                        giftcodeData={giftcodeData} 
+                        giftcodeClaims={giftcodeClaims} 
+                        danhLuc={danhLuc}
+                        session={session}
+                        isMaster={isMaster}
+                    />)}
+                {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
+                {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
+            </div>
+        </main>
+    );
 }
