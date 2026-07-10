@@ -16,15 +16,14 @@ export default function RootLayout({
 }) {
     return (
         <html lang="vi">
-            {/* Thêm selection:bg-amber-500/30 để khi anh em bôi đen chữ cũng có màu vàng */}
-            <body className="bg-zinc-950 text-zinc-100 min-h-screen relative selection:bg-amber-500/30 selection:text-amber-100">
+            {/* selection:bg-sky-500/30 để khi anh em bôi đen chữ cũng có màu xanh dương dịu mắt */}
+            <body className="bg-zinc-950 text-zinc-100 min-h-screen relative selection:bg-sky-500/30 selection:text-sky-100">
                 
-                {/* 🌟 LỚP NỀN 1: Ảnh Background Bang Hội (Nếu ngài có) */}
-                {/* Cách dùng: Ngài ném 1 ảnh tên là bg.jpg vào thư mục public/. Bỏ 2 dấu // ở dòng dưới đi là nó hiện */}
-                {/* <div className="fixed inset-0 z-[-2] bg-[url('/bg.jpg')] bg-cover bg-center bg-no-repeat opacity-10"></div> */}
-
-                {/* 🌟 LỚP NỀN 2: Hiệu ứng ánh sáng Hổ Phách tỏa từ trên đỉnh xuống */}
-                <div className="fixed inset-0 z-[-1] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/15 via-zinc-950 to-zinc-950 pointer-events-none"></div>
+                {/* 🌊 HIỆU ỨNG 1: Hào quang "Thanh Long Xuất Hải" màu Xanh Dương tỏa từ đỉnh xuống */}
+                <div className="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-500/15 via-zinc-950/90 to-zinc-950"></div>
+                
+                {/* 🕸️ HIỆU ỨNG 2: Thiên La Địa Võng (Lưới sọc caro màu Xanh Lam mờ ảo tạo chiều sâu thần thoại) */}
+                <div className="fixed inset-0 z-[-2] pointer-events-none bg-[linear-gradient(to_right,#0ea5e908_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e908_1px,transparent_1px)] bg-[size:32px_32px]"></div>
 
                 {/* Nội dung chính của Web */}
                 <Providers>{children}</Providers>
