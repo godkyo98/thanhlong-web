@@ -1,7 +1,8 @@
 // app/layout.tsx
 import './globals.css';
 import { Providers } from './providers';
-import { Analytics } from "@vercel/analytics/next" // 1. Import bùa chú
+import { Analytics } from "@vercel/analytics/next" // 👁️ Mắt thần theo dõi người dùng
+import { SpeedInsights } from "@vercel/speed-insights/next" // 🚀 Máy đo khinh công tốc độ tải trang
 
 export const metadata = {
     title: 'Thanh Long Sơn Trang',
@@ -17,7 +18,8 @@ export default function RootLayout({
         <html lang="vi">
             <body className="bg-zinc-950 text-zinc-100 min-h-screen">
                 <Providers>{children}</Providers>
-                <Analytics /> {/* 2. Chèn vào cuối thân bài để nó soi xét toàn cục */}
+                <Analytics />
+                <SpeedInsights /> {/* 🚀 Đặt ngay cạnh Analytics */}
             </body>
         </html>
     );
