@@ -190,19 +190,39 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         );
     };
 
-    // 🟢 THUẬT TOÁN TÌM KIẾM HỒ SƠ
-    const filteredProfiles = profiles ? Object.entries(profiles).filter(([uid, data]: any) => {
-        if (!filterText.trim()) return true;
+    // 🟢 ĐOẠN LỌC TÌM KIẾM ĐÃ ĐƯỢC ĐỒNG BỘ 100% VỚI Ô INPUT (Sử dụng filterText)
+    const filteredProfiles = Object.entries(profiles || {}).filter(([uid, data]: any) => {
+        // 🌟 Lấy giá trị từ biến filterText của ô input
+        const tuKhoa = (filterText || "").toLowerCase().trim();
 
-        const search = filterText.toLowerCase();
-        const raw = safeParse(data.full_raw_data);
-        const baseInfo = safeParse(raw.base);
+        // Nếu ô tìm kiếm trống không thì hiển thị tất cả
+        if (!tuKhoa) return true;
 
-        const name1 = (data.playerName || "").toLowerCase();
-        const name2 = (baseInfo.name || "").toLowerCase();
+        // 🔮 1. Giải mã dữ liệu thô từ Netease
+        let raw: any = {};
+        try {
+            raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
+        } catch (e) { }
+        const base = safeParse(raw?.base);
 
-        return uid.includes(search) || name1.includes(search) || name2.includes(search);
-    }) : [];
+        // 🔮 2. Thu thập tất cả các danh tính tên tuổi có thể có
+        const name1 = String(base?.role_name || "").toLowerCase();
+        const name2 = String(base?.name || "").toLowerCase();
+        const name3 = String(data.playerName || "").toLowerCase();
+        const name4 = String(data.name || "").toLowerCase();
+
+        // 🔮 3. Thu thập tất cả các loại UID số
+        const uid1 = String(uid || "").toLowerCase();
+        const uid2 = String(data.id || "").toLowerCase();
+
+        // 🟢 TIÊU CHÍ KHỚP LỆNH: Chỉ cần dính 1 trong các mục là lôi ra ánh sáng ngay
+        return name1.includes(tuKhoa) ||
+            name2.includes(tuKhoa) ||
+            name3.includes(tuKhoa) ||
+            name4.includes(tuKhoa) ||
+            uid1.includes(tuKhoa) ||
+            uid2.includes(tuKhoa);
+    });
 
     return (
         <section className="animate-in fade-in duration-300">
@@ -265,30 +285,42 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                     </div>
                 ) : (
                     filteredProfiles.reverse().map(([uid, data]: any) => {
-                        // 1. Chèn bùa : any vào lúc khởi tạo biến raw
+                        // 🌟 1. KHỞI TẠO VÀ ÉP KIỂU RAW DATA CHUẨN XỊN
                         let raw: any = {};
-
                         try {
                             raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
                         } catch (e) {
                             console.error(e);
                         }
 
-                        // 2. Ép kiểu (raw as any) để TypeScript câm nín
+                        // 🌟 2. BÓC TÁCH CƠ SỞ VÀ BANG HỘI TỪ NETEASE API (ĐÃ ĐỔI TÊN ĐỂ TRÁNH ĐỤNG BIẾN CŨ)
                         const baseInfo = safeParse((raw as any)?.base);
+                        const clubInfoTop = safeParse((raw as any)?.club);
+
                         const capDo = baseInfo?.level || data.level || 0;
                         const lucChien = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
 
-                        const schoolId = baseInfo.school || 100;
+                        // 🌟 3. ĐẢ THÔNG BIẾN TÊN THẬT VÀ BANG THẬT
+                        const tenNhanVat = data.playerName || baseInfo?.role_name || baseInfo?.name || data.name || 'Mật Danh';
+
+                        const schoolId = baseInfo?.school || 100;
                         const monPhai = wwmData?.SECT_MAP?.[schoolId]?.[lang] || wwmData?.SECT_MAP?.[String(schoolId)]?.[lang] || wwmData?.SECT_MAP?.[schoolId]?.vi || wwmData?.SECT_MAP?.[String(schoolId)]?.vi || `Ẩn Thế Phái (${schoolId})`;
 
-                        const clubInfo = safeParse(raw.club || baseInfo.club || {});
-                        let bangHoi = "Không môn không phái";
+                        // Logic tính toán chức vụ và bang hội được đả thông toàn cục:
+                        const clubInfo = safeParse(raw.club || baseInfo?.club || {});
+
+                        // 🐉 CHUỖI ƯU TIÊN THẦN THÁNH: Quét sạch mọi ngóc ngách lưu tên Bang
+                        let bangHoi = clubInfoTop?.club_name ||
+                            clubInfo?.club_name ||
+                            data.bangHoi ||
+                            data.club_name ||
+                            baseInfo?.club_name ||
+                            "Không môn không phái";
+
                         let chucVu = "Tự do";
 
-                        if (clubInfo.club_id || baseInfo.club_name || data.bangHoi) {
-                            bangHoi = data.bangHoi || baseInfo.club_name || "Có Bang Hội";
-                            if (bangHoi === "Không môn không phái") bangHoi = "Không rõ";
+                        if (clubInfo.club_id || baseInfo?.club_name || clubInfoTop?.club_name || data.bangHoi) {
+                            if (bangHoi === "Không môn không phái") bangHoi = "Có Bang Hội";
 
                             if (clubInfo.post && clubInfo.post.length > 0) {
                                 const postMap: Record<number, string> = { 1: "Bang Chủ 👑", 2: "Bang Phó 🎖️", 5: "Trưởng Lão 摸", 7: "Bông Hồng 🌸" };
@@ -304,17 +336,17 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                             } else { chucVu = "Thành Viên"; }
                         }
 
-                        const gender = (baseInfo.body_type ?? baseInfo.gender) === 1 ? "Nam 🚹" : "Nữ 🚺";
-                        const thietBi = baseInfo.device_name ? baseInfo.device_name.toUpperCase() : "Ẩn Dấu";
-                        const trangThai = baseInfo.is_online === 1 ? `🟢 Đang chơi (${thietBi})` : `🔴 Ngoại tuyến (${thietBi})`;
+                        const gender = (baseInfo?.body_type ?? baseInfo?.gender) === 1 ? "Nam 🚹" : "Nữ 🚺";
+                        const thietBi = baseInfo?.device_name ? baseInfo.device_name.toUpperCase() : "Ẩn Dấu";
+                        const trangThai = baseInfo?.is_online === 1 ? `🟢 Đang chơi (${thietBi})` : `🔴 Ngoại tuyến (${thietBi})`;
 
                         const kyLuat = safeParse(raw.school)?.rule?.jl ?? 100;
                         const kyLuatText = kyLuat < 100 ? "Vi phạm môn quy" : "Nghiêm chỉnh";
 
                         const thoiTrang = safeParse(raw.fashion)?.score || safeParse(raw.fashion)?.fashion_score || 0;
-                        const onlineTime = baseInfo.online_time ? (baseInfo.online_time / 3600).toFixed(1) : "0";
-                        const daysInJianghu = baseInfo.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
-                        const serverHost = baseInfo.hostnum || baseInfo.server_hostnum || "Bí ẩn";
+                        const onlineTime = baseInfo?.online_time ? (baseInfo.online_time / 3600).toFixed(1) : "0";
+                        const daysInJianghu = baseInfo?.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
+                        const serverHost = baseInfo?.hostnum || baseInfo?.server_hostnum || "Bí ẩn";
 
                         const attrData = safeParse(raw.attr);
                         const str = attrData.STR || 0; const con = attrData.CON || 0; const agi = attrData.AGI || 0; const bas = attrData.BAS || 0; const cri = attrData.CRI || 0;
@@ -349,21 +381,39 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl"></div>
                                     <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
                                         <div>
+                                            {/* DÒNG 1: TÊN VÀ UID */}
                                             <div className="flex items-center gap-3 flex-wrap">
-                                                <h4 className="font-extrabold text-2xl text-cyan-400 tracking-wide">{data.playerName || baseInfo.name || 'Mật Danh'}</h4>
+                                                <h4 className="font-extrabold text-2xl text-cyan-400 tracking-wide">{tenNhanVat}</h4>
                                                 <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] font-mono rounded border border-zinc-700">Máy chủ: {serverHost} | UID: {uid}</span>
                                                 <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 font-medium text-zinc-400">{trangThai}</span>
                                             </div>
+
+                                            {/* DÒNG 2: CẤP, PHÁI, GIỚI TÍNH (Đã chặt bỏ phần Bang hội thừa ở cuối dòng này) */}
                                             <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 mt-2">
                                                 <span>Cấp: <b className="text-zinc-200 font-mono">{capDo}</b></span>
                                                 <span>•</span>
                                                 <span>Phái: <b className="text-amber-400">{monPhai}</b></span>
                                                 <span>•</span>
                                                 <span>Giới: <b className="text-zinc-200">{gender}</b></span>
-                                                <span>•</span>
-                                                <span>Bang: <b className="text-cyan-300">{warmBangHoi(bangHoi)}</b> <span className="text-zinc-500">({chucVu})</span></span>
+                                            </div>
+
+                                            {/* DÒNG 3: KHUNG BANG HỘI HOÀNG KIM (Nằm riêng biệt, bôi sáng Xanh Dương) */}
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-900 rounded-md text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
+                                                    Môn Phái
+                                                </span>
+                                                <span className="text-sm font-black text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
+                                                    {warmBangHoi(bangHoi)}
+                                                </span>
+                                                {chucVu !== "Thành Viên" && chucVu !== "Tự do" && (
+                                                    <span className="px-2 py-0.5 bg-sky-900/30 border border-sky-800/50 rounded-md text-[10px] text-sky-300 font-medium">
+                                                        {chucVu}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
+
+                                        {/* KHỐI HIỂN THỊ LỰC CHIẾN BÊN GÓC PHẢI */}
                                         <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-center md:text-right shrink-0">
                                             <div className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Lực Chiến Võ Học</div>
                                             <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChien.toLocaleString('vi-VN')}</div>
