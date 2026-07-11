@@ -190,39 +190,49 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         );
     };
 
-    // 🟢 ĐOẠN LỌC TÌM KIẾM ĐÃ ĐƯỢC ĐỒNG BỘ 100% VỚI Ô INPUT (Sử dụng filterText)
-    const filteredProfiles = Object.entries(profiles || {}).filter(([uid, data]: any) => {
-        // 🌟 Lấy giá trị từ biến filterText của ô input
-        const tuKhoa = (filterText || "").toLowerCase().trim();
+    // 🟢 ĐOẠN LỌC VÀ SẮP XẾP TỐI THƯỢNG: AI MỚI SOI PHẢI LÊN ĐẦU
+    const filteredProfiles = Object.entries(profiles || {})
+        .filter(([uid, data]: any) => {
+            const tuKhoa = (filterText || "").toLowerCase().trim();
+            if (!tuKhoa) return true; // Trống thì không lọc
 
-        // Nếu ô tìm kiếm trống không thì hiển thị tất cả
-        if (!tuKhoa) return true;
+            let raw: any = {};
+            try { raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data; } catch (e) { }
+            const base = safeParse(raw?.base);
 
-        // 🔮 1. Giải mã dữ liệu thô từ Netease
-        let raw: any = {};
-        try {
-            raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
-        } catch (e) { }
-        const base = safeParse(raw?.base);
+            const name1 = String(base?.role_name || "").toLowerCase();
+            const name2 = String(base?.name || "").toLowerCase();
+            const name3 = String(data.playerName || "").toLowerCase();
+            const name4 = String(data.name || "").toLowerCase();
 
-        // 🔮 2. Thu thập tất cả các danh tính tên tuổi có thể có
-        const name1 = String(base?.role_name || "").toLowerCase();
-        const name2 = String(base?.name || "").toLowerCase();
-        const name3 = String(data.playerName || "").toLowerCase();
-        const name4 = String(data.name || "").toLowerCase();
+            const uid1 = String(uid || "").toLowerCase();
+            const uid2 = String(data.id || "").toLowerCase();
 
-        // 🔮 3. Thu thập tất cả các loại UID số
-        const uid1 = String(uid || "").toLowerCase();
-        const uid2 = String(data.id || "").toLowerCase();
+            return name1.includes(tuKhoa) || name2.includes(tuKhoa) || name3.includes(tuKhoa) || name4.includes(tuKhoa) || uid1.includes(tuKhoa) || uid2.includes(tuKhoa);
+        })
+        .sort((a: any, b: any) => {
+            const dataA = a[1];
+            const dataB = b[1];
 
-        // 🟢 TIÊU CHÍ KHỚP LỆNH: Chỉ cần dính 1 trong các mục là lôi ra ánh sáng ngay
-        return name1.includes(tuKhoa) ||
-            name2.includes(tuKhoa) ||
-            name3.includes(tuKhoa) ||
-            name4.includes(tuKhoa) ||
-            uid1.includes(tuKhoa) ||
-            uid2.includes(tuKhoa);
-    });
+            // ⏳ Tuyệt kỹ bóc tách thời gian: Tìm xem acc nào vừa được Firebase cập nhật
+            const getTime = (d: any) => {
+                if (!d) return 0;
+                // 1. Ưu tiên thời gian Bot/Web lưu (nếu có)
+                if (d.updatedAt?.seconds) return d.updatedAt.seconds;
+                if (typeof d.updatedAt === 'number') return d.updatedAt;
+                if (d.timestamp?.seconds) return d.timestamp.seconds;
+                if (typeof d.timestamp === 'number') return d.timestamp;
+
+                // 2. Không có thì lôi thời gian nhân vật online cuối cùng của Netease ra đọ
+                let raw: any = {};
+                try { raw = typeof d.full_raw_data === 'string' ? JSON.parse(d.full_raw_data) : d.full_raw_data; } catch (e) { }
+                const base = safeParse(raw?.base);
+                return base?.last_logoff_time || base?.create_time || 0;
+            };
+
+            // Thằng nào thời gian bự hơn (gần hiện tại hơn) thì bị đá lên trên cùng!
+            return getTime(dataB) - getTime(dataA);
+        });
 
     return (
         <section className="animate-in fade-in duration-300">
@@ -284,7 +294,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                         {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa tìm kiếm." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy soi ai đó trên Discord hoặc Web!"}
                     </div>
                 ) : (
-                    filteredProfiles.reverse().map(([uid, data]: any) => {
+                    filteredProfiles.map(([uid, data]: any) => {
                         // 🌟 1. KHỞI TẠO VÀ ÉP KIỂU RAW DATA CHUẨN XỊN
                         let raw: any = {};
                         try {
