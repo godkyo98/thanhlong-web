@@ -377,6 +377,9 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                         const matches = pvpData.total_num || 0;
                         const streak = lunjian.max_winning_streak || pvpData.continue_win || 0;
 
+                        // 🟢 TÌM KIẾM ĐIỂM VÔ NGÃ (WUWO SCORE) TRÊN WEB
+                        const wuwoScore = lunjian.max_wuwo_score || 0;
+
                         let cpChiTiet = safeParse(raw.combat_plan_chi_tiet);
                         if (Object.keys(cpChiTiet).length === 0 && raw.combat_plan) cpChiTiet = raw;
 
@@ -463,6 +466,13 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                                     Trận: <span className="text-zinc-200 font-bold">{matches}</span> | Thắng: <span className="text-emerald-400 font-bold">{winRate}</span> {streak > 1 && <span className="text-rose-400 font-bold bg-rose-950/40 px-1 rounded ml-1">🔥 Chuỗi {streak}</span>}
                                                 </div>
                                             </div>
+                                        </div>
+                                        {/* 🟢 KHẢM HIỂN THỊ VÔ NGÃ VÀO ĐÂY */}
+                                        <div className="mt-1.5 pt-1.5 border-t border-zinc-800/50 flex items-center justify-between">
+                                            <span>Điểm Vô Ngã (Wuwo):</span>
+                                            <span className="text-cyan-400 font-bold">
+                                                {wuwoScore > 0 ? wuwoScore.toLocaleString('vi-VN') : (lang === 'vi' ? "Chưa tham ngộ" : "Not comprehended")}
+                                            </span>
                                         </div>
                                     </div>
 
