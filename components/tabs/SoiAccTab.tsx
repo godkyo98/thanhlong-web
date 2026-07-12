@@ -295,7 +295,6 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                     </div>
                 ) : (
                     filteredProfiles.map(([uid, data]: any) => {
-                        // 🌟 1. KHỞI TẠO VÀ ÉP KIỂU RAW DATA CHUẨN XỊN
                         let raw: any = {};
                         try {
                             raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
@@ -303,23 +302,24 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                             console.error(e);
                         }
 
-                        // 🌟 2. BÓC TÁCH CƠ SỞ VÀ BANG HỘI TỪ NETEASE API (ĐÃ ĐỔI TÊN ĐỂ TRÁNH ĐỤNG BIẾN CŨ)
                         const baseInfo = safeParse((raw as any)?.base);
                         const clubInfoTop = safeParse((raw as any)?.club);
 
                         const capDo = baseInfo?.level || data.level || 0;
-                        const lucChien = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
+                        
+                        // 🟢 FIX TẬN GỐC LỖI REFERENCE: ĐẢ THÔNG LỰC CHIẾN KÉP
+                        const attrData = safeParse(raw.attr);
+                        const lucChienHienTai = attrData.XIUWEI_KUNGFU || 0;
+                        const lucChienToiDa = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
+                        const lucChienDisplay = lucChienHienTai > 0 ? lucChienHienTai : lucChienToiDa;
 
-                        // 🌟 3. ĐẢ THÔNG BIẾN TÊN THẬT VÀ BANG THẬT
                         const tenNhanVat = data.playerName || baseInfo?.role_name || baseInfo?.name || data.name || 'Mật Danh';
 
                         const schoolId = baseInfo?.school || 100;
                         const monPhai = wwmData?.SECT_MAP?.[schoolId]?.[lang] || wwmData?.SECT_MAP?.[String(schoolId)]?.[lang] || wwmData?.SECT_MAP?.[schoolId]?.vi || wwmData?.SECT_MAP?.[String(schoolId)]?.vi || `Ẩn Thế Phái (${schoolId})`;
 
-                        // Logic tính toán chức vụ và bang hội được đả thông toàn cục:
                         const clubInfo = safeParse(raw.club || baseInfo?.club || {});
 
-                        // 🐉 CHUỖI ƯU TIÊN THẦN THÁNH: Quét sạch mọi ngóc ngách lưu tên Bang
                         let bangHoi = clubInfoTop?.club_name ||
                             clubInfo?.club_name ||
                             data.bangHoi ||
@@ -358,7 +358,6 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                         const daysInJianghu = baseInfo?.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
                         const serverHost = baseInfo?.hostnum || baseInfo?.server_hostnum || "Bí ẩn";
 
-                        const attrData = safeParse(raw.attr);
                         const str = attrData.STR || 0; const con = attrData.CON || 0; const agi = attrData.AGI || 0; const bas = attrData.BAS || 0; const cri = attrData.CRI || 0;
 
                         const exploreData = safeParse(raw.common_score_data);
@@ -369,6 +368,11 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
 
                         const lunjian = safeParse(raw.lunjian);
                         const rankGrade = lunjian.grade || 0;
+                        
+                        // 🟢 TÍCH HỢP SAO VÀ VÔ NGÃ 
+                        const rankStars = lunjian.small_grade || 0;
+                        const wuwoScore = lunjian.max_wuwo_score || 0;
+
                         const rankName = wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.vi || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.vi || `Bậc Thầy (${rankGrade})`;
 
                         const gameplayTrail = safeParse(raw.gameplay_trail);
@@ -376,9 +380,6 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                         const winRate = pvpData.win_rate ? (pvpData.win_rate * 100).toFixed(1) + "%" : "0%";
                         const matches = pvpData.total_num || 0;
                         const streak = lunjian.max_winning_streak || pvpData.continue_win || 0;
-
-                        // 🟢 TÌM KIẾM ĐIỂM VÔ NGÃ (WUWO SCORE) TRÊN WEB
-                        const wuwoScore = lunjian.max_wuwo_score || 0;
 
                         let cpChiTiet = safeParse(raw.combat_plan_chi_tiet);
                         if (Object.keys(cpChiTiet).length === 0 && raw.combat_plan) cpChiTiet = raw;
@@ -401,7 +402,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                                 <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 font-medium text-zinc-400">{trangThai}</span>
                                             </div>
 
-                                            {/* DÒNG 2: CẤP, PHÁI, GIỚI TÍNH (Đã chặt bỏ phần Bang hội thừa ở cuối dòng này) */}
+                                            {/* DÒNG 2: CẤP, PHÁI, GIỚI TÍNH */}
                                             <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 mt-2">
                                                 <span>Cấp: <b className="text-zinc-200 font-mono">{capDo}</b></span>
                                                 <span>•</span>
@@ -410,7 +411,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                                 <span>Giới: <b className="text-zinc-200">{gender}</b></span>
                                             </div>
 
-                                            {/* DÒNG 3: KHUNG BANG HỘI HOÀNG KIM (Nằm riêng biệt, bôi sáng Xanh Dương) */}
+                                            {/* DÒNG 3: KHUNG BANG HỘI HOÀNG KIM */}
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-900 rounded-md text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
                                                     Môn Phái
@@ -429,7 +430,10 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                         {/* KHỐI HIỂN THỊ LỰC CHIẾN BÊN GÓC PHẢI */}
                                         <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-center md:text-right shrink-0">
                                             <div className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Lực Chiến Võ Học</div>
-                                            <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChien.toLocaleString('vi-VN')}</div>
+                                            <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChienDisplay.toLocaleString('vi-VN')}</div>
+                                            {lucChienHienTai > 0 && lucChienToiDa !== lucChienHienTai && (
+                                                <div className="text-[10px] text-rose-400/80 font-mono mt-0.5">Max: {lucChienToiDa.toLocaleString('vi-VN')}</div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -461,18 +465,17 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                         <div>
                                             <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🏆 1v1 Luận Kiếm Đài</div>
                                             <div className="text-xs text-zinc-300">
-                                                <div>Cảnh giới: <span className="text-indigo-400 font-bold">{rankName}</span></div>
+                                                <div>Cảnh giới: <span className="text-indigo-400 font-bold">{rankName}</span> {rankStars > 0 && <span className="text-amber-400 font-bold text-[11px] ml-1">⭐ {rankStars} Sao</span>}</div>
                                                 <div className="text-zinc-400 mt-0.5 font-mono text-[11px]">
                                                     Trận: <span className="text-zinc-200 font-bold">{matches}</span> | Thắng: <span className="text-emerald-400 font-bold">{winRate}</span> {streak > 1 && <span className="text-rose-400 font-bold bg-rose-950/40 px-1 rounded ml-1">🔥 Chuỗi {streak}</span>}
                                                 </div>
+                                                <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between">
+                                                    <span className="text-zinc-400">Điểm Vô Ngã (Wuwo):</span>
+                                                    <span className="text-cyan-400 font-bold">
+                                                        {wuwoScore > 0 ? wuwoScore.toLocaleString('vi-VN') : (lang === 'vi' ? "Chưa tham ngộ" : "Not comprehended")}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        {/* 🟢 KHẢM HIỂN THỊ VÔ NGÃ VÀO ĐÂY */}
-                                        <div className="mt-1.5 pt-1.5 border-t border-zinc-800/50 flex items-center justify-between">
-                                            <span>Điểm Vô Ngã (Wuwo):</span>
-                                            <span className="text-cyan-400 font-bold">
-                                                {wuwoScore > 0 ? wuwoScore.toLocaleString('vi-VN') : (lang === 'vi' ? "Chưa tham ngộ" : "Not comprehended")}
-                                            </span>
                                         </div>
                                     </div>
 
