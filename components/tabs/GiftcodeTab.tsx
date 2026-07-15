@@ -40,16 +40,44 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
     const claimedCount = codeList.filter(([codeKey]) => userClaims[codeKey]).length;
     const unclaimedCount = totalCodes - claimedCount;
 
+    // 🟢 THUẬT TOÁN ĐỌC THỜI GIAN ĐỂ SẮP XẾP (Đọc được cả chuẩn Tây lẫn chuẩn 14/7/2026 của Đại Việt)
+    const getTimeForSort = (data: any) => {
+        const val = data?.createdAt || data?.time || data?.date;
+        if (!val) return 0;
+        
+        // Dạng 1: Firebase Timestamp
+        if (val.seconds) return val.seconds * 1000;
+        
+        // Dạng 2: Gõ tay ngày tháng Đại Việt (VD: "14/7/2026")
+        if (typeof val === 'string' && val.includes('/')) {
+            const [d, m, y] = val.split('/');
+            return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+        }
+        
+        // Dạng 3: Định dạng tự động chuẩn
+        const parsed = new Date(val).getTime();
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
+    // 🟢 MA TRẬN LỌC VÀ SẮP XẾP TỐI THƯỢNG
     const filteredAndSortedCodes = [...codeList]
         .filter(([codeKey, data]: any) => {
             const displayCodeString = String(data?.code || codeKey || "");
             return displayCodeString.toLowerCase().includes(searchTerm.toLowerCase());
         })
-        .sort(([codeA], [codeB]) => {
+        .sort(([codeA, dataA], [codeB, dataB]) => {
             const isClaimedA = userClaims[codeA];
             const isClaimedB = userClaims[codeB];
-            if (isClaimedA === isClaimedB) return 0;
-            return isClaimedA ? 1 : -1;
+            
+            // Ưu tiên 1: Mã chưa húp đẩy lên đầu, mã húp rồi tống xuống đáy
+            if (isClaimedA !== isClaimedB) {
+                return isClaimedA ? 1 : -1;
+            }
+            
+            // Ưu tiên 2: Cùng trạng thái (cùng chưa húp hoặc cùng húp rồi) -> Đẩy mã mới nhất lên trên
+            const timeA = getTimeForSort(dataA);
+            const timeB = getTimeForSort(dataB);
+            return timeB - timeA; 
         });
 
     // 🚀 ĐÃ SỬA ĐƯỜNG DẪN: Khai thông kinh mạch, ghi đúng vào lòng đất thanhlong_config
@@ -90,6 +118,14 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
         return dateObj.toLocaleString('vi-VN', {
             hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
         }).replace(',', ' ·');
+    };
+
+    // 🟢 THUẬT TOÁN ĐỌC NGÀY THÁNG CHUẨN ĐẠI VIỆT ĐỂ HIỂN THỊ
+    const getDisplayDate = (dateStr: string) => {
+        if (!dateStr) return "Vô thời hạn";
+        if (dateStr.includes('/')) return dateStr;
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('vi-VN');
     };
 
     return (
@@ -188,7 +224,8 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                     <div className="flex justify-between items-center mb-4 gap-2">
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-[11px] font-mono font-bold text-zinc-300 shadow-inner group-hover:border-zinc-700 transition-colors shrink-0">
                                             <span className="text-amber-500 animate-pulse">⏰</span>
-                                            <span>{formatTime(data?.createdAt || data?.time || data?.date)}</span>
+                                            {/* Sửa lại hiển thị ngày tháng dùng hàm Đại Việt cho đẹp */}
+                                            <span>{data?.date ? getDisplayDate(data.date) : formatTime(data?.createdAt || data?.time)}</span>
                                         </div>
                                         
                                         <span className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-xl border shrink-0 ${isClaimed ? 'bg-zinc-900 text-zinc-600 border-zinc-800' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>

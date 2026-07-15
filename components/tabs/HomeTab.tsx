@@ -6,7 +6,7 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
     // THUẬT TOÁN ĐỊNH VỊ TÊN IN-GAME XUYÊN DATABASE
     const userName = (() => {
         const discordName = session?.user?.name;
-        if (!discordName) return "Đại Hiệp";
+        if (!discordName) return 'Đại Hiệp';
         if (!danhLuc) return discordName;
 
         let realDiscordId = session?.user?.id; 
@@ -86,10 +86,10 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                 </div>
             </div>
 
-            {/* 🟢 HỆ THỐNG 6 LỆNH BÀI CARD ĐIỀU HƯỚNG CÂN ĐỐI (LƯỚI 3 CỘT X 2 HÀNG) */}
+            {/* 🟢 HỆ THỐNG CÁC LỆNH BÀI CARD ĐIỀU HƯỚNG */}
             <div>
                 <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-4 pl-1">🏰 Các Cửa Vào Mật Thất</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     
                     {/* CARD 1: DANH LỤC */}
                     <div onClick={() => setActiveTab('danhluc')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
@@ -136,7 +136,7 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* 🟢 CARD 6: CÔNG TRẠNG (MỚI THÊM) */}
+                    {/* CARD 6: CÔNG TRẠNG */}
                     <div onClick={() => setActiveTab('point')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-emerald-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(16,185,129,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">💰</div>
@@ -145,12 +145,21 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
                     
-                    {/* 🟢 CARD 7: SÁT TƯỚNG */}
+                    {/* CARD 7: SÁT TƯỚNG */}
                     <div onClick={() => setActiveTab('sattuong')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-rose-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(239,68,68,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">👹</div>
                             <h4 className="text-base font-bold text-zinc-200 group-hover:text-rose-400 transition-colors">Sát Tướng</h4>
                             <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Bảng Vàng vinh danh Chiến Thần PVE, điểm Phong Thần tháng và danh hiệu Mùa giải.</p>
+                        </div>
+                    </div>
+
+                    {/* 🟢 CARD 8: HOẠT ĐỘNG BANG (MỚI THÊM) */}
+                    <div onClick={() => setActiveTab('hoatDong')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-cyan-400/40 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(34,211,238,0.05)] flex flex-col justify-between">
+                        <div>
+                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🔥</div>
+                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors">Hoạt Động Bang</h4>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Sổ điệp tuần kiểm độ năng động tuần, tháng của bang chúng đồng bộ từ Discord Bot.</p>
                         </div>
                     </div>
                     

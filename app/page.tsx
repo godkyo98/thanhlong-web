@@ -1,57 +1,82 @@
 // app/page.tsx
 'use client';
 
-import { useState } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
-import useFirebaseData from "@/hooks/useFirebaseData";
+import { useState } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
+import useFirebaseData from '@/hooks/useFirebaseData';
 
-import Header from "@/components/layout/Header";
-import HomeTab from "@/components/tabs/HomeTab"; // 🟢 Import Chính Điện
-import DanhLucTab from "@/components/tabs/DanhLucTab";
-import TuViTab from "@/components/tabs/TuViTab";
-import SoiAccTab from "@/components/tabs/SoiAccTab";
-import TalentTab from "@/components/tabs/TalentTab";
-import AdminTab from "@/components/tabs/AdminTab";
-import GiftcodeTab from "@/components/tabs/GiftcodeTab";
-import PointTab from "@/components/tabs/PointTab";
-import SatTuongTab from "@/components/tabs/SatTuongTab";
+import Header from '@/components/layout/Header';
+import HomeTab from '@/components/tabs/HomeTab';
+import DanhLucTab from '@/components/tabs/DanhLucTab';
+import TuViTab from '@/components/tabs/TuViTab';
+import SoiAccTab from '@/components/tabs/SoiAccTab';
+import TalentTab from '@/components/tabs/TalentTab';
+import AdminTab from '@/components/tabs/AdminTab';
+import GiftcodeTab from '@/components/tabs/GiftcodeTab';
+import PointTab from '@/components/tabs/PointTab';
+import SatTuongTab from '@/components/tabs/SatTuongTab';
+import HoatDongBangTab from '@/components/tabs/HoatDongBangTab';
 
 export default function Home() {
     const { data: session, status } = useSession();
     
-    // 🟢 SỬA LẠI TAB MẶC ĐỊNH LÀ 'home' ĐỂ VỪA VÀO LÀ THẤY TRANG CHỦ
-    const [activeTab, setActiveTab] = useState<'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point'>('home');
+    // Quản lý các Linh Điện (Tab)
+    const [activeTab, setActiveTab] = useState<'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatDong'>('home');
     const [displayLang, setDisplayLang] = useState<'vi' | 'en'>('vi');
 
-    const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData } = useFirebaseData();
-    
+    // 🟢 ĐÃ SỬA: Đổi sattuong thành satTuongData cho đồng bộ với database cũ
+    const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData, loading } = useFirebaseData();
 
-    if (status === "loading") return <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-amber-400 animate-pulse text-xl">🔮 Đang soi xét lệnh bài...</div>;
+    // 🟢 ĐÃ SỬA: Phục hồi cơ chế nhận diện Bang Chủ bằng tên Discord cũ hoạt động siêu chuẩn!
+    const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
 
-    if (!session) {
+    if (status === 'loading' || loading) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-center">
-                <div className="text-7xl mb-6">🐉</div>
-                <h1 className="text-4xl font-bold text-amber-400 mb-4 tracking-widest">THANH LONG SƠN TRANG</h1>
-                <p className="text-zinc-400 mb-10 max-w-md leading-relaxed">Khách vãng lai xin vui lòng xuất trình lệnh bài Discord để tiến vào.</p>
-                <button onClick={() => signIn('discord')} className="px-8 py-4 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-xl font-bold mt-4 transition-all shadow-[0_0_20px_rgba(88,101,242,0.3)]">Tiến Vào Bằng Discord</button>
+            <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 rounded-full border-4 border-sky-500/20 border-t-sky-500 animate-spin"></div>
+                    <p className="text-zinc-400 text-sm font-medium tracking-widest uppercase">Đang mở cổng sơn trang...</p>
+                </div>
             </div>
         );
     }
 
-    const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
+    if (!session) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-zinc-950 relative overflow-hidden">
+                {/* Hào quang nền */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-sky-500/10 via-zinc-950/50 to-zinc-950"></div>
+                
+                <div className="relative z-10 bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md p-8 rounded-2xl max-w-md w-full mx-4 shadow-2xl text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center font-black text-white text-2xl mx-auto mb-6 shadow-[0_0_20px_rgba(14,165,233,0.3)]">
+                        TL
+                    </div>
+                    <h2 className="text-xl font-bold tracking-wider text-zinc-100 mb-2">THANH LONG SƠN TRANG</h2>
+                    <p className="text-xs text-zinc-500 uppercase tracking-widest mb-8">Nơi tụ hội của các bậc cao nhân</p>
+                    <button 
+                        onClick={() => signIn('discord')}
+                        className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm tracking-wider transition-all shadow-[0_4px_20px_rgba(14,165,233,0.25)] hover:shadow-[0_4px_25px_rgba(14,165,233,0.4)] cursor-pointer"
+                    >
+                        🔑 Khởi Động Trận Pháp (Discord)
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <main className="min-h-screen bg-zinc-950 text-zinc-100 pb-12 relative overflow-x-hidden">
+        <div className="min-h-screen pb-16">
             <Header 
-                activeTab={activeTab} setActiveTab={setActiveTab} 
-                displayLang={displayLang} setDisplayLang={setDisplayLang} 
-                isMaster={isMaster} signOut={signOut} 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                displayLang={displayLang} 
+                setDisplayLang={setDisplayLang} 
+                isMaster={isMaster} 
+                signOut={signOut} 
             />
 
             <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* 🟢 KHẢM CHÍNH ĐIỆN VÀO ĐÂY */}
-                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
+                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} isMaster={isMaster} />}
                 
                 {activeTab === 'danhluc' && <DanhLucTab data={danhLuc} />}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
@@ -67,8 +92,19 @@ export default function Home() {
                         isMaster={isMaster}
                     />)}
                 {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
+                
+                {/* 🟢 ĐÃ SỬA: Đổi sattuong thành satTuongData chuẩn chỉ, dữ liệu Sát Tướng sẽ hiện lên rực rỡ! */}
                 {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
+                
+                {/* 🟢 KHẢM ĐIỀU KIỆN RENDER HOẠT ĐỘNG BANG */}
+                {activeTab === 'hoatDong' && (
+                    <HoatDongBangTab 
+                        danhLuc={danhLuc} 
+                        session={session} 
+                        isMaster={isMaster} 
+                    />
+                )}
             </div>
-        </main>
+        </div>
     );
 }
