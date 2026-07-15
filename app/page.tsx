@@ -77,7 +77,7 @@ export default function Home() {
             />
 
             <div className="max-w-7xl mx-auto px-4 py-8">
-                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} isMaster={isMaster} />}
+                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
                 
                 {activeTab === 'danhluc' && <DanhLucTab data={danhLuc} />}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
