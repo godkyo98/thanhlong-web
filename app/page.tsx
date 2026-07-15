@@ -24,13 +24,11 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState<'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatDong'>('home');
     const [displayLang, setDisplayLang] = useState<'vi' | 'en'>('vi');
 
-    // 🟢 ĐÃ SỬA LỖI BUILD: Bỏ chữ `loading` đi để TypeScript không chặn đường nữa
     const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData } = useFirebaseData();
 
-    // 🟢 Thuật toán nhận diện Bang Chủ siêu chuẩn
+    // Thuật toán nhận diện Bang Chủ siêu chuẩn
     const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
 
-    // 🟢 ĐÃ SỬA LỖI BUILD: Chỉ dùng `status === 'loading'` của NextAuth
     if (status === 'loading') {
         return (
             <div className="min-h-screen flex items-center justify-center bg-zinc-950">
@@ -45,9 +43,7 @@ export default function Home() {
     if (!session) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-zinc-950 relative overflow-hidden">
-                {/* Hào quang nền */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-sky-500/10 via-zinc-950/50 to-zinc-950"></div>
-                
                 <div className="relative z-10 bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-md p-8 rounded-2xl max-w-md w-full mx-4 shadow-2xl text-center">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center font-black text-white text-2xl mx-auto mb-6 shadow-[0_0_20px_rgba(14,165,233,0.3)]">
                         TL
@@ -93,16 +89,10 @@ export default function Home() {
                         isMaster={isMaster}
                     />)}
                 {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
-                
                 {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
                 
-                {activeTab === 'hoatDong' && (
-                    <HoatDongBangTab 
-                        danhLuc={danhLuc} 
-                        session={session} 
-                        isMaster={isMaster} 
-                    />
-                )}
+                {/* 🟢 ĐÃ FIX LỖI TS: Xóa các props thừa thãi */}
+                {activeTab === 'hoatDong' && <HoatDongBangTab />}
             </div>
         </div>
     );
