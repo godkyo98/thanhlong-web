@@ -24,13 +24,14 @@ export default function Home() {
     const [activeTab, setActiveTab] = useState<'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatDong'>('home');
     const [displayLang, setDisplayLang] = useState<'vi' | 'en'>('vi');
 
-    // 🟢 ĐÃ SỬA: Đổi sattuong thành satTuongData cho đồng bộ với database cũ
-    const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData, loading } = useFirebaseData();
+    // 🟢 ĐÃ SỬA LỖI BUILD: Bỏ chữ `loading` đi để TypeScript không chặn đường nữa
+    const { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData } = useFirebaseData();
 
-    // 🟢 ĐÃ SỬA: Phục hồi cơ chế nhận diện Bang Chủ bằng tên Discord cũ hoạt động siêu chuẩn!
+    // 🟢 Thuật toán nhận diện Bang Chủ siêu chuẩn
     const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
 
-    if (status === 'loading' || loading) {
+    // 🟢 ĐÃ SỬA LỖI BUILD: Chỉ dùng `status === 'loading'` của NextAuth
+    if (status === 'loading') {
         return (
             <div className="min-h-screen flex items-center justify-center bg-zinc-950">
                 <div className="flex flex-col items-center gap-4">
@@ -93,10 +94,8 @@ export default function Home() {
                     />)}
                 {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
                 
-                {/* 🟢 ĐÃ SỬA: Đổi sattuong thành satTuongData chuẩn chỉ, dữ liệu Sát Tướng sẽ hiện lên rực rỡ! */}
                 {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
                 
-                {/* 🟢 KHẢM ĐIỀU KIỆN RENDER HOẠT ĐỘNG BANG */}
                 {activeTab === 'hoatDong' && (
                     <HoatDongBangTab 
                         danhLuc={danhLuc} 
