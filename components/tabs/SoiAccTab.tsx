@@ -82,45 +82,59 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         }
     };
 
+    // 🟢 HÀM RENDER BIÊN DỊCH THÔNG MINH: IN NỔI CHỮ ĐÃ DỊCH & BÁO ĐỎ CHỖ THIẾU NGÔN NGỮ
     const renderTranslable = (id: string | number | undefined, mapNames: string[], fallbackText: string, extraVal?: string) => {
         if (!id) return <span>{fallbackText}</span>;
         const strId = String(id);
 
-        let translated = "";
         let targetMap = mapNames[0];
+        let currentVi = "";
+        let currentEn = "";
 
         for (const m of mapNames) {
-            if (wwmData?.[m]?.[strId]?.[lang]) {
-                translated = wwmData[m][strId][lang];
+            const entry = wwmData?.[m]?.[strId];
+            if (entry) {
                 targetMap = m;
-                break;
-            } else if (wwmData?.[m]?.[strId]?.vi) {
-                translated = wwmData[m][strId].vi;
-                targetMap = m;
+                if (typeof entry === 'string') {
+                    currentVi = entry;
+                    currentEn = entry;
+                } else if (typeof entry === 'object') {
+                    currentVi = entry.vi || "";
+                    currentEn = entry.en || "";
+                }
                 break;
             }
         }
 
-        if (translated) {
+        const hasVi = Boolean(currentVi && currentVi !== strId);
+        const hasEn = Boolean(currentEn && currentEn !== strId);
+
+        const hasCurrentLang = lang === 'vi' ? hasVi : hasEn;
+        const translated = lang === 'vi' ? (currentVi || currentEn) : (currentEn || currentVi);
+
+        // 🟢 ĐÃ DỊCH ĐÚNG NGÔN NGỮ ĐANG CHỌN: In nổi bật màu vàng hổ phách rực rỡ!
+        if (hasCurrentLang && translated) {
             return (
-                <span>
+                <span className="font-bold text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.2)]">
                     {translated}
-                    {extraVal && <span className="text-indigo-400/70 font-mono ml-1 font-bold">({extraVal})</span>}
+                    {extraVal && <span className="text-indigo-400 font-mono ml-1 font-bold">({extraVal})</span>}
                 </span>
             );
         }
 
+        // 🔴 THIẾU NGÔN NGỮ ĐANG CHỌN: Hiện rõ nhãn báo đỏ để huynh đệ bấm vào dịch tiếp!
         return (
             <span className="inline-flex items-center gap-1.5 group">
                 <span className="text-zinc-500 italic border-b border-dashed border-zinc-700 pb-0.5">
-                    {fallbackText} [{strId}] {extraVal && <span className="font-mono text-zinc-600">({extraVal})</span>}
+                    {translated || fallbackText} [{strId}] {extraVal && <span className="font-mono text-zinc-600">({extraVal})</span>}
                 </span>
                 <button
-                    onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: "", valEn: "" })}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 cursor-pointer transition-all flex-shrink-0"
-                    title="Bổ sung bản dịch"
+                    type="button"
+                    onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: currentVi, valEn: currentEn })}
+                    className="text-[10px] bg-red-500/20 hover:bg-red-500/40 text-red-400 px-1.5 py-0.5 rounded border border-red-500/30 cursor-pointer transition-all flex-shrink-0 font-bold"
+                    title={`Chưa có ${lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'} - Nhấp để đóng góp dịch`}
                 >
-                    ✍️ Dịch
+                    🔴 Dịch {lang === 'vi' ? 'VN' : 'EN'}
                 </button>
             </span>
         );
@@ -240,7 +254,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                 <h2 className="text-2xl font-bold text-cyan-400">🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị</h2>
                 <p className="text-sm text-zinc-400 mt-1">
                     Chuyển ngôn ngữ ở góc trên bên phải để xem bản tiếng Anh.
-                    <br />Nhấn vào nút <b className="text-amber-400 px-1 bg-amber-500/20 rounded mx-1">✍️ Dịch</b> cạnh các chỉ số chưa biết để đóng góp cho từ điển chung của Bang!
+                    <br />Nhấn vào nút <b className="text-red-400 px-1 bg-red-500/20 rounded mx-1">🔴 Dịch</b> cạnh các chỉ số chưa biết để đóng góp cho từ điển chung của Bang!
                 </p>
             </div>
 
