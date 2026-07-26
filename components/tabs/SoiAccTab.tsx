@@ -22,29 +22,14 @@ interface Props {
 }
 
 export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
-    const [soiQuery, setSoiQuery] = useState("");
-    const [isSoiLoading, setIsSoiLoading] = useState(false);
     const [expandedEquip, setExpandedEquip] = useState<Record<string, boolean>>({});
     const [editingDict, setEditingDict] = useState<{ id: string, mapName: string, valVi: string, valEn: string } | null>(null);
 
-    // 🟢 BIẾN QUẢN LÝ THANH TÌM KIẾM TRONG HỒ SƠ ĐÃ LƯU
+    // 🟢 THANH TÌM KIẾM HỒ SƠ ĐÃ SOI TỪ DISCORD
     const [filterText, setFilterText] = useState("");
 
     const toggleEquip = (uid: string) => {
         setExpandedEquip(prev => ({ ...prev, [uid]: !prev[uid] }));
-    };
-
-    const handleSoiOnWeb = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!soiQuery.trim()) return;
-        setIsSoiLoading(true);
-        try {
-            const response = await fetch('/api/soi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: soiQuery, type: 'acc' }) });
-            const result = await response.json();
-            if (result.error) alert(`❌ Lỗi: ${result.error}`);
-            else { alert(`✅ Đã soi thành công và lưu hồ sơ lên mây!`); setSoiQuery(""); }
-        } catch (error) { alert("❌ Hệ thống API Netease không phản hồi."); }
-        setIsSoiLoading(false);
     };
 
     // 🟢 HÀM CẬP NHẬT / SỬA LẠI TỪ ĐIỂN TÊN VẬT PHẨM
@@ -78,13 +63,13 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
             }, { merge: true });
 
             setEditingDict(null);
-            alert("✅ Đã cập nhật bản dịch thành công!");
+            alert("✅ Đã cập nhật bản dịch lên Tàng Kinh Các thành công!");
         } catch (err) {
             alert("❌ Lỗi khi khảm từ điển lên Mây!");
         }
     };
 
-    // 🟢 HÀM RENDER BIÊN DỊCH THÔNG MINH: ĐÃ DỊCH THÌ HIỆN CHỮ VÀNG HỔ PHÁCH RỰC RỠ + NÚT ✏️ SỬA
+    // 🟢 HÀM RENDER BIÊN DỊCH THÔNG MINH: CHỮ VÀNG HỔ PHÁCH + NÚT ✏️ SỬA / ✍️ DỊCH
     const renderTranslable = (id: string | number | undefined, mapNames: string[], fallbackText: string, extraVal?: string) => {
         if (!id) return <span>{fallbackText}</span>;
         const strId = String(id);
@@ -110,7 +95,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
             }
         }
 
-        // 🌟 ĐÃ CÓ BẢN DỊCH: In chữ VÀNG HỔ PHÁCH phát sáng (text-amber-300 + drop-shadow) dịu mắt, nổi bật!
+        // 🌟 ĐÃ CÓ BẢN DỊCH: In chữ VÀNG HỔ PHÁCH rực rỡ + Nút ✏️ Sửa khi chỉ chuột!
         if (translated) {
             return (
                 <span className="inline-flex items-center gap-1 group/trans">
@@ -122,7 +107,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                         type="button"
                         onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: valVi, valEn: valEn })}
                         className="opacity-0 group-hover/trans:opacity-100 text-[10px] bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-400 text-zinc-400 px-1 py-0.5 rounded border border-zinc-700/80 cursor-pointer transition-all flex-shrink-0"
-                        title="Bấm để sửa lại bản dịch nếu bị sai"
+                        title="Bấm để đính chính lại bản dịch nếu bị sai"
                     >
                         ✏️ Sửa
                     </button>
@@ -130,7 +115,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
             );
         }
 
-        // 🔴 CHƯA CÓ BẢN DỊCH: Hiển thị mã ID xám mờ + Nút ✍️ Dịch!
+        // 🔴 CHƯA CÓ BẢN DỊCH: Hiển thị ID mờ + Nút ✍️ Dịch!
         return (
             <span className="inline-flex items-center gap-1.5 group/trans">
                 <span className="text-zinc-500 italic border-b border-dashed border-zinc-700 pb-0.5">
@@ -212,7 +197,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         );
     };
 
-    // 🟢 ĐOẠN LỌC VÀ SẮP XẾP TỐI THƯỢNG: AI MỚI SOI PHẢI LÊN ĐẦU
+    // 🟢 LỌC VÀ SẮP XẾP MỚI NHẤT LÊN ĐẦU
     const filteredProfiles = Object.entries(profiles || {})
         .filter(([uid, data]: any) => {
             const tuKhoa = (filterText || "").toLowerCase().trim();
@@ -253,63 +238,40 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         });
 
     return (
-        <section className="animate-in fade-in duration-300">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-cyan-400">🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị</h2>
-                <p className="text-sm text-zinc-400 mt-1">
-                    Chuyển ngôn ngữ ở góc trên bên phải để xem bản tiếng Anh.
-                    <br />Các tên đã dịch được in nổi <b className="text-amber-300 px-1 bg-amber-500/10 rounded mx-1">màu Vàng Hổ Phách</b> rực rỡ. Rê chuột vào để bấm <b className="text-amber-400 px-1 bg-zinc-800 rounded mx-1">✏️ Sửa</b> nếu cần đính chính!
-                </p>
-            </div>
-
-            {/* FORM GỌI API NETEASE ĐỂ KÉO NGƯỜI MỚI */}
-            <form onSubmit={handleSoiOnWeb} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 mb-10 shadow-lg flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-1 w-full">
-                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Tra cứu mới từ Netease (Nhập UID hoặc Tên)</label>
-                    <input
-                        type="text"
-                        value={soiQuery}
-                        onChange={(e) => setSoiQuery(e.target.value)}
-                        placeholder="Ví dụ: 10101002 hoặc KyoĐaoPháp"
-                        className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-cyan-500 transition-colors"
-                        required
-                    />
+        <section className="animate-in fade-in duration-300 space-y-6 pb-16">
+            
+            {/* 🟢 HEADER TINH GỌN HOÀNG KIM */}
+            <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-xl font-black text-cyan-400 flex items-center gap-2">
+                        🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                        Toàn bộ hồ sơ được đồng bộ tự động khi cao thủ dùng lệnh <b className="text-cyan-300 font-mono">/soi_acc</b> trên Discord.
+                        <br />Tên vật phẩm dịch chuẩn được in <b className="text-amber-300">Màu Vàng Hổ Phách</b>. Rê chuột vào để bấm <b className="text-zinc-300">✏️ Sửa</b> nếu cần đính chính!
+                    </p>
                 </div>
-                <button
-                    type="submit"
-                    disabled={isSoiLoading}
-                    className="w-full md:w-auto bg-cyan-500 hover:bg-cyan-600 disabled:bg-zinc-800 text-zinc-950 font-bold py-3 px-8 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] cursor-pointer"
-                >
-                    {isSoiLoading ? "⏳ Đang triệu hồi Netease API..." : "🔍 Khởi Động Thiên Nhãn"}
-                </button>
-            </form>
 
-            {/* 🟢 KHU VỰC SỔ ĐIỆP CHỈ SỐ ĐÃ LƯU TRÊN MÂY */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-3 border-b border-zinc-800/50 gap-4">
-                <h3 className="text-lg font-bold text-zinc-100 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span>📂 Sổ Điệp Chỉ Số Đã Lưu</span>
-                    <span className="text-xs font-normal text-zinc-500">(Dữ liệu đồng bộ trực tiếp cùng Discord Bot)</span>
-                </h3>
-
-                {/* 🟢 THANH TÌM KIẾM HỒ SƠ */}
-                <div className="relative w-full md:w-64">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500">🔍</span>
+                {/* Ô LỌC NHANH TRÊN HEADER */}
+                <div className="relative w-full md:w-72 shrink-0">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500 text-xs">🔍</span>
                     <input
                         type="text"
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
-                        placeholder="Lọc Tên hoặc UID..."
-                        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-cyan-500 transition-colors"
+                        placeholder="Lọc Tên Ingame, UID..."
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/50 font-medium transition-colors"
                     />
                 </div>
             </div>
 
+            {/* DANH SÁCH HỒ SƠ ACC */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
                 {!profiles ? (
                     <div className="col-span-full text-center py-10 text-zinc-500">🔮 Đang lột mật bùa Thiên Thư...</div>
                 ) : filteredProfiles.length === 0 ? (
                     <div className="col-span-full text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-2xl">
-                        {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa tìm kiếm." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy soi ai đó trên Discord hoặc Web!"}
+                        {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa lọc." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy dùng lệnh /soi_acc trên Discord!"}
                     </div>
                 ) : (
                     filteredProfiles.map(([uid, data]: any) => {
@@ -377,9 +339,15 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
 
                         const str = attrData.STR || 0; const con = attrData.CON || 0; const agi = attrData.AGI || 0; const bas = attrData.BAS || 0; const cri = attrData.CRI || 0;
 
+                        // 🟢 BÓC TÁCH ĐỦ 4 VÙNG ĐẤT KHÁM PHÁ (TH 58, KP 59, HT 60, KTN 61)
                         const exploreData = safeParse(raw.common_score_data);
-                        const th = exploreData.scores?.["58"] || 0; const kp = exploreData.scores?.["59"] || 0; const ht = exploreData.scores?.["60"] || 0; const ktn = exploreData.scores?.["61"] || 0;
-                        const tuViKP = attrData.XIUWEI_EXPLORE || 0; const tuViNghe = (attrData.XIUWEI_TRADE3 || 0) + (attrData.XIUWEI_TRADE4 || 0);
+                        const th = exploreData.scores?.["58"] || 0; 
+                        const kp = exploreData.scores?.["59"] || 0; 
+                        const ht = exploreData.scores?.["60"] || 0;
+                        const ktn = exploreData.scores?.["61"] || 0; 
+
+                        const tuViKP = attrData.XIUWEI_EXPLORE || 0; 
+                        const tuViNghe = (attrData.XIUWEI_TRADE3 || 0) + (attrData.XIUWEI_TRADE4 || 0);
 
                         const kongfu = safeParse(raw.kongfu);
 
@@ -411,12 +379,14 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl"></div>
                                     <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
                                         <div>
+                                            {/* DÒNG 1: TÊN VÀ UID */}
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <h4 className="font-extrabold text-2xl text-cyan-400 tracking-wide">{tenNhanVat}</h4>
                                                 <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] font-mono rounded border border-zinc-700">Máy chủ: {serverHost} | UID: {uid}</span>
                                                 <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 font-medium text-zinc-400">{trangThai}</span>
                                             </div>
 
+                                            {/* DÒNG 2: CẤP, PHÁI, GIỚI TÍNH */}
                                             <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 mt-2">
                                                 <span>Cấp: <b className="text-zinc-200 font-mono">{capDo}</b></span>
                                                 <span>•</span>
@@ -425,14 +395,15 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                                 <span>Giới: <b className="text-zinc-200">{gender}</b></span>
                                             </div>
 
+                                            {/* DÒNG 3: 🟢 HIỂN THỊ CHUẨN LÊN BANG HỘI & CHỨC VỤ */}
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-900 rounded-md text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
-                                                    Môn Phái
+                                                    Bang Hội
                                                 </span>
                                                 <span className="text-sm font-black text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
                                                     {warmBangHoi(bangHoi)}
                                                 </span>
-                                                {chucVu !== "Thành Viên" && chucVu !== "Tự do" && (
+                                                {chucVu !== "Tự do" && (
                                                     <span className="px-2 py-0.5 bg-sky-900/30 border border-sky-800/50 rounded-md text-[10px] text-sky-300 font-medium">
                                                         {chucVu}
                                                     </span>
@@ -519,8 +490,9 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                         <div>
                                             <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🗺️ Khám Phá & Tu Vi Phụ</div>
                                             <div className="text-xs text-zinc-400 space-y-0.5">
-                                                <div>TH: <span className="text-zinc-300 font-mono">{th.toLocaleString('vi-VN')}</span> | KP: <span className="text-zinc-300 font-mono">{kp.toLocaleString('vi-VN')}</span> | HT: <span className="text-zinc-300 font-mono">{ht.toLocaleString('vi-VN')}</span> | KTN: <span className="text-zinc-300 font-mono">{ktn.toLocaleString('vi-VN')}</span></div>
-                                                <div>KP: <span className="text-amber-300 font-mono">{tuViKP.toLocaleString('vi-VN')}</span> | Nghề: <span className="text-amber-300 font-mono">{tuViNghe.toLocaleString('vi-VN')}</span></div>
+                                                {/* 🟢 ĐÃ THÊM KTN (61) VÀO DÒNG ĐIỂM KHÁM PHÁ */}
+                                                <div>TH: <span className="text-zinc-300 font-mono">{th.toLocaleString('vi-VN')}</span> | KP: <span className="text-zinc-300 font-mono">{kp.toLocaleString('vi-VN')}</span> | HT: <span className="text-zinc-300 font-mono">{ht.toLocaleString('vi-VN')}</span> | KTN: <span className="text-zinc-300 font-mono font-bold">{ktn.toLocaleString('vi-VN')}</span></div>
+                                                <div>KP Tu Vi: <span className="text-amber-300 font-mono">{tuViKP.toLocaleString('vi-VN')}</span> | Nghề: <span className="text-amber-300 font-mono">{tuViNghe.toLocaleString('vi-VN')}</span></div>
                                             </div>
                                         </div>
                                         <div>
@@ -560,7 +532,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                 )}
             </div>
 
-            {/* 🟢 POPUP ĐIỀN TỪ ĐIỂN SONG NGỮ THÔNG MINH */}
+            {/* 🟢 POPUP SỬA & ĐÓNG GÓP BẢN DỊCH TỪ ĐIỂN SONG NGỮ */}
             {editingDict && (
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
@@ -597,7 +569,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                     required={lang === 'en'}
                                 />
                                 <p className="text-[10px] text-zinc-500 mt-1 italic">
-                                    Sửa lại cho chuẩn tên vật phẩm trong game để anh em cùng xem thông tin chuẩn xác!
+                                    Đính chính tên chuẩn để toàn thể huynh đệ cùng nhìn thấy dữ liệu chính xác!
                                 </p>
                             </div>
                             <div className="flex gap-3 pt-2">
