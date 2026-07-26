@@ -1,6 +1,6 @@
 // components/tabs/GiftcodeTab.tsx
-import React, { useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import React, { useState, useMemo } from 'react';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Props {
@@ -16,12 +16,10 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
     const [searchTerm, setSearchTerm] = useState("");
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    
-    // 🟢 NÚT GẠT ẨN/HIỆN MÃ HẾT HẠN DÀNH CHO HUYNH ĐỆ THÍCH GỌN GÀNG
     const [hideExpired, setHideExpired] = useState(false);
 
-    // 🔮 Xác định ID người dùng hiện tại (Trích xuất siêu chuẩn từ Discord)
-    const currentUserId = (() => {
+    // 🔮 Trích xuất ID người dùng Discord
+    const currentUserId = useMemo(() => {
         if (!session?.user) return "Lãng Khách";
         if (session.user.id) return String(session.user.id);
         if (session.user.image?.includes('avatars/')) {
@@ -33,20 +31,55 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
             if (match) return match[0];
         }
         return session.user.name || "Ẩn Danh";
-    })();
+    }, [session, danhLuc]);
 
-    const codeList = giftcodeData?.codes ? Object.entries(giftcodeData.codes) : [];
+    // KIỂM TRA MÃ HẾT HẠN
+    const isCodeExpired = (data: any) => {
+        if (!data) return false;
+        return Boolean(
+            data.isExpired === true || 
+            data.isExpired === "true" || 
+            data.expired === true || 
+            data.expired === "true" || 
+            data.status === 'expired'
+        );
+    };
+
+    // CHIẾT XUẤT TẤT CẢ MÃ TỪ FIRESTORE
+    const codeList = useMemo(() => {
+        if (!giftcodeData) return [];
+
+        const sourceObj = giftcodeData.codes && typeof giftcodeData.codes === 'object'
+            ? { ...giftcodeData.codes, ...giftcodeData }
+            : { ...giftcodeData };
+
+        const clone = { ...sourceObj };
+        delete clone.codes;
+        delete clone.id;
+        delete clone.updatedAt;
+        delete clone.createdAt;
+
+        return Object.entries(clone).filter(([key, val]: any) => {
+            return val && typeof val === 'object';
+        });
+    }, [giftcodeData]);
+
     const allClaims = giftcodeClaims || {};
     const userClaims = allClaims[currentUserId] || {};
 
-    // 📊 Thống kê số lượng mã
+    // THỐNG KÊ
     const totalCodes = codeList.length;
-    const expiredCount = codeList.filter(([_, data]: any) => Boolean(data?.isExpired || data?.expired)).length;
-    const activeCodes = codeList.filter(([_, data]: any) => !Boolean(data?.isExpired || data?.expired));
-    const claimedCount = activeCodes.filter(([codeKey]) => userClaims[codeKey]).length;
+    const expiredCodes = codeList.filter(([_, data]: any) => isCodeExpired(data));
+    const activeCodes = codeList.filter(([_, data]: any) => !isCodeExpired(data));
+
+    const expiredCount = expiredCodes.length;
+    const claimedCount = activeCodes.filter(([codeKey, data]: any) => {
+        const actualCode = String(data?.code || codeKey).trim().toUpperCase();
+        return userClaims[codeKey] || userClaims[actualCode];
+    }).length;
     const unclaimedCount = activeCodes.length - claimedCount;
 
-    // 🟢 THUẬT TOÁN ĐỌC THỜI GIAN ĐỂ SẮP XẾP
+    // SẮP XẾP THỜI GIAN
     const getTimeForSort = (data: any) => {
         const val = data?.createdAt || data?.time || data?.date;
         if (!val) return 0;
@@ -59,83 +92,98 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
         return isNaN(parsed) ? 0 : parsed;
     };
 
-    // 🟢 HÀM ĐÁNH DẤU HẾT HẠN GIFTCODE (Mọi huynh đệ đều có thể bấm báo hết hạn)
-    const handleMarkExpired = async (rawCodeKey: string) => {
-        const confirmed = window.confirm(`Đại hiệp chắc chắn mã [${rawCodeKey}] đã HẾT HẠN trong game chứ?`);
+    // 🟢 HÀM BÁO HẾT HẠN - SỬ DỤNG updateDoc CHUẨN XÁC (TUYỆT ĐỐI KHÔNG XÓA DỮ LIỆU)
+    const handleMarkExpired = async (keyInDb: string, dataObj: any) => {
+        const codeString = String(dataObj?.code || keyInDb).trim();
+        const confirmed = window.confirm(`Đại hiệp chắc chắn mã [${codeString}] đã HẾT HẠN trong game chứ?`);
         if (!confirmed) return;
 
         try {
-            const codeRef = doc(db, 'thanhlong_config', 'giftcodes');
-            await setDoc(codeRef, {
-                codes: {
-                    [rawCodeKey]: {
+            const codeRef = doc(db, 'thanhlong_config', 'giftcode_data');
+            
+            // Cập nhật DUY NHẤT 1 field isExpired của keyInDb
+            await updateDoc(codeRef, {
+                [`${keyInDb}.isExpired`]: true,
+                [`${keyInDb}.expiredBy`]: currentUserId,
+                [`${keyInDb}.expiredAt`]: new Date().toISOString()
+            });
+
+            alert(`⚠️ Đã đánh dấu mã [${codeString}] HẾT HẠN!`);
+        } catch (err) {
+            console.error("⛔ Lỗi updateDoc, dùng fallback setDoc merge:", err);
+            try {
+                const codeRef = doc(db, 'thanhlong_config', 'giftcode_data');
+                await setDoc(codeRef, {
+                    [keyInDb]: {
+                        ...(dataObj || {}),
                         isExpired: true,
                         expiredBy: currentUserId,
                         expiredAt: new Date().toISOString()
                     }
-                }
-            }, { merge: true });
-
-            alert(`⚠️ Đã chuyển mã [${rawCodeKey}] sang trạng thái HẾT HẠN! Cảm ơn đại hiệp đã báo!`);
-        } catch (err) {
-            console.error("⛔ Lỗi khi đánh dấu hết hạn:", err);
-            alert("❌ Không thể cập nhật trạng thái hết hạn!");
+                }, { merge: true });
+                alert(`⚠️ Đã đánh dấu mã [${codeString}] HẾT HẠN!`);
+            } catch (e2) {
+                alert("❌ Lỗi kết nối Firestore!");
+            }
         }
     };
 
-    // 🟢 HÀM KHÔI PHỤC MÃ VỀ LẠI CÒN HẠN (Nếu lỡ bấm nhầm)
-    const handleRestoreCode = async (rawCodeKey: string) => {
+    // 🟢 HÀM KHÔI PHỤC MÃ CÒN HẠN
+    const handleRestoreCode = async (keyInDb: string, dataObj: any) => {
+        const codeString = String(dataObj?.code || keyInDb).trim();
         try {
-            const codeRef = doc(db, 'thanhlong_config', 'giftcodes');
+            const codeRef = doc(db, 'thanhlong_config', 'giftcode_data');
+            await updateDoc(codeRef, {
+                [`${keyInDb}.isExpired`]: false
+            });
+            alert(`✅ Đã khôi phục mã [${codeString}] về CÒN HẠN!`);
+        } catch (err) {
+            const codeRef = doc(db, 'thanhlong_config', 'giftcode_data');
             await setDoc(codeRef, {
-                codes: {
-                    [rawCodeKey]: {
-                        isExpired: false
-                    }
+                [keyInDb]: {
+                    ...(dataObj || {}),
+                    isExpired: false
                 }
             }, { merge: true });
-
-            alert(`✅ Đã khôi phục mã [${rawCodeKey}] về trạng thái CÒN HẠN!`);
-        } catch (err) {
-            console.error("⛔ Lỗi khôi phục:", err);
+            alert(`✅ Đã khôi phục mã [${codeString}] về CÒN HẠN!`);
         }
     };
 
-    // 🟢 MA TRẬN LỌC VÀ SẮP XẾP TỐI THƯỢNG:
-    // 1. Mã CÒN HẠN & CHƯA NHẬN -> Đẩy lên Top 1
-    // 2. Mã CÒN HẠN & ĐÃ NHẬN -> Nhảy xuống vị trí tiếp theo
-    // 3. Mã HẾT HẠN -> Bị phong ấn và tống cổ xuống ĐÁY BẢNG!
-    const filteredAndSortedCodes = [...codeList]
-        .filter(([codeKey, data]: any) => {
-            const isExpired = Boolean(data?.isExpired || data?.expired);
-            if (hideExpired && isExpired) return false;
 
-            const displayCodeString = String(data?.code || codeKey || "");
-            return displayCodeString.toLowerCase().includes(searchTerm.toLowerCase());
-        })
-        .sort(([codeA, dataA]: any, [codeB, dataB]: any) => {
-            const isExpiredA = Boolean(dataA?.isExpired || dataA?.expired);
-            const isExpiredB = Boolean(dataB?.isExpired || dataB?.expired);
+    // LỌC VÀ SẮP XẾP
+    const filteredAndSortedCodes = useMemo(() => {
+        return [...codeList]
+            .filter(([codeKey, data]: any) => {
+                const isExpired = isCodeExpired(data);
+                if (hideExpired && isExpired) return false;
 
-            // Ưu tiên 1: Mã HẾT HẠN tống thẳng xuống đáy bảng!
-            if (isExpiredA !== isExpiredB) {
-                return isExpiredA ? 1 : -1;
-            }
+                const displayCodeString = String(data?.code || codeKey || "");
+                return displayCodeString.toLowerCase().includes(searchTerm.toLowerCase());
+            })
+            .sort(([codeA, dataA]: any, [codeB, dataB]: any) => {
+                const isExpiredA = isCodeExpired(dataA);
+                const isExpiredB = isCodeExpired(dataB);
 
-            // Ưu tiên 2: Mã CHƯA HÚP lên trên, ĐÃ HÚP xuống dưới
-            const isClaimedA = userClaims[codeA];
-            const isClaimedB = userClaims[codeB];
-            if (isClaimedA !== isClaimedB) {
-                return isClaimedA ? 1 : -1;
-            }
+                if (isExpiredA !== isExpiredB) {
+                    return isExpiredA ? 1 : -1;
+                }
 
-            // Ưu tiên 3: Mã MỚI HƠN lên trước
-            const timeA = getTimeForSort(dataA);
-            const timeB = getTimeForSort(dataB);
-            return timeB - timeA; 
-        });
+                const actualCodeA = String(dataA?.code || codeA).trim();
+                const actualCodeB = String(dataB?.code || codeB).trim();
+                const isClaimedA = Boolean(userClaims[codeA] || userClaims[actualCodeA]);
+                const isClaimedB = Boolean(userClaims[codeB] || userClaims[actualCodeB]);
 
-    // 🟢 HÀM PHÁT MÃ PHÚC LỢI MỚI (CỦA BANG CHỦ)
+                if (isClaimedA !== isClaimedB) {
+                    return isClaimedA ? 1 : -1;
+                }
+
+                const timeA = getTimeForSort(dataA);
+                const timeB = getTimeForSort(dataB);
+                return timeB - timeA; 
+            });
+    }, [codeList, hideExpired, searchTerm, userClaims]);
+
+    // PHÁT CODE LẺ MỚI
     const handleAddCode = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCode.trim()) return;
@@ -146,36 +194,34 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
             const today = new Date();
             const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
-            const codeRef = doc(db, 'thanhlong_config', 'giftcodes');
-            
-            const payload = {
-                codes: {
-                    [safeCode]: {
-                        code: safeCode,
-                        date: dateStr,
-                        isExpired: false,
-                        createdAt: new Date().toISOString()
-                    }
-                }
-            };
+            const nextKey = String(totalCodes + 1);
+            const codeRef = doc(db, 'thanhlong_config', 'giftcode_data');
 
-            await setDoc(codeRef, payload, { merge: true });
+            await setDoc(codeRef, {
+                [nextKey]: {
+                    code: safeCode,
+                    date: dateStr,
+                    isExpired: false,
+                    createdAt: new Date().toISOString()
+                }
+            }, { merge: true });
+
             setNewCode("");
             alert(`✅ Đã phát mã phúc lợi [${safeCode}] thành công!`);
         } catch (err) {
-            console.error("⛔ [Firebase Error] Thất bại khi phát mã:", err);
-            alert("❌ Lỗi khi khắc mã quà tặng lên Mây!");
+            console.error("⛔ Lỗi phát mã:", err);
+            alert("❌ Lỗi khi nạp mã quà tặng lên Mây!");
         } finally {
             setLoading(false);
         }
     };
 
-    // 🚀 Ghi nhận trạng thái đã nhận code
+    // COPY MÃ
     const handleCopy = async (rawCodeKey: string, actualCodeString: string) => {
         const safeCodeKey = String(rawCodeKey || "").trim();
         const safeCodeString = String(actualCodeString || "").trim();
 
-        if (!safeCodeKey || safeCodeKey === "undefined") return;
+        if (!safeCodeString) return;
 
         navigator.clipboard.writeText(safeCodeString);
         setCopiedId(safeCodeString);
@@ -184,13 +230,14 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
         if (currentUserId !== "Lãng Khách" && currentUserId !== "Ẩn Danh") {
             try {
                 const claimsRef = doc(db, 'thanhlong_config', 'giftcode_claims');
-                const payloadData: Record<string, any> = {};
-                payloadData[currentUserId] = {};
-                payloadData[currentUserId][safeCodeKey] = true;
-
-                await setDoc(claimsRef, payloadData, { merge: true });
+                await setDoc(claimsRef, {
+                    [currentUserId]: {
+                        [safeCodeKey]: true,
+                        [safeCodeString]: true
+                    }
+                }, { merge: true });
             } catch (err) {
-                console.error("⛔ [Firebase Error] Lỗi ghi nhận copy:", err);
+                console.error("⛔ Lỗi ghi nhận copy:", err);
             }
         }
     };
@@ -213,7 +260,7 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
     return (
         <section className="space-y-6 animate-fade-in pb-12">
             
-            {/* CLAN STATS */}
+            {/* THỐNG KÊ GIAO DIỆN */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="bg-zinc-900/40 backdrop-blur-md border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
                     <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tổng Số Bùa Chú</span>
@@ -237,7 +284,7 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                 </div>
             </div>
 
-            {/* INPUT CONTROLS & BỘ LỌC ẨN MÃ HẾT HẠN */}
+            {/* CONTROLS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
                 <div className={`${isMaster ? 'lg:col-span-1' : 'lg:col-span-3'} flex flex-col justify-end space-y-2`}>
                     <div className="flex gap-2">
@@ -252,7 +299,6 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">🔍</span>
                         </div>
 
-                        {/* NÚT BẤM CÔNG TẮC ẨN MÃ HẾT HẠN */}
                         <button
                             type="button"
                             onClick={() => setHideExpired(!hideExpired)}
@@ -261,16 +307,16 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                     ? 'bg-red-500/20 text-red-400 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]' 
                                     : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-zinc-200'
                             }`}
-                            title="Ẩn hoàn toàn đống mã đã hết hạn cho sạch mắt"
+                            title="Ẩn mã hết hạn"
                         >
                             {hideExpired ? '👁️ Đang Ẩn Hết Hạn' : '👁️ Hiện Tất Cả'}
                         </button>
                     </div>
                 </div>
 
-                {/* KHU VỰC PHÁT MÃ CỦA BANG CHỦ */}
+                {/* DÀNH CHO BANG CHỦ */}
                 {isMaster && (
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 space-y-3">
                         <form onSubmit={handleAddCode} className="bg-zinc-900/60 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-amber-600 to-amber-400"></div>
                             <div className="flex-1 w-full">
@@ -290,6 +336,7 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                 {loading ? "⏳ Đang khắc..." : "⚡ PHÁT MÃ PHÚC LỢI"}
                             </button>
                         </form>
+
                     </div>
                 )}
             </div>
@@ -298,14 +345,15 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
                 {filteredAndSortedCodes.map(([codeKey, data]: any) => {
                     const safeCodeKey = String(codeKey || "");
-                    const isExpired = Boolean(data?.isExpired || data?.expired);
-                    const isClaimed = userClaims[safeCodeKey];
-                    const displayCodeString = String(data?.code || safeCodeKey);
+                    const displayCodeString = String(data?.code || safeCodeKey).trim();
+                    
+                    const isExpired = isCodeExpired(data);
+                    const isClaimed = Boolean(userClaims[safeCodeKey] || userClaims[displayCodeString]);
 
                     let realClaimsCount = 0;
                     if (allClaims && typeof allClaims === 'object') {
                         Object.values(allClaims).forEach((userClaimBlock: any) => {
-                            if (userClaimBlock && userClaimBlock[safeCodeKey]) {
+                            if (userClaimBlock && (userClaimBlock[safeCodeKey] || userClaimBlock[displayCodeString])) {
                                 realClaimsCount++;
                             }
                         });
@@ -334,7 +382,6 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                             <span>{data?.date ? getDisplayDate(data.date) : formatTime(data?.createdAt || data?.time)}</span>
                                         </div>
                                         
-                                        {/* NHÃN TRẠNG THÁI: HẾT HẠN | ĐÃ HÚP | SẴN SÀNG */}
                                         <div className="flex items-center gap-1 shrink-0">
                                             {isExpired ? (
                                                 <span className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-xl border bg-red-500/10 text-red-400 border-red-500/30">
@@ -346,12 +393,11 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                                 </span>
                                             )}
 
-                                            {/* NÚT BÁO HẾT HẠN DÀNH CHO ANH EM TEST CODE */}
                                             {!isExpired ? (
                                                 <button 
                                                     type="button"
-                                                    onClick={() => handleMarkExpired(safeCodeKey)}
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg text-xs"
+                                                    onClick={() => handleMarkExpired(safeCodeKey, data)}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg text-xs cursor-pointer"
                                                     title="Bấm nếu thử trong game báo mã hết hạn"
                                                 >
                                                     ⚠️
@@ -359,8 +405,8 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                             ) : (
                                                 <button 
                                                     type="button"
-                                                    onClick={() => handleRestoreCode(safeCodeKey)}
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-500/20 text-zinc-500 hover:text-emerald-400 rounded-lg text-xs"
+                                                    onClick={() => handleRestoreCode(safeCodeKey, data)}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-500/20 text-zinc-500 hover:text-emerald-400 rounded-lg text-xs cursor-pointer"
                                                     title="Khôi phục mã về trạng thái còn hạn"
                                                 >
                                                     🔄
@@ -388,7 +434,6 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
                                     </div>
                                 </div>
 
-                                {/* NÚT COPY HOẶC BÁO NÚT HẾT HẠN */}
                                 {isExpired ? (
                                     <div className="w-full py-2.5 rounded-xl text-xs uppercase tracking-wider font-black text-red-500/60 bg-red-950/20 border border-red-900/30 flex items-center justify-center gap-2 cursor-not-allowed">
                                         🚫 Mã Đã Hết Hạn
@@ -418,9 +463,10 @@ export default function GiftcodeTab({ giftcodeData, giftcodeClaims, danhLuc, ses
             {filteredAndSortedCodes.length === 0 && (
                 <div className="text-center py-12 bg-zinc-900/20 border border-dashed border-zinc-800 rounded-2xl">
                     <span className="text-3xl">📭</span>
-                    <p className="text-sm text-zinc-500 mt-2">Không tìm thấy mã bùa chú nào phù hợp!</p>
+                    <p className="text-sm text-zinc-500 mt-2">Chưa có mã giftcode nào trong hệ thống.</p>
                 </div>
             )}
+
         </section>
     );
 }
