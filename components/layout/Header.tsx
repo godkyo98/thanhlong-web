@@ -1,8 +1,8 @@
 // components/layout/Header.tsx
 import React from 'react';
 
-// 🟢 CHỈ THÊM 'point' VÀ 'sattuong' VÀO ĐÂY ĐỂ TYPESCRIPT KHÔNG LỖI, TUYỆT ĐỐI KHÔNG VẼ THÊM NÚT XẤU XÍ
-type TabType = 'home' | 'danhluc' | 'talent' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'sattuong';
+// 🟢 Kyo đã giữ nguyên bản, CHỈ THÊM 'hoatDong' VÀO ĐÂY ĐỂ TYPESCRIPT KHÔNG LỖI, TUYỆT ĐỐI KHÔNG VẼ THÊM NÚT XẤU XÍ
+type TabType = 'home' | 'danhluc' | 'talent' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'sattuong' | 'hoatDong';
 
 interface HeaderProps {
     activeTab: TabType;
