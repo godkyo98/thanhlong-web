@@ -1,6 +1,6 @@
 // hooks/useFirebaseData.ts
 import { useState, useEffect } from "react";
-import { doc, onSnapshot } from "firebase/firestore"; 
+import { doc, collection, onSnapshot } from "firebase/firestore"; 
 import { db } from "@/lib/firebase";
 
 export default function useFirebaseData() {
@@ -12,9 +12,10 @@ export default function useFirebaseData() {
     const [giftcodeData, setGiftcodeData] = useState<any>(null);
     const [giftcodeClaims, setGiftcodeClaims] = useState<any>(null);
     const [pointData, setPointData] = useState<any>(null);
-    
-    // 🟢 THÊM BIẾN NÀY: Hứng dữ liệu Sát Tướng LIVE từ Bot
     const [satTuongData, setSatTuongData] = useState<any>(null);
+    
+    // 🟢 HỨNG DỮ LIỆU TỔNG ĐỒ BUILD (wwm_builds -> Võ học -> ID)
+    const [wwmBuilds, setWwmBuilds] = useState<Record<string, any>>({});
 
     useEffect(() => {
         const unsub1 = onSnapshot(doc(db, 'thanhlong_config', 'danh_luc_data'), (snap) => setDanhLuc(snap.exists() ? snap.data() : {}));
@@ -25,15 +26,33 @@ export default function useFirebaseData() {
         const unsub6 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_data'), (snap) => setGiftcodeData(snap.exists() ? snap.data() : { codes: {} }));
         const unsub7 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_claims'), (snap) => setGiftcodeClaims(snap.exists() ? snap.data() : {}));
         const unsub8 = onSnapshot(doc(db, 'thanhlong_config', 'points_data'), (snap) => setPointData(snap.exists() ? snap.data() : {}));
-        
-        // 🟢 ĐƯỜNG TRUYỀN NỐI THẲNG VÀO SÁT TƯỚNG DATA
         const unsub9 = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_data'), (snap) => {
             setSatTuongData(snap.exists() ? snap.data() : {});
         });
 
-        return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); };
+        // 🟢 LẮNG NGHE TOÀN BỘ COLLECTION wwm_builds (Mỗi docId là tên 1 hệ Võ Học)
+        const unsub10 = onSnapshot(
+            collection(db, 'wwm_builds'),
+            (querySnap) => {
+                const buildsMap: Record<string, any> = {};
+                querySnap.forEach((docSnap) => {
+                    buildsMap[docSnap.id] = docSnap.data();
+                });
+                setWwmBuilds(buildsMap);
+            },
+            (err) => {
+                console.warn("⚠️ Chưa mở quyền đọc collection wwm_builds trên Firestore:", err);
+            }
+        );
+
+        return () => { 
+            unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); 
+        };
     }, []);
 
-    // 🟢 NHỚ XUẤT BIẾN SATTUONGDATA RA NGOÀI ĐỂ PAGE.TS ĐỌC ĐƯỢC
-    return { danhLuc, talent, wwmData, playerProfiles, tuViData, giftcodeData, giftcodeClaims, pointData, satTuongData };
+    return { 
+        danhLuc, talent, wwmData, playerProfiles, tuViData, 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, wwmBuilds 
+    };
 }
