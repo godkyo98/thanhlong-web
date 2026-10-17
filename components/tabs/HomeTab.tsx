@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/HomeTab.tsx
 import React from 'react';
 
@@ -86,12 +84,11 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                 </div>
             </div>
 
-            {/* 🟢 GIỮ NGUYÊN VẸN 100% 8 THẺ MẬT THẤT GỐC (LƯỚI 4 CỘT X 2 HÀNG) */}
+            {/* 8 THẺ MẬT THẤT GỐC */}
             <div>
                 <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-4 pl-1">🏰 Các Cửa Vào Mật Thất</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     
-                    {/* CARD 1: SỔ DANH LỤC */}
                     <div onClick={() => setActiveTab('danhluc')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">📜</div>
@@ -100,7 +97,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* CARD 2: PHONG THẦN */}
                     <div onClick={() => setActiveTab('tuvi')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🏆</div>
@@ -109,7 +105,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* CARD 3: SĂN BOSS */}
                     <div onClick={() => setActiveTab('talent')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">👹</div>
@@ -118,7 +113,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* CARD 4: ĐÀI CHIẾU YÊU */}
                     <div onClick={() => setActiveTab('soi_acc')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-cyan-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(6,182,212,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🔮</div>
@@ -127,7 +121,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* CARD 5: TÀNG BẢO CÁC */}
                     <div onClick={() => setActiveTab('giftcode')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-rose-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(244,63,94,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🎁</div>
@@ -136,7 +129,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* CARD 6: CÔNG TRẠNG */}
                     <div onClick={() => setActiveTab('point')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-emerald-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(16,185,129,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">💰</div>
@@ -145,7 +137,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
                     
-                    {/* CARD 7: SÁT TƯỚNG */}
                     <div onClick={() => setActiveTab('sattuong')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-rose-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(239,68,68,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">👹</div>
@@ -154,7 +145,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    {/* 🟢 CARD 8: HOẠT ĐỘNG BANG (KHÔI PHỤC NGUYÊN BẢN) */}
                     <div onClick={() => setActiveTab('hoatdong')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-orange-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(249,115,22,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🔥</div>
@@ -166,7 +156,7 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                 </div>
             </div>
 
-            {/* 🟢 ĐẠI SẢNH THẦN KHÍ CÁC (TỐI ƯU & GIÁM ĐỊNH ĐỒ 11 HỆ VÕ HỌC 2.3) */}
+            {/* 🟢 ĐẠI SẢNH THẦN KHÍ CÁC (KHÔNG GÁN CHẾT SỐ LƯỢNG VÕ HỌC HAY PHIÊN BẢN 2.3) */}
             <div>
                 <h3 className="text-emerald-400/90 text-xs font-bold uppercase tracking-widest mb-4 pl-1">⚔️ Thần Khí Đài & Tối Ưu Trang Bị</h3>
                 <div
@@ -175,19 +165,19 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                 >
                     <div className="flex items-start sm:items-center gap-4">
                         <div className="text-4xl p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 group-hover:scale-110 transition-transform">
-                            ☂️
+                            ⚔️
                         </div>
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <h4 className="text-lg font-black text-emerald-400 group-hover:text-amber-300 transition-colors">
-                                    Thần Khí Các · Trung Tâm Giám Định & Build Đồ 11 Hệ Võ Học
+                                    Thần Khí Các · Trung Tâm Giám Định & Build Đồ Đa Hệ Võ Học
                                 </h4>
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                    WWM 2.3 AI
+                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                    AI VISION
                                 </span>
                             </div>
                             <p className="text-xs text-zinc-400 leading-relaxed">
-                                Quét ảnh trang bị AI (Ctrl+V), chấm điểm phôi Bậc 96/100, khóa cứng 100% Thiên phú Võ học và đồng bộ kho trang bị 8 món theo từng hệ phái.
+                                Quét ảnh trang bị bằng AI (Ctrl+V), chấm điểm dòng ẩn, khóa 100% Thiên phú Võ học, lưu trữ Tâm Pháp và đồng bộ kho trang bị 8 món theo từng hệ phái.
                             </p>
                         </div>
                     </div>

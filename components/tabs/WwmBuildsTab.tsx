@@ -9,15 +9,15 @@ interface Props {
     wwmBuilds: Record<string, any>;
     wwmData: any;
     danhLuc: any;
-    playerProfiles: any;
+    playerProfiles?: any;
     session: any;
     lang: 'vi' | 'en';
     isMaster: boolean;
 }
 
 export type SlotKey = 'umbrella' | 'fan' | 'disc' | 'pendant' | 'helm' | 'chest' | 'greaves' | 'bracers';
+export type StatGroupTier = 'T0' | 'T1' | 'T2' | 'T3';
 
-// 🗡️ DANH MỤC LOẠI VŨ KHÍ ĐA HỆ PHÁI
 export interface WeaponTypeOption {
     key: string;
     labelVi: string;
@@ -35,10 +35,9 @@ const DEFAULT_WEAPON_TYPES: WeaponTypeOption[] = [
     { key: 'ROPE_DART', labelVi: 'Thằng Tiêu (Dây Phi Tiêu)', labelEn: 'Rope Dart', icon: '⛓️' },
     { key: 'GAUNTLETS', labelVi: 'Quyền / Thủ Giáp', labelEn: 'Gauntlets / Fist', icon: '🥊' },
     { key: 'HENGDAO', labelVi: 'Hoành Đao / Đường Đao', labelEn: 'Hengdao', icon: '🔪' },
-    { key: 'WAIST_DRUM', labelVi: 'Trống Eo (Yêu Cổ 2.3)', labelEn: 'Waist Drum', icon: '🥁' },
+    { key: 'WAIST_DRUM', labelVi: 'Trống Eo (Yêu Cổ)', labelEn: 'Waist Drum', icon: '🥁' },
 ];
 
-// 🛡️ DANH MỤC BỘ SET TRANG BỊ ĐA HỆ
 export interface GearSetOption {
     key: string;
     labelVi: string;
@@ -58,22 +57,21 @@ const DEFAULT_GEAR_SETS: GearSetOption[] = [
     { key: 'Ironclad', labelVi: 'Ironclad (Bộ Thiết Giáp - Xé Đá / Tank)', labelEn: 'Ironclad Set', side: 'right' },
     {
         key: 'Hawkwing',
-        labelVi: 'Hawkwing (Bộ Ưng Dực - Đổi sang Bellstrike 2.3)',
+        labelVi: 'Hawkwing (Bộ Ưng Dực - Cộng Bellstrike)',
         labelEn: 'Hawkwing Set',
         side: 'left',
-        warningText: '⚠️ Lưu ý 2.3: Hiệu ứng Hawkwing đã đổi sang cộng Bellstrike Attack (Chỉ hợp hệ Chuông, 0% tác dụng với Kéo Tơ)!'
+        warningText: '⚠️ Lưu ý: Hiệu ứng Hawkwing cộng Bellstrike Attack (Chỉ hợp hệ Chuông, 0% tác dụng với Kéo Tơ)!'
     },
     {
         key: 'SilkbindWings',
-        labelVi: 'Silkbind: Wings (Bộ Nhánh Trống Eo 2.3)',
+        labelVi: 'Silkbind: Wings (Bộ Nhánh Trống Eo)',
         labelEn: 'Silkbind: Wings Set',
         side: 'both',
-        warningText: '⚠️ Lưu ý 2.3: Đây là bộ nhánh mới Silkbind: Wings (Trống Eo + Quạt) ở Qingzhou!'
+        warningText: '⚠️ Lưu ý: Đây là bộ nhánh Silkbind: Wings (Trống Eo + Quạt)!'
     },
     { key: 'Other', labelVi: 'Bộ Khác / Tùy Chỉnh', labelEn: 'Other Set', side: 'both' }
 ];
 
-// 🔥 DANH MỤC BẬC TRANG BỊ (TIER) ĐỘNG
 export interface TierOption {
     tier: number;
     labelVi: string;
@@ -81,11 +79,18 @@ export interface TierOption {
 }
 
 const DEFAULT_TIER_OPTIONS: TierOption[] = [
-    { tier: 100, labelVi: '🔥 Bậc 100 (Patch 2.3 Mới)', isArsenal: false },
+    { tier: 100, labelVi: '🔥 Bậc 100 (Đồ Chính Hiện Tại)', isArsenal: false },
     { tier: 96, labelVi: '📦 Bậc 96 (Kho Vũ Khí / Arsenal)', isArsenal: true },
-    { tier: 91, labelVi: '🛡️ Bậc 91 (Đồ Cũ)', isArsenal: true },
-    { tier: 86, labelVi: '🛡️ Bậc 86 (Đồ Cũ)', isArsenal: true },
+    { tier: 91, labelVi: '🛡️ Bậc 91 (Kho Vũ Khí Cũ)', isArsenal: true },
+    { tier: 86, labelVi: '🛡️ Bậc 86 (Kho Vũ Khí Cũ)', isArsenal: true },
 ];
+
+export interface TamPhapOption {
+    id: string;
+    vi: string;
+    en: string;
+    display: string;
+}
 
 interface SlotMeta {
     key: SlotKey;
@@ -169,7 +174,7 @@ const SLOTS_CONFIG: SlotMeta[] = [
         side: 'right',
         recommendedSet: 'Beyond the Chill',
         godLineKey: null,
-        godLineName: 'Max Physical / Power / Crit + Mystic DMG (Dòng Gộp 2.3)',
+        godLineName: 'Max Physical / Power / Crit + Mystic DMG',
         requiredAttunementKey: 'UMBRELLA_PROJECTILE_BOOST',
         requiredAttunementName: 'Tăng ST Kỹ năng chủ lực (+4.2%~7.0%)'
     },
@@ -182,7 +187,7 @@ const SLOTS_CONFIG: SlotMeta[] = [
         side: 'right',
         recommendedSet: 'Beyond the Chill',
         godLineKey: null,
-        godLineName: 'Max Physical / Power / Crit + Mystic DMG (Dòng Gộp 2.3)',
+        godLineName: 'Max Physical / Power / Crit + Mystic DMG',
         requiredAttunementKey: 'UMBRELLA_PROJECTILE_BOOST',
         requiredAttunementName: 'Tăng ST Kỹ năng chủ lực (+4.2%~7.0%)'
     },
@@ -214,37 +219,113 @@ const SLOTS_CONFIG: SlotMeta[] = [
     }
 ];
 
+// 🟢 CẤU TRÚC DÒNG TẨY LUYỆN ĐA HỆ PHÁI: TÊN THUẦN TÚY + BẢNG PHÂN NHÓM THEO TỪNG VÕ HỌC (`specGroups`)
 export interface StatOption {
     key: string;
-    labelVi: string;
+    labelVi: string; // Chỉ lưu tên thuần túy, KHÔNG đóng chết chữ [T1], [T2], [T3]
     labelEn: string;
-    group: 'T0' | 'T1' | 'T2' | 'T3';
+    group: StatGroupTier; // Nhóm mặc định cơ sở
+    specGroups?: Record<string, StatGroupTier>; // Phân nhóm T0/T1/T2/T3 riêng cho từng Nhánh Võ Học
     defaultVal: number;
     unit: string;
     crossSpecHint?: string;
 }
 
+// Hàm làm sạch tiền tố [T0], [T1], [T2], [T3], [T2/T3] bị dính trong dữ liệu cũ
+const stripHardcodedTierPrefix = (rawLabel: string): string => {
+    if (!rawLabel) return '';
+    return rawLabel
+        .replace(/^(🌟|⚔️|💪|🎯|💥|🔥|🌪️|🕸️|⚡|🌀|⚠️|❌|🗑️|🔔|🎋|🪨|🛡️)\s*/g, '')
+        .replace(/^\[T[0-3](\/T[0-3])?\]\s*/i, '')
+        .replace(/^(🌟|⚔️|💪|🎯|💥|🔥|🌪️|🕸️|⚡|🌀|⚠️|❌|🗑️|🔔|🎋|🪨|🛡️)\s*/g, '')
+        .trim();
+};
+
+const TIER_BADGE_PREFIX: Record<StatGroupTier, string> = {
+    T0: '🌟 [T0]',
+    T1: '⚔️ [T1]',
+    T2: '🌪️ [T2]',
+    T3: '❌ [T3]'
+};
+
 const DEFAULT_STAT_OPTIONS: StatOption[] = [
-    { key: 'ART_UMBRELLA_BOOST', labelVi: '🌟 [T0] Võ học Cửu Trùng Xuân Sắc tăng ST', labelEn: 'Art of Umbrella Boost', group: 'T0', defaultVal: 6.5, unit: '%' },
-    { key: 'ALL_MARTIAL_ARTS_BOOST', labelVi: '🌟 [T0] Tất cả võ học tăng sát thương', labelEn: 'All Martial Arts Boost', group: 'T0', defaultVal: 4.8, unit: '%' },
-    { key: 'BOSS_DMG_BOOST', labelVi: '🌟 [T0] Tăng sát thương lên Thủ lĩnh (Boss)', labelEn: 'Combat Boost Against Boss Units', group: 'T0', defaultVal: 5.2, unit: '%' },
-    { key: 'MAX_PHYS_ATK', labelVi: '⚔️ [T1] Tấn công ngoại công tối đa (Max Physical)', labelEn: 'Max Physical Attack', group: 'T1', defaultVal: 48, unit: '' },
-    { key: 'POWER', labelVi: '💪 [T1] Lực đạo / Kình (Power / STR)', labelEn: 'Power', group: 'T1', defaultVal: 28, unit: '' },
-    { key: 'PRECISION_RATE', labelVi: '🎯 [T1] Tỷ lệ Chính xác (Precision Rate)', labelEn: 'Precision Rate', group: 'T1', defaultVal: 4.5, unit: '%' },
-    { key: 'CRIT_RATE', labelVi: '💥 [T1] Tỷ lệ Chí mạng (Critical Rate)', labelEn: 'Critical Rate', group: 'T1', defaultVal: 4.2, unit: '%' },
-    { key: 'MYSTIC_DMG_23', labelVi: '🔥 [T1] Tăng ST Kỳ thuật (Dòng Gộp Nón/Áo 2.3)', labelEn: 'Mystic Skill DMG Boost (2.3 Merged)', group: 'T1', defaultVal: 6.0, unit: '%' },
-    { key: 'AGILITY', labelVi: '🌪️ [T2] Nhanh nhẹn / Ngự (Agility / AGI)', labelEn: 'Agility', group: 'T2', defaultVal: 28, unit: '' },
-    { key: 'MIN_SILKBIND_ATK', labelVi: '🕸️ [T2] Tấn công Kéo Tơ nhỏ nhất (Min Silkbind)', labelEn: 'Min Silkbind Attack', group: 'T2', defaultVal: 26, unit: '' },
-    { key: 'MAX_SILKBIND_ATK', labelVi: '🕸️ [T2] Tấn công Kéo Tơ tối đa (Max Silkbind)', labelEn: 'Max Silkbind Attack', group: 'T2', defaultVal: 42, unit: '' },
-    { key: 'MOMENTUM', labelVi: '⚡ [T2] Thế (Momentum / BAS)', labelEn: 'Momentum', group: 'T2', defaultVal: 25, unit: '' },
-    { key: 'FORMLESS_ATK', labelVi: '🌀 [T2] Vô Tướng Công (Formless Attack)', labelEn: 'Formless Attack', group: 'T2', defaultVal: 30, unit: '' },
-    { key: 'MIN_PHYS_ATK', labelVi: '⚠️ [T3] Tấn công ngoại công tối thiểu (Min Physical)', labelEn: 'Min Physical Attack', group: 'T3', defaultVal: 32, unit: '' },
-    { key: 'AFFINITY_RATE', labelVi: '⚠️ [T3] Tỉ lệ Hiểu ý (Affinity Rate)', labelEn: 'Affinity Rate', group: 'T3', defaultVal: 4.0, unit: '%', crossSpecHint: 'Hợp với Cửu Kiếm / Xuất Huyết' },
-    { key: 'BELLSTRIKE_ATK', labelVi: '🔔 [T2/T3] Tấn công Tiếng Chuông (Bellstrike Attack)', labelEn: 'Bellstrike Attack', group: 'T3', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Tiếng Chuông Vang (Vô Danh / Cửu Kiếm)' },
-    { key: 'BAMBOOCUT_ATK', labelVi: '🎋 [T2/T3] Tấn công Phá Tre (Bamboocut Attack)', labelEn: 'Bamboocut Attack', group: 'T3', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Phá Tre (Song Đao / Quyền)' },
-    { key: 'STONESPLIT_ATK', labelVi: '🪨 [T2/T3] Tấn công Xé Đá (Stonesplit Attack)', labelEn: 'Stonesplit Attack', group: 'T3', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Xé Đá (Tank / Dame)' },
-    { key: 'DEFENSE_HP_BODY', labelVi: '🛡️ [T2/T3] Thể phách / Phòng ngự / Khí huyết (CON/DEF/HP)', labelEn: 'HP / Body / Defense', group: 'T3', defaultVal: 28, unit: '' },
+    { key: 'ART_UMBRELLA_BOOST', labelVi: 'Võ học Vũ khí chính tăng sát thương (Martial Art Boost)', labelEn: 'Martial Art Skill Boost', group: 'T0', defaultVal: 6.5, unit: '%' },
+    { key: 'ALL_MARTIAL_ARTS_BOOST', labelVi: 'Tất cả võ học tăng sát thương (All Martial Arts Boost)', labelEn: 'All Martial Arts Boost', group: 'T0', defaultVal: 4.8, unit: '%' },
+    { key: 'BOSS_DMG_BOOST', labelVi: 'Tăng sát thương lên Thủ lĩnh (Combat Boost vs Boss)', labelEn: 'Combat Boost Against Boss Units', group: 'T0', defaultVal: 5.2, unit: '%' },
+    { key: 'MAX_PHYS_ATK', labelVi: 'Tấn công ngoại công tối đa (Max Physical Attack)', labelEn: 'Max Physical Attack', group: 'T1', defaultVal: 48, unit: '' },
+    { key: 'POWER', labelVi: 'Lực đạo / Kình (Power / STR)', labelEn: 'Power', group: 'T1', defaultVal: 28, unit: '' },
+    { key: 'PRECISION_RATE', labelVi: 'Tỷ lệ Chính xác (Precision Rate)', labelEn: 'Precision Rate', group: 'T1', defaultVal: 4.5, unit: '%' },
+    { key: 'CRIT_RATE', labelVi: 'Tỷ lệ Chí mạng (Critical Rate)', labelEn: 'Critical Rate', group: 'T1', defaultVal: 4.2, unit: '%' },
+    { key: 'MYSTIC_DMG_23', labelVi: 'Tăng ST Kỳ thuật (Mystic Skill DMG Boost)', labelEn: 'Mystic Skill DMG Boost', group: 'T1', defaultVal: 6.0, unit: '%' },
+    { key: 'AFFINITY_RATE', labelVi: 'Tỉ lệ Hiểu ý (Affinity Rate)', labelEn: 'Affinity Rate', group: 'T1', defaultVal: 4.0, unit: '%', crossSpecHint: 'Chỉ số T1 của Cửu Kiếm / Xuất Huyết / Phá Tre' },
+    { key: 'AGILITY', labelVi: 'Nhanh nhẹn / Ngự (Agility / AGI)', labelEn: 'Agility', group: 'T2', defaultVal: 28, unit: '' },
+    { key: 'MOMENTUM', labelVi: 'Thế (Momentum / BAS)', labelEn: 'Momentum', group: 'T2', defaultVal: 28, unit: '' },
+    { key: 'FORMLESS_ATK', labelVi: 'Vô Tướng Công (Formless Attack)', labelEn: 'Formless Attack', group: 'T2', defaultVal: 30, unit: '' },
+    { key: 'MIN_PHYS_ATK', labelVi: 'Tấn công ngoại công tối thiểu (Min Physical Attack)', labelEn: 'Min Physical Attack', group: 'T2', defaultVal: 32, unit: '' },
+    { key: 'MIN_SILKBIND_ATK', labelVi: 'Tấn công Kéo Tơ nhỏ nhất (Min Silkbind Attack)', labelEn: 'Min Silkbind Attack', group: 'T2', defaultVal: 26, unit: '', crossSpecHint: 'Thuộc hệ Kéo Tơ (Dù / Quạt)' },
+    { key: 'MAX_SILKBIND_ATK', labelVi: 'Tấn công Kéo Tơ tối đa (Max Silkbind Attack)', labelEn: 'Max Silkbind Attack', group: 'T2', defaultVal: 42, unit: '', crossSpecHint: 'Thuộc hệ Kéo Tơ (Dù / Quạt)' },
+    { key: 'BELLSTRIKE_ATK', labelVi: 'Tấn công Tiếng Chuông (Bellstrike Attack)', labelEn: 'Bellstrike Attack', group: 'T2', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Tiếng Chuông Vang (Vô Danh / Cửu Kiếm)' },
+    { key: 'BAMBOOCUT_ATK', labelVi: 'Tấn công Phá Tre (Bamboocut Attack)', labelEn: 'Bamboocut Attack', group: 'T2', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Phá Tre (Song Đao / Quyền / Dù)' },
+    { key: 'STONESPLIT_ATK', labelVi: 'Tấn công Xé Đá (Stonesplit Attack)', labelEn: 'Stonesplit Attack', group: 'T2', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Xé Đá (Tank / Dame)' },
+    { key: 'DEFENSE_HP_BODY', labelVi: 'Thể phách / Phòng ngự / Khí huyết (CON / DEF / HP)', labelEn: 'HP / Body / Defense', group: 'T3', defaultVal: 28, unit: '' },
 ];
+
+// 🟢 THUẬT TOÁN XÁC ĐỊNH PHÂN NHÓM (T0/T1/T2/T3) ĐỘNG THEO TỪNG HỆ PHÁI VÕ HỌC
+const resolveStatGroupForSpec = (stat: StatOption, specName: string): StatGroupTier => {
+    // 1. Ưu tiên cao nhất: Cấu hình do người dùng tự đặt riêng cho nhánh võ học này trên Firebase
+    if (stat.specGroups && stat.specGroups[specName]) {
+        return stat.specGroups[specName];
+    }
+
+    const key = stat.key;
+    const isSilkbind = specName.includes('Kéo Tơ');
+    const isSilkbindJadeDame = specName === 'Kéo Tơ (Dame)';
+    const isBellstrike = specName.includes('Tiếng Chuông');
+    const isCuuKiem = specName.includes('Cửu Kiếm');
+    const isStonesplit = specName.includes('Xé Đá');
+    const isTankOrHeal = specName.includes('Tank') || specName.includes('Heal') || specName.includes('Buff');
+    const isBamboocut = specName.includes('Phá Tre');
+
+    // 2. Phân loại tự động thông minh theo cơ chế từng hệ phái
+    if (key === 'AFFINITY_RATE') {
+        // Cửu Kiếm (Bleed), Vô Danh, Phá Tre, Kéo Tơ Buff rất cần Hiểu Ý (T1), chỉ có Kéo Tơ (Dame) Thời Vũ 2.3 là bỏ Hiểu Ý (T3)
+        if (isSilkbindJadeDame) return 'T3';
+        if (isBellstrike || isBamboocut || specName.includes('Buff')) return 'T1';
+        return 'T2';
+    }
+
+    if (key === 'MOMENTUM') {
+        if (isCuuKiem || isBellstrike || isStonesplit) return 'T1';
+        return 'T2';
+    }
+
+    if (key === 'BELLSTRIKE_ATK') {
+        return isBellstrike ? 'T1' : 'T3';
+    }
+
+    if (key === 'STONESPLIT_ATK') {
+        return isStonesplit ? 'T1' : 'T3';
+    }
+
+    if (key === 'BAMBOOCUT_ATK') {
+        return isBamboocut ? 'T1' : 'T3';
+    }
+
+    if (key === 'MIN_SILKBIND_ATK' || key === 'MAX_SILKBIND_ATK') {
+        if (!isSilkbind) return 'T3';
+        return isSilkbindJadeDame ? 'T2' : 'T1';
+    }
+
+    if (key === 'DEFENSE_HP_BODY') {
+        return isTankOrHeal ? 'T1' : 'T3';
+    }
+
+    if (key === 'MIN_PHYS_ATK') {
+        return isSilkbindJadeDame ? 'T3' : 'T2';
+    }
+
+    return stat.group || 'T1';
+};
 
 export interface AttunementOption {
     key: string;
@@ -292,7 +373,7 @@ const DEFAULT_ATTUNEMENT_OPTIONS: AttunementOption[] = [
         labelEn: 'Trap: Inkwell Fan Special & Follow-up DMG Boost',
         side: 'right',
         isBiS: false,
-        trapWarning: 'BẪY ĐỊNH ÂM: Quạt chỉ dùng dựng Tường Gió & gắn debuff [Lingering Bone] 5s, tuyệt đối không dồn định âm vào Quạt!'
+        trapWarning: 'BẪY ĐỊNH ÂM: Quạt chỉ dùng dựng Tường Gió & gắn debuff [Lingering Bone], không dồn định âm vào Quạt!'
     },
     {
         key: 'TRAP_FAN_CHARGED',
@@ -304,22 +385,21 @@ const DEFAULT_ATTUNEMENT_OPTIONS: AttunementOption[] = [
     },
     {
         key: 'TRAP_SILKBIND_WINGS',
-        labelVi: '🚨 [BẪY 2.3] Định âm nhánh mới Silkbind: Wings (Trống Eo + Quạt)',
+        labelVi: '🚨 [BẪY] Định âm nhánh Silkbind: Wings (Trống Eo + Quạt)',
         labelEn: 'Trap: Silkbind Wings Attunement',
         side: 'both',
         isBiS: false,
-        trapWarning: 'NHẦM NHÁNH 2.3: Đây là định âm của nhánh Trống Eo (Qingzhou), 0% tác dụng cho Cửu Trùng Xuân Sắc!'
+        trapWarning: 'NHẦM NHÁNH: Đây là định âm của nhánh Trống Eo, 0% tác dụng cho Cửu Trùng Xuân Sắc!'
     }
 ];
 
-// 🟢 CẤU TRÚC ĐỘNG CHO TỪNG Ô THIÊN PHÚ VÕ HỌC (KHÔNG GÁN CHẾT KÉO TƠ)
 export interface TalentCardMeta {
-    badgeText: string;         // VD: "THIÊN PHÚ 1 · DIRECT CRIT (+9.1%)"
-    statTitle: string;         // VD: "Nhanh Nhẹn (Agility)"
-    linkedStatKey: string;     // Mã stat trên đồ liên kết (VD: 'AGILITY', 'POWER', 'MIN_PHYS_ATK', 'MIN_SILKBIND_ATK', 'BELLSTRIKE_ATK'...)
-    recommendedLines: number;  // Số dòng khuyến nghị giữ trên đồ (VD: 3, 0, 1...)
-    reqLabel: string;          // VD: "Mốc yêu cầu:" hoặc "Đỉnh mùa:"
-    noteTemplate: string;      // Ghi chú hướng dẫn riêng cho thiên phú này
+    badgeText: string;
+    statTitle: string;
+    linkedStatKey: string;
+    recommendedLines: number;
+    reqLabel: string;
+    noteTemplate: string;
 }
 
 export interface SpecTalentsTemplate {
@@ -333,17 +413,16 @@ export interface SpecTalentsTemplate {
     };
 }
 
-// 🟢 BỘ KHUNG THIÊN PHÚ GỢI Ý BAN ĐẦU THEO NHÁNH VÕ HỌC (CÓ THỂ SỬA TRỰC TIẾP TRÊN WEB & LƯU VÀO wwm_data.SPEC_TALENTS_MAP)
 const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate => {
     if (specName.includes('Tiếng Chuông Vang')) {
         return {
             t1: {
                 badgeText: 'THIÊN PHÚ 1 · TĂNG SÁT THƯƠNG KỸ NĂNG / HIỂU Ý',
-                statTitle: 'Lực Đạo / Kình (Power / STR)',
-                linkedStatKey: 'POWER',
-                recommendedLines: 4,
+                statTitle: 'Lực Đạo / Thế (Power / Momentum)',
+                linkedStatKey: 'MOMENTUM',
+                recommendedLines: 3,
                 reqLabel: 'Mốc yêu cầu:',
-                noteTemplate: 'Ưu tiên giữ các dòng Lực đạo (Power) trên trang bị để đạt 100% Thiên phú 1 hệ Chuông.'
+                noteTemplate: 'Ưu tiên giữ đủ mốc Thế / Lực đạo & Tỉ lệ Hiểu ý (T1) để kích tối đa Thiên phú hệ Chuông.'
             },
             t2: {
                 badgeText: 'THIÊN PHÚ 2 · KÍCH HOẠT NGOẠI CÔNG HỆ CHUÔNG',
@@ -351,13 +430,13 @@ const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate =>
                 linkedStatKey: 'MAX_PHYS_ATK',
                 recommendedLines: 8,
                 reqLabel: 'Đỉnh mùa:',
-                noteTemplate: 'Tối đa hóa Ngoại công tối đa trên cả 8 món để chạm trần sát thương kiếm khí.'
+                noteTemplate: 'Tối đa hóa Ngoại công tối đa & Hiểu ý trên cả 8 món.'
             },
             t3: {
                 badgeText: 'THIÊN PHÚ 3 · XUYÊN THẤU TIẾNG CHUÔNG (BELLSTRIKE)',
                 statTitle: 'Tấn Công Tiếng Chuông (Bellstrike Attr)',
                 linkedStatKey: 'BELLSTRIKE_ATK',
-                recommendedLines: 1,
+                recommendedLines: 2,
                 reqLabel: 'Mốc yêu cầu:',
                 noteTemplate: 'Ưu tiên lắp Kho Vũ Khí (Arsenal) hệ Tiếng Chuông Vang để lấy điểm thuộc tính cộng thẳng.'
             },
@@ -387,7 +466,7 @@ const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate =>
                 badgeText: 'THIÊN PHÚ 3 · XUYÊN THẤU XÉ ĐÁ (STONESPLIT)',
                 statTitle: 'Tấn Công Xé Đá (Stonesplit Attr)',
                 linkedStatKey: 'STONESPLIT_ATK',
-                recommendedLines: 1,
+                recommendedLines: 2,
                 reqLabel: 'Mốc yêu cầu:',
                 noteTemplate: 'Ưu tiên lắp Kho Vũ Khí (Arsenal) hệ Xé Đá để lấy điểm thuộc tính cộng thẳng.'
             },
@@ -407,17 +486,17 @@ const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate =>
             },
             t2: {
                 badgeText: 'THIÊN PHÚ 2 · SÁT THƯƠNG TRUY KÍCH',
-                statTitle: 'Ngoại Công / Lực Đạo (Physical / Power)',
+                statTitle: 'Ngoại Công / Hiểu Ý (Physical / Affinity)',
                 linkedStatKey: 'MAX_PHYS_ATK',
                 recommendedLines: 8,
                 reqLabel: 'Đỉnh mùa:',
-                noteTemplate: 'Dồn dòng Ngoại công tối đa & Lực đạo để tối ưu sát thương chuỗi combo.'
+                noteTemplate: 'Dồn dòng Ngoại công tối đa, Chí mạng & Hiểu ý để tối ưu sát thương chuỗi combo.'
             },
             t3: {
                 badgeText: 'THIÊN PHÚ 3 · XUYÊN THẤU PHÁ TRE (BAMBOOCUT)',
                 statTitle: 'Tấn Công Phá Tre (Bamboocut Attr)',
                 linkedStatKey: 'BAMBOOCUT_ATK',
-                recommendedLines: 1,
+                recommendedLines: 2,
                 reqLabel: 'Mốc yêu cầu:',
                 noteTemplate: 'Ưu tiên lắp Kho Vũ Khí (Arsenal) hệ Phá Tre để lấy điểm thuộc tính cộng thẳng.'
             },
@@ -425,7 +504,6 @@ const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate =>
         };
     }
 
-    // Mặc định nhánh Kéo Tơ (Dame / Heal / Buff)
     return {
         t1: {
             badgeText: 'THIÊN PHÚ 1 · DIRECT CRIT (+9.1%)',
@@ -569,8 +647,8 @@ const createBlankGear = (slot: SlotKey, specName = ""): GearItem => {
     };
 };
 
-export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfiles, session }: Props) {
-    // 🟢 1. KÉO TRỰC TIẾP VO_HOC_LIST TỪ FIREBASE: thanhlong_config -> wwm_data -> VO_HOC_LIST (KHÔNG HARDCODE GÁN CHẾT)
+export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: Props) {
+    // 1. KÉO TRỰC TIẾP VO_HOC_LIST TỪ FIREBASE
     const voHocList: string[] = useMemo(() => {
         const rawList = wwmData?.VO_HOC_LIST;
         if (!rawList) return [];
@@ -586,17 +664,73 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return [];
     }, [wwmData]);
 
-    // 2. HỢP NHẤT DANH SÁCH DÒNG TẨY LUYỆN TỪ FIREBASE
+    // 2. KÉO TRỰC TIẾP TAM_PHAP_MAP TỪ FIREBASE
+    const tamPhapList: TamPhapOption[] = useMemo(() => {
+        const rawMap = wwmData?.TAM_PHAP_MAP || {};
+        const list: TamPhapOption[] = [];
+
+        Object.entries(rawMap).forEach(([id, val]: any) => {
+            if (!val) return;
+            let vi = "";
+            let en = "";
+            if (typeof val === 'string') {
+                vi = val;
+            } else if (typeof val === 'object') {
+                vi = val.vi || "";
+                en = val.en || "";
+            }
+            const display = vi && en ? `${vi} (${en})` : (vi || en || id);
+            list.push({ id, vi, en, display });
+        });
+
+        const defaults = [
+            { id: 'MORALE_CHANT', vi: 'Dịch Thủy Ca', en: 'Morale Chant' },
+            { id: 'BLOSSOM_BARRAGE', vi: 'Hoa Vũ Mãn Thiên', en: 'Blossom Barrage' },
+            { id: 'STAR_REACHER', vi: 'Vượt đất hái sao / Trích Tinh', en: 'Star Reacher' },
+            { id: 'THUNDEROUS_BLOOM', vi: 'Chương sấm xuân / Xuân Lôi Nhất Nộ', en: 'Thunderous Bloom' },
+            { id: 'FIVEFOLD_BLEED', vi: 'Ngũ Trùng Xuất Huyết', en: 'Fivefold Bleed' },
+            { id: 'BREAKING_POINT', vi: 'Phá Cực', en: 'Breaking Point' },
+        ];
+        defaults.forEach(d => {
+            const exists = list.some(
+                item => item.en.toLowerCase() === d.en.toLowerCase() || item.vi.toLowerCase() === d.vi.toLowerCase()
+            );
+            if (!exists) {
+                list.push({ id: d.id, vi: d.vi, en: d.en, display: `${d.vi} (${d.en})` });
+            }
+        });
+
+        return list.sort((a, b) => a.display.localeCompare(b.display, 'vi'));
+    }, [wwmData]);
+
+    // 3. HỢP NHẤT DANH SÁCH DÒNG TẨY LUYỆN (TỰ ĐỘNG BÓC BỎ TIỀN TỐ [T1/T2/T3] BỊ DÍNH CỨNG)
     const statOptions: StatOption[] = useMemo(() => {
         const customMap = wwmData?.CUSTOM_TUNING_STATS || {};
-        const merged = DEFAULT_STAT_OPTIONS.map(item => customMap[item.key] ? { ...item, ...customMap[item.key] } : item);
+        const merged = DEFAULT_STAT_OPTIONS.map(item => {
+            const custom = customMap[item.key];
+            if (custom) {
+                return {
+                    ...item,
+                    ...custom,
+                    labelVi: stripHardcodedTierPrefix(custom.labelVi || item.labelVi),
+                    specGroups: custom.specGroups || item.specGroups || {}
+                };
+            }
+            return {
+                ...item,
+                labelVi: stripHardcodedTierPrefix(item.labelVi),
+                specGroups: item.specGroups || {}
+            };
+        });
+
         Object.entries(customMap).forEach(([k, val]: any) => {
             if (!merged.some(m => m.key === k) && val && typeof val === 'object') {
                 merged.push({
                     key: k,
-                    labelVi: val.labelVi || k,
+                    labelVi: stripHardcodedTierPrefix(val.labelVi || k),
                     labelEn: val.labelEn || k,
                     group: val.group || 'T1',
+                    specGroups: val.specGroups || {},
                     defaultVal: Number(val.defaultVal) || 30,
                     unit: val.unit || '',
                     crossSpecHint: val.crossSpecHint || ''
@@ -606,7 +740,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return merged;
     }, [wwmData]);
 
-    // 3. HỢP NHẤT DANH SÁCH ĐỊNH ÂM TỪ FIREBASE
     const attunementOptions: AttunementOption[] = useMemo(() => {
         const customAttMap = wwmData?.CUSTOM_ATTUNEMENTS || {};
         const merged = DEFAULT_ATTUNEMENT_OPTIONS.map(item => customAttMap[item.key] ? { ...item, ...customAttMap[item.key] } : item);
@@ -625,7 +758,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return merged;
     }, [wwmData]);
 
-    // 4. HỢP NHẤT DANH SÁCH BỘ SET TRANG BỊ TỪ FIREBASE
     const gearSetOptions: GearSetOption[] = useMemo(() => {
         const customSets = wwmData?.CUSTOM_GEAR_SETS || {};
         const merged = DEFAULT_GEAR_SETS.map(item => customSets[item.key] ? { ...item, ...customSets[item.key] } : item);
@@ -643,7 +775,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return merged;
     }, [wwmData]);
 
-    // 5. HỢP NHẤT DANH SÁCH BẬC TRANG BỊ (TIER) TỪ FIREBASE
     const tierOptions: TierOption[] = useMemo(() => {
         const customTiers = wwmData?.CUSTOM_TIERS || {};
         const merged = DEFAULT_TIER_OPTIONS.map(item => customTiers[String(item.tier)] ? { ...item, ...customTiers[String(item.tier)] } : item);
@@ -660,7 +791,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return merged.sort((a, b) => b.tier - a.tier);
     }, [wwmData]);
 
-    // 6. HỢP NHẤT DANH SÁCH LOẠI VŨ KHÍ TỪ FIREBASE
     const weaponTypeOptions: WeaponTypeOption[] = useMemo(() => {
         const customWeapons = wwmData?.CUSTOM_WEAPON_TYPES || {};
         const merged = DEFAULT_WEAPON_TYPES.map(item => customWeapons[item.key] ? { ...item, ...customWeapons[item.key] } : item);
@@ -677,13 +807,14 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return merged;
     }, [wwmData]);
 
-    // STATE CHO MODAL TÀNG KINH CÁC (QUẢN LÝ 6 HẠNG MỤC: TUNING, ĐỊNH ÂM, SET, BẬC ĐỒ, VŨ KHÍ, VO_HOC_LIST)
     const [showStatDictModal, setShowStatDictModal] = useState(false);
-    const [dictTab, setDictTab] = useState<'tuning' | 'attunement' | 'gearset' | 'tier' | 'weapon' | 'vohoc'>('tuning');
+    const [dictTab, setDictTab] = useState<'tuning' | 'attunement' | 'gearset' | 'tier' | 'weapon' | 'vohoc' | 'tamphap'>('tuning');
 
     const [editingStatItem, setEditingStatItem] = useState<StatOption>({
-        key: '', labelVi: '', labelEn: '', group: 'T1', defaultVal: 40, unit: '', crossSpecHint: ''
+        key: '', labelVi: '', labelEn: '', group: 'T1', specGroups: {}, defaultVal: 40, unit: '', crossSpecHint: ''
     });
+    const [editingStatScope, setEditingStatScope] = useState<'current_spec' | 'all_specs'>('current_spec');
+
     const [editingAttuneItem, setEditingAttuneItem] = useState<AttunementOption>({
         key: '', labelVi: '', labelEn: '', side: 'both', isBiS: true, trapWarning: ''
     });
@@ -699,7 +830,11 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     const [newVoHocName, setNewVoHocName] = useState("");
     const [editingVoHocIndex, setEditingVoHocIndex] = useState<number | null>(null);
 
-    // Chế độ mở khóa chỉnh sửa tên / quy tắc của 3 Thẻ Thiên Phú ngay trên giao diện
+    const [editingTamPhap, setEditingTamPhap] = useState<{ id: string; vi: string; en: string }>({
+        id: '', vi: '', en: ''
+    });
+    const [tamPhapSearch, setTamPhapSearch] = useState("");
+
     const [isEditingTalentMeta, setIsEditingTalentMeta] = useState(false);
 
     const currentUserId = useMemo(() => {
@@ -726,7 +861,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [editorMode, setEditorMode] = useState<'edit_equipped' | 'compare_new'>('edit_equipped');
 
-    // Khi VO_HOC_LIST từ Firebase tải xong, tự động chọn hệ Võ Học của người dùng trong Danh Lục (hoặc phần tử đầu tiên trong VO_HOC_LIST)
     useEffect(() => {
         if (voHocList.length === 0) return;
         if (selectedSpec && voHocList.includes(selectedSpec)) return;
@@ -743,6 +877,12 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         setViewingUserId(currentUserId);
     }, [currentUserId]);
 
+    // Helper hiển thị nhãn dòng kèm đúng bậc [T0/T1/T2/T3] của Hệ Võ Học hiện tại
+    const formatStatForSpec = (stat: StatOption, spec = selectedSpec): string => {
+        const effGroup = resolveStatGroupForSpec(stat, spec);
+        return `${TIER_BADGE_PREFIX[effGroup]} ${stat.labelVi}`;
+    };
+
     const [baseline, setBaseline] = useState<CharacterBaseline>(DEFAULT_BASELINE);
     const [equipped, setEquipped] = useState<Record<SlotKey, GearItem>>(() => ({
         umbrella: createSampleBiSGear('umbrella'),
@@ -756,17 +896,19 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     }));
     const [arsenal96, setArsenal96] = useState<GearItem[]>([]);
     const [innerWays, setInnerWays] = useState({
-        slot1: { name: 'Morale Chant (Dịch Thủy Ca)', tier: 6 },
-        slot2: { name: 'Blossom Barrage (Hoa Vũ Mãn Thiên)', tier: 6 },
-        slot3: { name: 'Star Reacher (Trích Tinh)', tier: 5 },
-        slot4: { name: 'Thunderous Bloom (Xuân Lôi Nhất Nộ)', tier: 5 },
-        bossStyle: 'flex23' as 'flex23' | 'flying' | 'standing'
+        slot1: { name: 'Dịch Thủy Ca (Morale Chant)', tier: 6 },
+        slot2: { name: 'Hoa Vũ Mãn Thiên (Blossom Barrage)', tier: 6 },
+        slot3: { name: 'Vượt đất hái sao (Star Reacher)', tier: 6 },
+        slot4: { name: 'Chương sấm xuân (Thunderous Bloom)', tier: 5 },
+        note: ''
     });
 
     const [activeSlot, setActiveSlot] = useState<SlotKey>('umbrella');
     const [candidateGear, setCandidateGear] = useState<GearItem>(() => createSampleBiSGear('umbrella'));
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    
     const [geminiApiKey, setGeminiApiKey] = useState<string>("");
+    const [geminiModel, setGeminiModel] = useState<string>("gemini-3.5-flash-lite");
     const [webhookUrl, setWebhookUrl] = useState<string>("");
     const [isScanning, setIsScanning] = useState(false);
     const [isSavingCloud, setIsSavingCloud] = useState(false);
@@ -777,11 +919,11 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setGeminiApiKey(localStorage.getItem('tl_gemini_key') || '');
+            setGeminiModel(localStorage.getItem('tl_gemini_model') || 'gemini-3.5-flash-lite');
             setWebhookUrl(localStorage.getItem('tl_discord_webhook') || '');
         }
     }, []);
 
-    // 🟢 LẤY BỘ KHUNG 3 THIÊN PHÚ THEO ĐÚNG VÕ HỌC ĐANG CHỌN (ƯU TIÊN TỪ wwm_data.SPEC_TALENTS_MAP HOẶC HỒ SƠ CÁ NHÂN)
     const activeTalentsMeta = useMemo(() => {
         const specTemplateFromCloud = wwmData?.SPEC_TALENTS_MAP?.[selectedSpec];
         const fallbackTemplate = getDefaultSpecTalentsTemplate(selectedSpec);
@@ -792,7 +934,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         };
     }, [wwmData, selectedSpec, baseline.customTalentsMeta]);
 
-    // Đồng bộ hồ sơ khi chuyển Hệ Võ Học hoặc đổi Người Xem
     useEffect(() => {
         if (!selectedSpec) return;
         const profileKey = `${selectedSpec}__${viewingUserId}`;
@@ -804,6 +945,14 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
 
         const specTemplate = wwmData?.SPEC_TALENTS_MAP?.[selectedSpec] || getDefaultSpecTalentsTemplate(selectedSpec);
+        const specDefaultInnerWays = wwmData?.SPEC_INNER_WAYS_MAP?.[selectedSpec] || {
+            slot1: { name: 'Dịch Thủy Ca (Morale Chant)', tier: 6 },
+            slot2: { name: 'Hoa Vũ Mãn Thiên (Blossom Barrage)', tier: 6 },
+            slot3: { name: 'Vượt đất hái sao (Star Reacher)', tier: 6 },
+            slot4: { name: 'Chương sấm xuân (Thunderous Bloom)', tier: 5 },
+            note: ''
+        };
+
         const specDefaultBaseline: CharacterBaseline = {
             ...DEFAULT_BASELINE,
             agility: specTemplate.defaultVals?.val1 ?? 381,
@@ -826,7 +975,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             else setBaseline(specDefaultBaseline);
             if (userRecord.equipped) setEquipped(prev => ({ ...prev, ...userRecord.equipped }));
             if (Array.isArray(userRecord.arsenal96)) setArsenal96(userRecord.arsenal96);
-            if (userRecord.innerWays) setInnerWays(prev => ({ ...prev, ...userRecord.innerWays }));
+            if (userRecord.innerWays) setInnerWays(prev => ({ ...specDefaultInnerWays, ...userRecord.innerWays }));
+            else setInnerWays(specDefaultInnerWays);
             loadedProfileKeyRef.current = profileKey;
             setHasUnsavedChanges(false);
         } else if (typeof window !== 'undefined' && viewingUserId === currentUserId) {
@@ -837,12 +987,13 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                     if (parsed.baseline) setBaseline({ ...specDefaultBaseline, ...parsed.baseline });
                     if (parsed.equipped) setEquipped(prev => ({ ...prev, ...parsed.equipped }));
                     if (Array.isArray(parsed.arsenal96)) setArsenal96(parsed.arsenal96);
+                    if (parsed.innerWays) setInnerWays({ ...specDefaultInnerWays, ...parsed.innerWays });
                     loadedProfileKeyRef.current = profileKey;
                     return;
                 } catch {}
             }
-            // Nếu hệ võ học này chưa có hồ sơ thì khởi tạo theo khung chuẩn của hệ đó
             setBaseline(specDefaultBaseline);
+            setInnerWays(specDefaultInnerWays);
             setEquipped({
                 umbrella: createSampleBiSGear('umbrella', selectedSpec),
                 fan: createSampleBiSGear('fan', selectedSpec),
@@ -874,7 +1025,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }));
     };
 
-    // Lưu cấu hình 3 Thiên Phú làm chuẩn chung cho Hệ Võ Học đang chọn vào thanhlong_config/wwm_data
     const handleSaveSpecTalentTemplateToCloud = async () => {
         if (!selectedSpec) return;
         try {
@@ -901,9 +1051,64 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                 }
             }, { merge: true });
             setIsEditingTalentMeta(false);
-            alert(`✅ Đã lưu khung 3 Thiên Phú chuẩn cho hệ [${selectedSpec}] vào thanhlong_config/wwm_data!`);
+            alert(`✅ Đã lưu khung 3 Thiên Phú chuẩn cho hệ [${selectedSpec}] thành công!`);
         } catch {
-            alert("❌ Không thể lưu mẫu Thiên Phú lên wwm_data!");
+            alert("❌ Không thể lưu mẫu Thiên Phú lên đám mây!");
+        }
+    };
+
+    const handleSaveSpecInnerWaysTemplate = async () => {
+        if (!selectedSpec) return;
+        try {
+            const currentMap = wwmData?.SPEC_INNER_WAYS_MAP || {};
+            await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
+                SPEC_INNER_WAYS_MAP: {
+                    ...currentMap,
+                    [selectedSpec]: innerWays
+                }
+            }, { merge: true });
+            alert(`✅ Đã lưu bộ 4 Tâm Pháp này làm gợi ý mặc định cho nhánh [${selectedSpec}]!`);
+        } catch {
+            alert("❌ Lỗi khi lưu mẫu Tâm Pháp cho hệ võ học!");
+        }
+    };
+
+    const handleSaveTamPhapToMap = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const viText = editingTamPhap.vi.trim();
+        const enText = editingTamPhap.en.trim();
+        if (!viText && !enText) {
+            alert("Hãy nhập ít nhất Tên Tiếng Việt hoặc Tiếng Anh cho Tâm Pháp!");
+            return;
+        }
+
+        let targetKey = editingTamPhap.id.trim();
+        if (!targetKey) {
+            const baseSlug = (enText || viText)
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/gi, 'd')
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '');
+            targetKey = baseSlug || `TP_${Date.now()}`;
+        }
+
+        try {
+            const currentTamPhapMap = wwmData?.TAM_PHAP_MAP || {};
+            await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
+                TAM_PHAP_MAP: {
+                    ...currentTamPhapMap,
+                    [targetKey]: {
+                        vi: viText || enText,
+                        en: enText || viText
+                    }
+                }
+            }, { merge: true });
+
+            setEditingTamPhap({ id: '', vi: '', en: '' });
+            alert(`✅ Đã lưu Tâm Pháp [${viText || enText}] vào TAM_PHAP_MAP trên Firebase!`);
+        } catch {
+            alert("❌ Lỗi khi lưu vào TAM_PHAP_MAP!");
         }
     };
 
@@ -943,7 +1148,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return { icon: slotMeta.icon, title: slotMeta.labelVi };
     };
 
-    // 🟢 HÀM THÊM / SỬA / XÓA TRỰC TIẾP MẢNG VO_HOC_LIST TRONG thanhlong_config/wwm_data
     const handleSaveVoHocList = async (e: React.FormEvent) => {
         e.preventDefault();
         const trimmed = newVoHocName.trim();
@@ -966,15 +1170,15 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             }, { merge: true });
             setNewVoHocName("");
             setEditingVoHocIndex(null);
-            alert(`✅ Đã cập nhật VO_HOC_LIST trong thanhlong_config/wwm_data thành công!`);
+            alert(`✅ Đã cập nhật danh sách Võ Học thành công!`);
         } catch {
-            alert("❌ Lỗi khi cập nhật VO_HOC_LIST lên Firebase!");
+            alert("❌ Lỗi khi cập nhật danh sách Võ Học lên Firebase!");
         }
     };
 
     const handleDeleteVoHoc = async (idx: number) => {
         const target = voHocList[idx];
-        if (!window.confirm(`Xóa nhánh võ học [${target}] khỏi wwm_data.VO_HOC_LIST?`)) return;
+        if (!window.confirm(`Xóa nhánh võ học [${target}] khỏi danh sách?`)) return;
         const nextList = voHocList.filter((_, i) => i !== idx);
         try {
             await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
@@ -985,31 +1189,36 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
     };
 
-    // LƯU DÒNG TẨY LUYỆN MỚI / SỬA CHỮ LÊN FIREBASE
+    // 🟢 LƯU DÒNG TẨY LUYỆN (KHÔNG GẮN CHẾT [T1/T2/T3] VÀO CHUỖI TÊN, LƯU PHÂN NHÓM THEO TỪNG VÕ HỌC)
     const handleSaveCustomTuningStat = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingStatItem.labelVi.trim()) return;
+        const cleanVi = stripHardcodedTierPrefix(editingStatItem.labelVi);
+        if (!cleanVi) return;
+
         const safeKey = editingStatItem.key.trim()
             ? editingStatItem.key.trim().toUpperCase().replace(/\s+/g, '_')
             : `CUSTOM_${Date.now()}`;
 
-        const prefixMap: Record<'T0' | 'T1' | 'T2' | 'T3', string> = {
-            T0: '🌟 [T0]',
-            T1: '⚔️ [T1]',
-            T2: '🌪️ [T2]',
-            T3: '⚠️ [T3]'
+        const existingStat = statOptions.find(s => s.key === safeKey);
+        const nextSpecGroups: Record<string, StatGroupTier> = {
+            ...(existingStat?.specGroups || {}),
+            ...(editingStatItem.specGroups || {})
         };
 
-        let formattedLabelVi = editingStatItem.labelVi.trim();
-        if (!formattedLabelVi.includes('[T0]') && !formattedLabelVi.includes('[T1]') && !formattedLabelVi.includes('[T2]') && !formattedLabelVi.includes('[T3]')) {
-            formattedLabelVi = `${prefixMap[editingStatItem.group]} ${formattedLabelVi}`;
+        if (editingStatScope === 'current_spec' && selectedSpec) {
+            nextSpecGroups[selectedSpec] = editingStatItem.group;
+        } else if (editingStatScope === 'all_specs') {
+            voHocList.forEach(vh => {
+                nextSpecGroups[vh] = editingStatItem.group;
+            });
         }
 
         const newStatObj: StatOption = {
             key: safeKey,
-            labelVi: formattedLabelVi,
-            labelEn: editingStatItem.labelEn.trim() || formattedLabelVi,
-            group: editingStatItem.group,
+            labelVi: cleanVi,
+            labelEn: editingStatItem.labelEn.trim() || cleanVi,
+            group: editingStatScope === 'all_specs' ? editingStatItem.group : (existingStat?.group || editingStatItem.group),
+            specGroups: nextSpecGroups,
             defaultVal: Number(editingStatItem.defaultVal) || 30,
             unit: editingStatItem.unit.trim(),
             crossSpecHint: editingStatItem.crossSpecHint?.trim() || ''
@@ -1020,8 +1229,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
                 CUSTOM_TUNING_STATS: { ...currentCustom, [safeKey]: newStatObj }
             }, { merge: true });
-            setEditingStatItem({ key: '', labelVi: '', labelEn: '', group: 'T1', defaultVal: 40, unit: '', crossSpecHint: '' });
-            alert(`✅ Đã lưu dòng tẩy luyện [${newStatObj.labelVi}] lên hệ thống!`);
+            setEditingStatItem({ key: '', labelVi: '', labelEn: '', group: 'T1', specGroups: {}, defaultVal: 40, unit: '', crossSpecHint: '' });
+            alert(`✅ Đã lưu dòng [${cleanVi}] (Phân nhóm ${editingStatItem.group} cho ${editingStatScope === 'current_spec' ? selectedSpec : 'Tất cả hệ'})!`);
         } catch {
             alert("❌ Lỗi khi lưu dòng tẩy luyện lên Firebase!");
         }
@@ -1146,7 +1355,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     };
 
     const handleLoadSampleBiS8Slots = () => {
-        if (!window.confirm("✨ Nạp bộ khung 8 món Chuẩn BiS Bậc 100 (Patch 2.3) làm mẫu tham khảo?")) return;
+        if (!window.confirm("✨ Nạp bộ khung 8 món Chuẩn BiS làm mẫu tham khảo?")) return;
         setHasUnsavedChanges(true);
         setEquipped({
             umbrella: createSampleBiSGear('umbrella', selectedSpec),
@@ -1192,7 +1401,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             }, { merge: true });
 
             setHasUnsavedChanges(false);
-            setStatusBanner(`✅ Đã lưu & đồng bộ hồ sơ [${selectedSpec}] của ${currentIngame} lên Firebase (wwm_builds)!`);
+            setStatusBanner(`✅ Đã lưu & đồng bộ hồ sơ [${selectedSpec}] của ${currentIngame} lên Đám Mây!`);
             setTimeout(() => setStatusBanner(null), 4000);
         } catch (err) {
             console.error("Lỗi lưu wwm_builds:", err);
@@ -1202,35 +1411,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
     };
 
-    const handleSyncFromSoiAcc = () => {
-        if (!playerProfiles) {
-            alert("Chưa tải được dữ liệu Đài Chiếu Yêu!");
-            return;
-        }
-        const matchEntry = Object.entries(playerProfiles).find(([_, d]: any) => {
-            const pName = String(d?.playerName || d?.name || '').toLowerCase();
-            return pName === currentIngame.toLowerCase();
-        });
-
-        if (!matchEntry) {
-            alert(`Không tìm thấy hồ sơ /soi_acc của [${currentIngame}]. Đại hiệp có thể gõ trực tiếp con số vào các ô bên dưới!`);
-            return;
-        }
-
-        try {
-            const data: any = matchEntry[1];
-            const raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
-            const attr = typeof raw?.attr === 'string' ? JSON.parse(raw.attr) : (raw?.attr || {});
-            const agiFromGame = Number(attr.AGI || baseline.agility);
-            const nextBase = { ...baseline, agility: agiFromGame };
-            setBaseline(nextBase);
-            saveBuildToCloud(nextBase, equipped, arsenal96, innerWays);
-        } catch {
-            alert("❌ Không bóc tách được chỉ số từ hồ sơ Soi Acc!");
-        }
-    };
-
-    // ĐẾM SỐ LƯỢNG DÒNG TRÊN 8 MÓN ĐANG MẶC (BAO GỒM CẢ SỐ DÒNG LIÊN KẾT VỚI 3 THIÊN PHÚ ĐỘNG)
     const loadoutSummary = useMemo(() => {
         let maxPhysLines = 0;
         let powerLines = 0;
@@ -1248,7 +1428,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                 byKeyCount[l.statKey] = (byKeyCount[l.statKey] || 0) + 1;
 
                 const opt = statOptions.find(o => o.key === l.statKey);
-                if (opt?.group === 'T0' || ['ART_UMBRELLA_BOOST', 'ALL_MARTIAL_ARTS_BOOST', 'BOSS_DMG_BOOST'].includes(l.statKey)) {
+                const effGroup = opt ? resolveStatGroupForSpec(opt, selectedSpec) : 'T1';
+                if (effGroup === 'T0') {
                     godLines++;
                 }
                 if (l.statKey === 'MAX_PHYS_ATK') maxPhysLines++;
@@ -1260,12 +1441,13 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         });
 
         return { maxPhysLines, powerLines, agiLines, critLines, precisionLines, godLines, byKeyCount };
-    }, [equipped, statOptions]);
+    }, [equipped, statOptions, selectedSpec]);
 
     const reqAgi = baseline.simulate23 ? baseline.agiThreshold23 : (baseline.reqAgility || 300);
     const reqPhys = baseline.reqMinPhysical || 750;
     const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : (baseline.reqMinSilkbind || 352);
 
+    // 🟢 CHẤM ĐIỂM XẤU DỰA TRÊN BẬC (T0/T1/T2/T3) ĐỘNG CỦA HỆ VÕ HỌC ĐANG CHỌN
     const evaluateGear = (item: GearItem) => {
         const slotMeta = SLOTS_CONFIG.find(s => s.key === item.slot)!;
         let badPoints = 0;
@@ -1289,51 +1471,45 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             const opt = statOptions.find(o => o.key === line.statKey);
             if (!opt) return;
 
+            const effGroup = resolveStatGroupForSpec(opt, selectedSpec);
             let pt = 0;
-            const tierLabel: string = opt.group;
             let note = "Chuẩn";
 
-            if (opt.group === 'T0') {
+            if (effGroup === 'T0') {
                 pt = 0;
                 hasValidGodLine = true;
                 note = "🔥 GOD LINE T0 (>2 dòng Ngoại Công)";
-            } else if (line.statKey === t1Key) {
-                pt = needT1Stat ? 0 : 0.5;
-                note = needT1Stat ? `✅ Giữ mốc 100% Thiên phú 1 (${activeTalentsMeta.t1.statTitle})` : `⚠️ Dư định mức Thiên phú 1 (+0.5 xấu)`;
-            } else if (line.statKey === t3Key) {
-                pt = needT3Stat ? 0 : 0.5;
-                note = needT3Stat ? `✅ Bù mốc 100% Thiên phú 3 (${activeTalentsMeta.t3.statTitle})` : `⚠️ Đã đủ Thiên phú 3 từ Arsenal (+0.5 xấu)`;
-            } else if (line.statKey === t2Key) {
-                if (activeTalentsMeta.t2.recommendedLines > 0 || needT2Stat) {
-                    pt = 0;
-                    note = `✅ Kích Thiên phú 2 (${activeTalentsMeta.t2.statTitle})`;
-                } else {
-                    pt = 1.0;
-                    note = `⚠️ Đã dư mốc Thiên phú 2 (+1.0 xấu)`;
-                    retunePriorities.push(opt.labelVi);
-                }
-            } else if (opt.group === 'T1') {
+            } else if (effGroup === 'T1') {
                 if (line.statKey === 'CRIT_RATE' && baseline.critRate > 80.5) {
                     pt = 0.5;
                     note = "⚠️ Overcap >80% Crit số vàng";
                 } else {
                     pt = 0;
-                    note = "✅ Chỉ số T1 Tối ưu";
+                    note = `✅ Chỉ số T1 Chuẩn của [${selectedSpec}]`;
                 }
-            } else if (opt.group === 'T2') {
+            } else if (line.statKey === t1Key && needT1Stat) {
+                pt = 0;
+                note = `✅ Giữ mốc 100% Thiên phú 1 (${activeTalentsMeta.t1.statTitle})`;
+            } else if (line.statKey === t3Key && needT3Stat) {
+                pt = 0;
+                note = `✅ Bù mốc 100% Thiên phú 3 (${activeTalentsMeta.t3.statTitle})`;
+            } else if (line.statKey === t2Key && needT2Stat) {
+                pt = 0;
+                note = `✅ Bù mốc 100% Thiên phú 2 (${activeTalentsMeta.t2.statTitle})`;
+            } else if (effGroup === 'T2') {
                 pt = 0.5;
                 note = "Chỉ số T2 Tình huống (+0.5 điểm xấu)";
             } else {
                 pt = 1.0;
-                note = "❌ Dòng Rác / Lệch hệ (+1.0 điểm xấu)";
+                note = "❌ Dòng T3 Lệch hệ / Dư thừa (+1.0 điểm xấu)";
                 retunePriorities.push(opt.labelVi);
                 if (opt.crossSpecHint) {
-                    crossSpecHints.push(`${opt.labelVi.split(']')[1]?.trim() || opt.labelVi}: ${opt.crossSpecHint}`);
+                    crossSpecHints.push(`${opt.labelVi}: ${opt.crossSpecHint}`);
                 }
             }
 
             badPoints += pt;
-            lineEvaluations.push({ line, isSlot1, badPt: pt, tier: tierLabel, note });
+            lineEvaluations.push({ line, isSlot1, badPt: pt, tier: effGroup, note });
         });
 
         const missingRequiredGodLine = Boolean(slotMeta.godLineKey && !hasValidGodLine);
@@ -1352,7 +1528,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         let verdictAction = "";
 
         if (setWarning) {
-            verdictTitle = "🚫 CẢNH BÁO BỘ SET TRANG BỊ 2.3";
+            verdictTitle = "🚫 CẢNH BÁO BỘ SET TRANG BỊ";
             verdictColor = 'rose';
             verdictAction = setWarning;
         } else if (hasValidGodLine && badPoints > 2.0) {
@@ -1447,7 +1623,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             const statKeysCatalog = statOptions.map(o => `${o.key}: ${o.labelVi} / ${o.labelEn}`).join('\n');
             const setKeysCatalog = gearSetOptions.map(s => `${s.key}: ${s.labelVi}`).join('\n');
 
-            const promptText = `Bạn là AI OCR chuyên đọc ảnh chụp màn hình trang bị game Where Winds Meet (Yến Vân Thập Lục Thanh - Bản 2.3).
+            const promptText = `Bạn là AI OCR chuyên đọc ảnh chụp màn hình trang bị game Where Winds Meet (Yến Vân Thập Lục Thanh).
 Hãy đọc ảnh trang bị và trả về DUY NHẤT 1 JSON object theo cấu trúc sau (không bọc markdown):
 {
   "name": "Tên món đồ trong ảnh",
@@ -1470,12 +1646,13 @@ Danh mục MÃ_STAT:
 ${statKeysCatalog}`;
 
             if (!geminiApiKey.trim()) {
-                alert("💡 Để AI tự động điền thông số từ ảnh, đại hiệp hãy dán Gemini API Key vào ô cấu hình góc phải trên cùng (hoặc chỉnh trực tiếp bằng menu bên dưới)!");
+                alert("💡 Để AI tự động điền thông số từ ảnh, đại hiệp hãy dán Gemini API Key vào ô cấu hình phía trên!");
                 setIsScanning(false);
                 return;
             }
 
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey.trim()}`, {
+            const activeModelName = geminiModel.trim() || 'gemini-3.5-flash-lite';
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent?key=${geminiApiKey.trim()}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1536,7 +1713,7 @@ ${statKeysCatalog}`;
         };
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
-    }, [geminiApiKey, activeSlot, editorMode, statOptions, gearSetOptions]);
+    }, [geminiApiKey, geminiModel, activeSlot, editorMode, statOptions, gearSetOptions]);
 
     const handleEquipCandidate = () => {
         if (editorMode === 'edit_equipped') {
@@ -1583,9 +1760,10 @@ ${statKeysCatalog}`;
         const slotMeta = SLOTS_CONFIG.find(s => s.key === activeSlot)!;
         const slotDisp = getSlotDisplayInfo(slotMeta, activeEditingGear);
         const colorInt = activeGearEval.verdictColor === 'emerald' ? 0x10b981 : activeGearEval.verdictColor === 'amber' ? 0xf59e0b : 0xef4444;
+        const slot1Stat = statOptions.find(o => o.key === activeEditingGear.slot1.statKey);
 
         const embed = {
-            title: `${slotDisp.icon} GIÁM ĐỊNH THẦN KHÍ 2.3: ${activeEditingGear.name} (Bậc ${activeEditingGear.tier})`,
+            title: `${slotDisp.icon} GIÁM ĐỊNH THẦN KHÍ: ${activeEditingGear.name} (Bậc ${activeEditingGear.tier})`,
             description: `**Đại hiệp:** \`${currentIngame}\` • **Hệ phái:** \`${selectedSpec}\`\n**Phán quyết:** **${activeGearEval.verdictTitle}**\n> ${activeGearEval.verdictAction}`,
             color: colorInt,
             fields: [
@@ -1596,7 +1774,7 @@ ${statKeysCatalog}`;
                 },
                 {
                     name: '🌟 Dòng 1 (Slot 1)',
-                    value: `${statOptions.find(o => o.key === activeEditingGear.slot1.statKey)?.labelVi || activeEditingGear.slot1.statKey}: **+${activeEditingGear.slot1.value}**`,
+                    value: `${slot1Stat ? formatStatForSpec(slot1Stat) : activeEditingGear.slot1.statKey}: **+${activeEditingGear.slot1.value}**`,
                     inline: true
                 },
                 {
@@ -1605,7 +1783,7 @@ ${statKeysCatalog}`;
                     inline: true
                 }
             ],
-            footer: { text: 'Thanh Long Sơn Trang • WWM 2.3 Gear Optimizer Hub' },
+            footer: { text: 'Thanh Long Sơn Trang • WWM Gear Optimizer Hub' },
             timestamp: new Date().toISOString()
         };
 
@@ -1646,31 +1824,26 @@ ${statKeysCatalog}`;
                 </div>
             )}
 
-            {/* THANH CHỌN HỆ VÕ HỌC (ĐỌC TRỰC TIẾP TỪ thanhlong_config -> wwm_data -> VO_HOC_LIST) */}
+            {/* THANH ĐẦU */}
             <div className="bg-[#090d16] border border-emerald-500/30 rounded-3xl p-5 shadow-2xl space-y-4">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
                     <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wider mb-2">
-                            <span>🐉 wwm_builds</span>
-                            <span>•</span>
-                            <span>NGUỒN VÕ HỌC: thanhlong_config/wwm_data.VO_HOC_LIST ({voHocList.length} hệ)</span>
-                        </div>
-                        <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-300 to-amber-500">
+                        <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-300 to-amber-500">
                             ⚔️ Thần Khí Các · Giám Định & Tối Ưu Đồ Võ Học
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">
-                            Đang chỉnh sửa: <b className="text-emerald-400 font-mono">wwm_builds ➔ {selectedSpec || "Đang tải..."} ➔ {currentIngame}</b>
+                            Hồ sơ: <b className="text-amber-300">{currentIngame}</b> • Hệ phái đang chọn: <b className="text-emerald-400">{selectedSpec || "Đang tải..."}</b>
                             {hasUnsavedChanges && <span className="ml-2 text-amber-400 font-bold animate-pulse">● (Có thay đổi chưa lưu lên Mây)</span>}
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                         <button
                             type="button"
                             onClick={() => setShowStatDictModal(true)}
                             className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5"
                         >
-                            <span>⚙️ Tàng Kinh Các (Dòng / Set / Bậc / Vũ Khí / VO_HOC_LIST)</span>
+                            <span>⚙️ Tàng Kinh Các (Dòng / Set / Bậc / Vũ Khí / Tâm Pháp)</span>
                         </button>
 
                         <select
@@ -1689,15 +1862,6 @@ ${statKeysCatalog}`;
 
                         <button
                             type="button"
-                            onClick={handleSyncFromSoiAcc}
-                            className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer"
-                            title="Lấy nhanh chỉ số từ Đài Chiếu Yêu (/soi_acc)"
-                        >
-                            🔮 Kéo Chỉ Số Từ Soi Acc
-                        </button>
-
-                        <button
-                            type="button"
                             disabled={isSavingCloud || viewingUserId !== currentUserId}
                             onClick={() => saveBuildToCloud()}
                             className={`px-4 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${
@@ -1711,11 +1875,11 @@ ${statKeysCatalog}`;
                     </div>
                 </div>
 
-                {/* DANH SÁCH VÕ HỌC KÉO TRỰC TIẾP TỪ FIREBASE wwm_data.VO_HOC_LIST */}
+                {/* DANH SÁCH VÕ HỌC */}
                 <div>
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                            Chọn Nhánh Võ Học (Trích xuất trực tiếp từ <code className="text-amber-300">thanhlong_config/wwm_data ➔ VO_HOC_LIST</code>):
+                            Chọn Nhánh Võ Học ({voHocList.length} hệ phái — Phẩm cấp T0/T1/T2/T3 của từng dòng sẽ tự động đổi theo hệ):
                         </span>
                         <button
                             type="button"
@@ -1725,13 +1889,13 @@ ${statKeysCatalog}`;
                             }}
                             className="text-[10px] text-emerald-400 hover:underline font-bold cursor-pointer"
                         >
-                            + Thêm / Sửa VO_HOC_LIST trên Firebase
+                            + Thêm / Sửa Nhánh Võ Học
                         </button>
                     </div>
 
                     {voHocList.length === 0 ? (
                         <div className="text-xs text-amber-400 py-2 animate-pulse">
-                            🔮 Đang kéo danh sách VO_HOC_LIST từ thanhlong_config/wwm_data...
+                            🔮 Đang tải danh sách Võ Học...
                         </div>
                     ) : (
                         <div className="flex flex-wrap gap-2">
@@ -1768,19 +1932,19 @@ ${statKeysCatalog}`;
                 </div>
             </div>
 
-            {/* 🟢 KHU VỰC 1: 3 THIÊN PHÚ VÕ HỌC ĐỘNG THEO TỪNG HỆ PHÁI (CHO PHÉP SỬA CẢ TÊN THIÊN PHÚ, TÊN CHỈ SỐ, DÒNG LIÊN KẾT & GHI CHÚ) */}
+            {/* KHU VỰC 1: 3 THIÊN PHÚ VÕ HỌC ĐỘNG THEO TỪNG HỆ PHÁI */}
             <div className="bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-5">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
                     <div>
                         <h3 className="text-base font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
                             🔒 Quy Tắc #1: Khóa Cứng 100% Thiên Phú Võ Học — Hệ [{selectedSpec}]
                         </h3>
                         <p className="text-xs text-zinc-400 mt-0.5">
-                            Mỗi hệ trong <code className="text-emerald-400">VO_HOC_LIST</code> có bộ 3 Thiên Phú riêng. Bạn có thể bấm nút <b>✏️ Sửa Khung 3 Thiên Phú</b> để tùy biến tên chỉ số & điều kiện cho từng hệ!
+                            Bấm trực tiếp vào các ô số để nhập chỉ số nhân vật, hoặc bấm nút <b>✏️ Sửa Khung 3 Thiên Phú</b> để tùy biến tên chỉ số cho từng hệ phái.
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                         <button
                             type="button"
                             onClick={() => setIsEditingTalentMeta(!isEditingTalentMeta)}
@@ -1790,7 +1954,7 @@ ${statKeysCatalog}`;
                                     : 'bg-zinc-900 text-amber-300 border-amber-500/40 hover:bg-amber-500/15'
                             }`}
                         >
-                            {isEditingTalentMeta ? '✅ Xong Chỉnh Sửa Khung' : `✏️ Sửa Tên & Quy Tắc 3 Thiên Phú [${selectedSpec}]`}
+                            {isEditingTalentMeta ? '✅ Xong Chỉnh Sửa Khung' : `✏️ Sửa Khung 3 Thiên Phú`}
                         </button>
 
                         {isEditingTalentMeta && (
@@ -1810,7 +1974,7 @@ ${statKeysCatalog}`;
                                 onChange={(e) => updateBaselineField({ simulate23: e.target.checked })}
                                 className="accent-amber-400"
                             />
-                            <span>🔥 Mô phỏng &lt;Mười Chiếu Chín Cấp U ·&gt; 2.3</span>
+                            <span>🔥 Mô phỏng Đột Phá Mốc Mùa Mới</span>
                         </label>
 
                         <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-300 cursor-pointer">
@@ -1825,7 +1989,7 @@ ${statKeysCatalog}`;
                     </div>
                 </div>
 
-                {/* 3 THẺ TIẾN TRÌNH THIÊN PHÚ VÕ HỌC (ĐỘNG 100% THEO TỪNG VÕ HỌC) */}
+                {/* 3 THẺ TIẾN TRÌNH THIÊN PHÚ VÕ HỌC */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     
                     {/* THIÊN PHÚ 1 */}
@@ -1902,7 +2066,7 @@ ${statKeysCatalog}`;
                                         onChange={(e) => updateTalentCardMeta('t1', { linkedStatKey: e.target.value })}
                                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[10px] text-amber-300"
                                     >
-                                        {statOptions.map(o => <option key={o.key} value={o.key}>{o.labelVi}</option>)}
+                                        {statOptions.map(o => <option key={o.key} value={o.key}>{formatStatForSpec(o)}</option>)}
                                     </select>
                                     <input
                                         type="number"
@@ -1995,7 +2159,7 @@ ${statKeysCatalog}`;
                                         onChange={(e) => updateTalentCardMeta('t2', { linkedStatKey: e.target.value })}
                                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[10px] text-amber-300"
                                     >
-                                        {statOptions.map(o => <option key={o.key} value={o.key}>{o.labelVi}</option>)}
+                                        {statOptions.map(o => <option key={o.key} value={o.key}>{formatStatForSpec(o)}</option>)}
                                     </select>
                                     <input
                                         type="number"
@@ -2090,7 +2254,7 @@ ${statKeysCatalog}`;
                                         onChange={(e) => updateTalentCardMeta('t3', { linkedStatKey: e.target.value })}
                                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[10px] text-amber-300"
                                     >
-                                        {statOptions.map(o => <option key={o.key} value={o.key}>{o.labelVi}</option>)}
+                                        {statOptions.map(o => <option key={o.key} value={o.key}>{formatStatForSpec(o)}</option>)}
                                     </select>
                                     <input
                                         type="number"
@@ -2114,9 +2278,9 @@ ${statKeysCatalog}`;
                     </div>
                 </div>
 
-                {/* 3 RATES SỐ VÀNG & API KEYS */}
+                {/* 3 RATES SỐ VÀNG & CẤU HÌNH GEMINI-3.5-FLASH-LITE / WEBHOOK */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2 border-t border-zinc-800/60">
-                    <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className={`p-3 rounded-xl border ${baseline.precisionRate >= 98 ? 'bg-zinc-950/80 border-amber-500/30' : 'bg-rose-950/40 border-rose-500'}`}>
                             <div className="text-[10px] font-bold text-amber-400 uppercase">🎯 Precision (Số Vàng ✏️)</div>
                             <div className="flex items-center gap-1.5 mt-1">
@@ -2130,7 +2294,7 @@ ${statKeysCatalog}`;
                                 <span className="text-xs text-zinc-400">% / 100%</span>
                             </div>
                             <div className="text-[10px] text-zinc-500 mt-1">
-                                {baseline.precisionRate < 98 ? '🚨 <98% bị nhảy Sát Thương Xám!' : '✅ Chuẩn (Cần 4-5 dòng đồ 100)'}
+                                {baseline.precisionRate < 98 ? '🚨 <98% bị nhảy Sát Thương Xám!' : '✅ Chuẩn (Mục tiêu 99.5% - 100%)'}
                             </div>
                         </div>
 
@@ -2161,17 +2325,30 @@ ${statKeysCatalog}`;
                                     onChange={(e) => updateBaselineField({ affinityRate: Number(e.target.value) })}
                                     className="w-24 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm font-mono font-bold text-zinc-300"
                                 />
-                                <span className="text-xs text-zinc-500">% (~12% tự nhiên)</span>
+                                <span className="text-xs text-zinc-500">%</span>
                             </div>
-                            <div className="text-[10px] text-zinc-500 mt-1">
-                                Tùy biến theo hệ phái
+                            <div className="text-[10px] text-emerald-400/90 mt-1">
+                                Phẩm cấp tại [{selectedSpec}]: <b>{resolveStatGroupForSpec(statOptions.find(s => s.key === 'AFFINITY_RATE') || DEFAULT_STAT_OPTIONS[8], selectedSpec)}</b>
                             </div>
                         </div>
                     </div>
 
-                    <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+                    <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
                         <div>
-                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">🔑 Gemini API Key (Để quét ảnh OCR):</label>
+                            <label className="block text-[10px] font-bold text-emerald-400 uppercase mb-1">🤖 Model AI OCR:</label>
+                            <input
+                                type="text"
+                                value={geminiModel}
+                                onChange={(e) => {
+                                    setGeminiModel(e.target.value);
+                                    localStorage.setItem('tl_gemini_model', e.target.value);
+                                }}
+                                placeholder="gemini-3.5-flash-lite"
+                                className="w-full bg-zinc-900 border border-emerald-500/40 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300 font-mono font-bold"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">🔑 Gemini API Key:</label>
                             <input
                                 type="password"
                                 value={geminiApiKey}
@@ -2184,7 +2361,7 @@ ${statKeysCatalog}`;
                             />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">📤 Discord Webhook URL:</label>
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">📤 Discord Webhook:</label>
                             <input
                                 type="text"
                                 value={webhookUrl}
@@ -2298,7 +2475,7 @@ ${statKeysCatalog}`;
                                     </div>
 
                                     <div className="mt-2 pt-2 border-t border-zinc-800/70 text-[10px] text-amber-300 font-medium truncate">
-                                        Dòng 1: {statOptions.find(o => o.key === item.slot1.statKey)?.labelVi.replace(/^[^\]]+\]\s*/, '') || item.slot1.statKey} (+{item.slot1.value})
+                                        Dòng 1: {statOptions.find(o => o.key === item.slot1.statKey)?.labelVi || item.slot1.statKey} (+{item.slot1.value})
                                     </div>
                                     <div className="mt-1 text-[9px] text-zinc-400 truncate">
                                         {item.tuningLines.map(l => statOptions.find(o => o.key === l.statKey)?.labelEn.split(' ')[0] || l.statKey).join(' • ')}
@@ -2378,7 +2555,7 @@ ${statKeysCatalog}`;
                                         : `🔍 Đang Soi Phôi Mới Nhặt So Với: ${currentSlotDisplay.title}`}
                                 </h3>
                                 <p className="text-xs text-zinc-400">
-                                    Mọi danh mục <b>Vũ Khí, Bậc Đồ, Bộ Set, Dòng Tẩy Luyện & Định Âm</b> đều có nút <b>[+]</b> để thêm mới hoặc sửa chữ ngay lập tức!
+                                    Nhãn <b>[T0 / T1 / T2 / T3]</b> trong menu chọn dòng bên dưới tự động biến thiên theo hệ <b className="text-amber-300">{selectedSpec}</b>!
                                 </p>
                             </div>
 
@@ -2388,7 +2565,7 @@ ${statKeysCatalog}`;
                                     onClick={() => setShowStatDictModal(true)}
                                     className="px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-bold cursor-pointer transition-all"
                                 >
-                                    ⚙️ Quản Lý / +Thêm Mới
+                                    ⚙️ Đổi Bậc T1/T2/T3 Theo Hệ
                                 </button>
 
                                 <label className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold cursor-pointer text-center transition-all">
@@ -2551,7 +2728,7 @@ ${statKeysCatalog}`;
                                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold"
                                     >
                                         {statOptions.map(o => (
-                                            <option key={o.key} value={o.key}>{o.labelVi}</option>
+                                            <option key={o.key} value={o.key}>{formatStatForSpec(o)}</option>
                                         ))}
                                     </select>
                                     <input
@@ -2570,7 +2747,7 @@ ${statKeysCatalog}`;
                             <div className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
                                 <div className="flex justify-between items-center">
                                     <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
-                                        🛠️ Các Dòng Tẩy Luyện (Tuning Lines - #2, #3, #4, #5... Mở Full Tất Cả Dòng):
+                                        🛠️ Các Dòng Tẩy Luyện (Tuning Lines - Nhãn T0/T1/T2/T3 tự động theo [{selectedSpec}]):
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -2581,7 +2758,7 @@ ${statKeysCatalog}`;
                                             }}
                                             className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-bold cursor-pointer"
                                         >
-                                            ⚙️ Sửa chữ / +Thêm dòng mới
+                                            ⚙️ Đổi Bậc T1/T2/T3 / +Dòng mới
                                         </button>
                                         <button
                                             type="button"
@@ -2612,7 +2789,7 @@ ${statKeysCatalog}`;
                                             className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-200 font-medium"
                                         >
                                             {statOptions.map(o => (
-                                                <option key={o.key} value={o.key}>{o.labelVi}</option>
+                                                <option key={o.key} value={o.key}>{formatStatForSpec(o)}</option>
                                             ))}
                                         </select>
                                         <input
@@ -2703,7 +2880,7 @@ ${statKeysCatalog}`;
                                     {activeGearEval.verdictTitle}
                                 </h4>
                                 <span className="px-3 py-1 rounded-full bg-zinc-950 border border-zinc-700 text-xs font-mono font-black text-amber-400">
-                                    Tổng Điểm Xấu: {activeGearEval.badPoints.toFixed(1)} / 2.0
+                                    Tổng Điểm Xấu ({selectedSpec}): {activeGearEval.badPoints.toFixed(1)} / 2.0
                                 </span>
                             </div>
 
@@ -2774,62 +2951,80 @@ ${statKeysCatalog}`;
 
                     {/* KHU VỰC 4: TÂM PHÁP */}
                     <div className="bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
                             <div>
                                 <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">
-                                    📜 Quy Tắc #6: Cố Vấn Tâm Pháp (Inner Ways) & Chuỗi Chiêu 2.3
+                                    📜 Bộ 4 Tâm Pháp Đang Trang Bị (Inner Ways — Hệ [{selectedSpec}])
                                 </h3>
                                 <p className="text-[11px] text-zinc-400">
-                                    Có thể gõ chỉnh sửa trực tiếp tên Tâm Pháp và cấp đột phá (Tier 1 ➔ Tier 6) cho từng hệ phái.
+                                    Chọn trực tiếp từ kho <b className="text-emerald-400">{tamPhapList.length} Tâm Pháp</b> trên mây, hoặc bấm <b>+ Thêm / Sửa Tâm Pháp</b> để bổ sung Tâm Pháp mới.
                                 </p>
                             </div>
 
-                            <select
-                                value={innerWays.bossStyle}
-                                onChange={(e) => {
-                                    setHasUnsavedChanges(true);
-                                    const style = e.target.value as 'flex23' | 'flying' | 'standing';
-                                    if (style === 'flex23') {
-                                        setInnerWays({ ...innerWays, bossStyle: style, slot3: { name: 'Star Reacher (Trích Tinh)', tier: 5 }, slot4: { name: 'Thunderous Bloom (Xuân Lôi Nhất Nộ)', tier: 5 } });
-                                    } else if (style === 'flying') {
-                                        setInnerWays({ ...innerWays, bossStyle: style, slot3: { name: 'Fivefold Bleed (Ngũ Trùng Xuất Huyết)', tier: 6 }, slot4: { name: 'Thunderous Bloom (Xuân Lôi Nhất Nộ)', tier: 5 } });
-                                    } else {
-                                        setInnerWays({ ...innerWays, bossStyle: style, slot3: { name: 'Star Reacher (Trích Tinh)', tier: 5 }, slot4: { name: 'Breaking Point (Phá Cực)', tier: 4 } });
-                                    }
-                                }}
-                                className="bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-bold"
-                            >
-                                <option value="flex23">🔥 Khuyên dùng số 1 Bản 2.3 (Naki&apos;s Flex Rotation ~61.7k DPS)</option>
-                                <option value="flying">🦅 Đánh Boss Bay Nhảy (Flying Umbrella)</option>
-                                <option value="standing">🗿 Đánh Boss Đứng Im (Walking Umbrella)</option>
-                            </select>
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDictTab('tamphap');
+                                        setShowStatDictModal(true);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-bold cursor-pointer"
+                                >
+                                    ✍️ Quản Lý / +Thêm Tâm Pháp Mới
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveSpecInnerWaysTemplate}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                                    title="Lưu 4 Tâm Pháp đang chọn làm mẫu mặc định cho hệ phái này"
+                                >
+                                    💾 Đặt Làm Mẫu Cho Hệ [{selectedSpec}]
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {(['slot1', 'slot2', 'slot3', 'slot4'] as const).map((sKey, idx) => (
-                                <div key={sKey} className="p-3 rounded-xl bg-zinc-950 border border-emerald-500/30 flex justify-between items-center gap-2">
-                                    <div className="flex-1">
-                                        <div className="text-[10px] text-emerald-400 font-bold uppercase">Ô Tâm Pháp {idx + 1}</div>
-                                        <input
-                                            type="text"
-                                            value={innerWays[sKey].name}
+                                <div key={sKey} className="p-3.5 rounded-2xl bg-zinc-950 border border-emerald-500/30 space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-emerald-400 font-bold uppercase">Ô Tâm Pháp {idx + 1}</span>
+                                        <select
+                                            value={innerWays[sKey].tier}
                                             onChange={(e) => {
                                                 setHasUnsavedChanges(true);
-                                                setInnerWays({ ...innerWays, [sKey]: { ...innerWays[sKey], name: e.target.value } });
+                                                setInnerWays({ ...innerWays, [sKey]: { ...innerWays[sKey], tier: Number(e.target.value) } });
                                             }}
-                                            className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs font-black text-amber-300 mt-1"
-                                        />
+                                            className="bg-zinc-900 border border-amber-500/40 rounded-lg px-2 py-0.5 text-xs text-amber-300 font-mono font-bold"
+                                        >
+                                            {[1, 2, 3, 4, 5, 6].map(t => <option key={t} value={t}>Tier {t}</option>)}
+                                        </select>
                                     </div>
+
                                     <select
-                                        value={innerWays[sKey].tier}
+                                        value={tamPhapList.some(tp => tp.display === innerWays[sKey].name) ? innerWays[sKey].name : ""}
+                                        onChange={(e) => {
+                                            if (!e.target.value) return;
+                                            setHasUnsavedChanges(true);
+                                            setInnerWays({ ...innerWays, [sKey]: { ...innerWays[sKey], name: e.target.value } });
+                                        }}
+                                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-amber-300 font-bold"
+                                    >
+                                        <option value="">-- Chọn từ Kho Tâm Pháp ({tamPhapList.length}) --</option>
+                                        {tamPhapList.map(tp => (
+                                            <option key={tp.id} value={tp.display}>{tp.display}</option>
+                                        ))}
+                                    </select>
+
+                                    <input
+                                        type="text"
+                                        value={innerWays[sKey].name}
                                         onChange={(e) => {
                                             setHasUnsavedChanges(true);
-                                            setInnerWays({ ...innerWays, [sKey]: { ...innerWays[sKey], tier: Number(e.target.value) } });
+                                            setInnerWays({ ...innerWays, [sKey]: { ...innerWays[sKey], name: e.target.value } });
                                         }}
-                                        className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-amber-300 font-mono font-bold mt-4"
-                                    >
-                                        {[1, 2, 3, 4, 5, 6].map(t => <option key={t} value={t}>Tier {t}</option>)}
-                                    </select>
+                                        placeholder="Hoặc tự gõ tên Tâm Pháp tại đây..."
+                                        className="w-full bg-zinc-900/60 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs font-medium text-zinc-200"
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -2837,17 +3032,17 @@ ${statKeysCatalog}`;
                 </div>
             </div>
 
-            {/* 🟢 MODAL TÀNG KINH CÁC 2.3: QUẢN LÝ 6 HẠNG MỤC (BAO GỒM CẢ VO_HOC_LIST TRONG thanhlong_config/wwm_data) */}
+            {/* MODAL TÀNG KINH CÁC: 7 HẠNG MỤC */}
             {showStatDictModal && (
                 <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-zinc-900 border border-emerald-500/40 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
                         <div className="p-5 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
                             <div>
                                 <h3 className="text-lg font-black text-amber-400">
-                                    ⚙️ Tàng Kinh Các 2.3 · Quản Lý Dòng, Set, Bậc, Vũ Khí & VO_HOC_LIST
+                                    ⚙️ Tàng Kinh Các · Quản Lý Dòng, Set, Bậc, Vũ Khí, Võ Học & Tâm Pháp
                                 </h3>
                                 <p className="text-xs text-zinc-400 mt-0.5">
-                                    Mọi chỉnh sửa hoặc thêm mới tại đây sẽ lưu trực tiếp vào <code className="text-emerald-400">thanhlong_config/wwm_data</code> trên Firebase!
+                                    Phân nhóm <b>T0 / T1 / T2 / T3</b> của từng dòng được tách biệt theo từng Nhánh Võ Học, không bị gán chết!
                                 </p>
                             </div>
                             <button
@@ -2859,7 +3054,6 @@ ${statKeysCatalog}`;
                             </button>
                         </div>
 
-                        {/* 6 TAB QUẢN LÝ */}
                         <div className="flex flex-wrap gap-2 p-3 bg-zinc-950/60 border-b border-zinc-800">
                             <button
                                 type="button"
@@ -2913,12 +3107,20 @@ ${statKeysCatalog}`;
                                     dictTab === 'vohoc' ? 'bg-sky-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
                                 }`}
                             >
-                                🥋 6. Võ Học VO_HOC_LIST ({voHocList.length})
+                                🥋 6. Nhánh Võ Học ({voHocList.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setDictTab('tamphap')}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
+                                    dictTab === 'tamphap' ? 'bg-indigo-500 text-white' : 'bg-zinc-900 text-zinc-400'
+                                }`}
+                            >
+                                📜 7. Tâm Pháp ({tamPhapList.length})
                             </button>
                         </div>
 
                         <div className="p-5 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
-                            {/* TAB 1: DÒNG TẨY LUYỆN */}
                             {dictTab === 'tuning' && (
                                 <>
                                     <form onSubmit={handleSaveCustomTuningStat} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
@@ -2931,33 +3133,46 @@ ${statKeysCatalog}`;
                                                 type="text"
                                                 value={editingStatItem.key}
                                                 onChange={(e) => setEditingStatItem({ ...editingStatItem, key: e.target.value })}
-                                                placeholder="VD: NEW_SKILL_BOOST_24"
+                                                placeholder="VD: NEW_SKILL_BOOST"
                                                 className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-200 font-mono"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-bold text-amber-400 uppercase mb-1">Tên hiển thị Tiếng Việt:</label>
+                                            <label className="block text-[10px] font-bold text-amber-400 uppercase mb-1">Tên dòng thuần túy (Không cần gõ [T1/T2]):</label>
                                             <input
                                                 type="text"
                                                 required
                                                 value={editingStatItem.labelVi}
                                                 onChange={(e) => setEditingStatItem({ ...editingStatItem, labelVi: e.target.value })}
-                                                placeholder="VD: 🌟 [T0] Cửu Kiếm Tăng Sát Thương"
+                                                placeholder="VD: Tỉ lệ Hiểu ý (Affinity Rate)"
                                                 className="w-full bg-zinc-900 border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold"
                                             />
                                         </div>
+
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-emerald-400 uppercase mb-1">Áp dụng Phân Nhóm này cho:</label>
+                                            <select
+                                                value={editingStatScope}
+                                                onChange={(e) => setEditingStatScope(e.target.value as any)}
+                                                className="w-full bg-zinc-900 border border-emerald-500/40 rounded-xl px-2.5 py-2 text-xs text-emerald-300 font-bold"
+                                            >
+                                                <option value="current_spec">🎯 Chỉ riêng hệ [{selectedSpec}]</option>
+                                                <option value="all_specs">🌐 Toàn bộ tất cả hệ Võ Học</option>
+                                            </select>
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Phân Nhóm:</label>
+                                                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Phân Nhóm tại [{selectedSpec}]:</label>
                                                 <select
                                                     value={editingStatItem.group}
-                                                    onChange={(e) => setEditingStatItem({ ...editingStatItem, group: e.target.value as any })}
-                                                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-2 text-xs text-emerald-300 font-bold"
+                                                    onChange={(e) => setEditingStatItem({ ...editingStatItem, group: e.target.value as StatGroupTier })}
+                                                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-2.5 py-2 text-xs text-amber-300 font-bold"
                                                 >
                                                     <option value="T0">🌟 T0 (God Line - 0 xấu)</option>
                                                     <option value="T1">⚔️ T1 (Chuẩn - 0 xấu)</option>
                                                     <option value="T2">🌪️ T2 (Tình huống - 0.5 xấu)</option>
-                                                    <option value="T3">❌ T3 (Rác - 1.0 xấu)</option>
+                                                    <option value="T3">❌ T3 (Rác / Lệch hệ - 1.0 xấu)</option>
                                                 </select>
                                             </div>
                                             <div>
@@ -2972,25 +3187,44 @@ ${statKeysCatalog}`;
                                             </div>
                                         </div>
                                         <div className="flex gap-2 pt-2">
-                                            <button type="button" onClick={() => setEditingStatItem({ key: '', labelVi: '', labelEn: '', group: 'T1', defaultVal: 40, unit: '', crossSpecHint: '' })} className="px-3 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">Làm mới</button>
+                                            <button type="button" onClick={() => setEditingStatItem({ key: '', labelVi: '', labelEn: '', group: 'T1', specGroups: {}, defaultVal: 40, unit: '', crossSpecHint: '' })} className="px-3 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">Làm mới</button>
                                             <button type="submit" className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase cursor-pointer">💾 Lưu Dòng Này</button>
                                         </div>
                                     </form>
                                     <div className="lg:col-span-7 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                                        {statOptions.map((item) => (
-                                            <div key={item.key} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <div className="text-xs font-bold text-zinc-100 truncate">{item.labelVi}</div>
-                                                    <div className="text-[10px] text-zinc-500 font-mono">Mã: {item.key} • Nhóm: {item.group}</div>
+                                        <div className="text-[11px] text-zinc-400 mb-1">
+                                            Đang hiển thị bậc phân nhóm theo hệ: <b className="text-emerald-400">{selectedSpec}</b>
+                                        </div>
+                                        {statOptions.map((item) => {
+                                            const effGroup = resolveStatGroupForSpec(item, selectedSpec);
+                                            return (
+                                                <div key={item.key} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="text-xs font-bold text-zinc-100 truncate">
+                                                            <span className="text-amber-300 mr-1.5">{TIER_BADGE_PREFIX[effGroup]}</span>
+                                                            {item.labelVi}
+                                                        </div>
+                                                        <div className="text-[10px] text-zinc-500 font-mono">
+                                                            Mã: {item.key} • Bậc tại [{selectedSpec}]: <b className="text-emerald-400">{effGroup}</b>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingStatItem({
+                                                            ...item,
+                                                            group: effGroup
+                                                        })}
+                                                        className="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold shrink-0 cursor-pointer"
+                                                    >
+                                                        ✏️ Sửa
+                                                    </button>
                                                 </div>
-                                                <button type="button" onClick={() => setEditingStatItem({ ...item })} className="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold shrink-0 cursor-pointer">✏️ Sửa</button>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </>
                             )}
 
-                            {/* TAB 2: DÒNG ĐỊNH ÂM */}
                             {dictTab === 'attunement' && (
                                 <>
                                     <form onSubmit={handleSaveCustomAttunement} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
@@ -3031,7 +3265,6 @@ ${statKeysCatalog}`;
                                 </>
                             )}
 
-                            {/* TAB 3: BỘ TRANG BỊ (GEAR SETS) */}
                             {dictTab === 'gearset' && (
                                 <>
                                     <form onSubmit={handleSaveCustomGearSet} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
@@ -3088,7 +3321,6 @@ ${statKeysCatalog}`;
                                 </>
                             )}
 
-                            {/* TAB 4: BẬC TRANG BỊ (TIER) */}
                             {dictTab === 'tier' && (
                                 <>
                                     <form onSubmit={handleSaveCustomTier} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
@@ -3145,7 +3377,6 @@ ${statKeysCatalog}`;
                                 </>
                             )}
 
-                            {/* TAB 5: LOẠI VŨ KHÍ */}
                             {dictTab === 'weapon' && (
                                 <>
                                     <form onSubmit={handleSaveCustomWeapon} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
@@ -3206,16 +3437,12 @@ ${statKeysCatalog}`;
                                 </>
                             )}
 
-                            {/* 🟢 TAB 6: QUẢN LÝ TRỰC TIẾP MẢNG VO_HOC_LIST TRONG thanhlong_config/wwm_data */}
                             {dictTab === 'vohoc' && (
                                 <>
                                     <form onSubmit={handleSaveVoHocList} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
                                         <div className="text-xs font-black text-sky-400 uppercase">
-                                            {editingVoHocIndex !== null ? `✏️ Đang sửa Võ Học #${editingVoHocIndex}` : '➕ Thêm Võ Học Mới Vào VO_HOC_LIST'}
+                                            {editingVoHocIndex !== null ? `✏️ Đang sửa Võ Học #${editingVoHocIndex}` : '➕ Thêm Nhánh Võ Học Mới'}
                                         </div>
-                                        <p className="text-[11px] text-zinc-400 leading-relaxed">
-                                            Dữ liệu này đọc và ghi trực tiếp vào mảng <code className="text-amber-300">thanhlong_config ➔ wwm_data ➔ VO_HOC_LIST</code> (dùng chung cho cả Bot Discord và Web).
-                                        </p>
                                         <div>
                                             <label className="block text-[10px] font-bold text-sky-400 uppercase mb-1">Tên Nhánh Võ Học:</label>
                                             <input
@@ -3223,7 +3450,7 @@ ${statKeysCatalog}`;
                                                 required
                                                 value={newVoHocName}
                                                 onChange={(e) => setNewVoHocName(e.target.value)}
-                                                placeholder="VD: Kéo Tơ (Trống Eo 2.3)"
+                                                placeholder="VD: Kéo Tơ (Trống Eo)"
                                                 className="w-full bg-zinc-900 border border-sky-500/40 rounded-xl px-3 py-2 text-xs text-sky-300 font-bold"
                                             />
                                         </div>
@@ -3244,7 +3471,7 @@ ${statKeysCatalog}`;
                                                 type="submit"
                                                 className="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-zinc-950 font-black text-xs uppercase cursor-pointer"
                                             >
-                                                💾 Lưu Vào wwm_data.VO_HOC_LIST
+                                                💾 Lưu Nhánh Võ Học
                                             </button>
                                         </div>
                                     </form>
@@ -3276,6 +3503,91 @@ ${statKeysCatalog}`;
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {dictTab === 'tamphap' && (
+                                <>
+                                    <form onSubmit={handleSaveTamPhapToMap} className="lg:col-span-5 bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-3 h-fit">
+                                        <div className="text-xs font-black text-indigo-400 uppercase">
+                                            {editingTamPhap.id ? `✏️ Đang sửa Tâm Pháp [${editingTamPhap.id}]` : '➕ Thêm Tâm Pháp Mới Vào TAM_PHAP_MAP'}
+                                        </div>
+                                        <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                            Bạn chỉ cần nhập <b>Tên Tiếng Việt</b> và <b>Tên Tiếng Anh</b> (để trống ô Mã ID hệ thống sẽ tự tạo mã sạch).
+                                        </p>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Mã ID / Key (Để trống tự tạo):</label>
+                                            <input
+                                                type="text"
+                                                value={editingTamPhap.id}
+                                                onChange={(e) => setEditingTamPhap({ ...editingTamPhap, id: e.target.value })}
+                                                placeholder="Tự động tạo nếu để trống..."
+                                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-200 font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-amber-400 uppercase mb-1">Tên Tâm Pháp (Tiếng Việt):</label>
+                                            <input
+                                                type="text"
+                                                value={editingTamPhap.vi}
+                                                onChange={(e) => setEditingTamPhap({ ...editingTamPhap, vi: e.target.value })}
+                                                placeholder="VD: Dịch Thủy Ca / Hoa Vũ Mãn Thiên"
+                                                className="w-full bg-zinc-900 border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-indigo-400 uppercase mb-1">Tên Tâm Pháp (Tiếng Anh):</label>
+                                            <input
+                                                type="text"
+                                                value={editingTamPhap.en}
+                                                onChange={(e) => setEditingTamPhap({ ...editingTamPhap, en: e.target.value })}
+                                                placeholder="VD: Morale Chant / Blossom Barrage"
+                                                className="w-full bg-zinc-900 border border-indigo-500/40 rounded-xl px-3 py-2 text-xs text-indigo-300 font-bold"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingTamPhap({ id: '', vi: '', en: '' })}
+                                                className="px-3 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer"
+                                            >
+                                                Làm mới
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs uppercase cursor-pointer"
+                                            >
+                                                💾 Lưu Vào TAM_PHAP_MAP
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <div className="lg:col-span-7 space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                                        <input
+                                            type="text"
+                                            value={tamPhapSearch}
+                                            onChange={(e) => setTamPhapSearch(e.target.value)}
+                                            placeholder="🔍 Tìm nhanh Tâm Pháp theo tên Việt, Anh hoặc ID..."
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-200"
+                                        />
+                                        {tamPhapList
+                                            .filter(tp => tp.display.toLowerCase().includes(tamPhapSearch.toLowerCase()) || tp.id.toLowerCase().includes(tamPhapSearch.toLowerCase()))
+                                            .map((item) => (
+                                                <div key={item.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="text-xs font-bold text-amber-300 truncate">{item.vi || item.en}</div>
+                                                        <div className="text-[11px] text-indigo-300 truncate">{item.en} <span className="text-zinc-600 font-mono">[{item.id}]</span></div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingTamPhap({ id: item.id, vi: item.vi, en: item.en })}
+                                                        className="px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-xs font-bold shrink-0 cursor-pointer"
+                                                    >
+                                                        ✏️ Sửa
+                                                    </button>
+                                                </div>
+                                            ))}
                                     </div>
                                 </>
                             )}

@@ -33,7 +33,7 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     point: { icon: '💰', title: 'Bảng Vàng Công Trạng' },
     sattuong: { icon: '👹', title: 'Bảng Chiến Thần Sát Tướng' },
     hoatdong: { icon: '🔥', title: 'Sổ Điệp Hoạt Động Bang' },
-    builds: { icon: '☂️', title: 'Thần Khí Các · Giám Định & Tối Ưu Đồ 2.3' },
+    builds: { icon: '⚔️', title: 'Thần Khí Các · Giám Định & Tối Ưu Trang Bị' },
     admin: { icon: '⚙️', title: 'Mật Thất Quản Trị Tông Môn' },
 };
 
@@ -100,7 +100,7 @@ export default function Home() {
                 signOut={signOut} 
             />
 
-            <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
                 {activeTab !== 'home' && (
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/80 rounded-2xl px-4 py-2.5 shadow-md">
                         <div className="flex items-center gap-2 text-xs">
