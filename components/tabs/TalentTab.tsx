@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/TalentTab.tsx
 import React from 'react';
 

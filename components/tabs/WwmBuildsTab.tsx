@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/WwmBuildsTab.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -15,7 +16,6 @@ interface Props {
     isMaster: boolean;
 }
 
-// 📜 DANH SÁCH 11 HỆ VÕ HỌC MẶC ĐỊNH (NẾU FIREBASE CHƯA TẢI KỊP)
 const DEFAULT_VO_HOC_LIST = [
     "Tiếng Chuông Vang (Vô Danh)",
     "Tiếng Chuông Vang (Cửu Kiếm)",
@@ -45,7 +45,6 @@ interface SlotMeta {
     requiredAttunementName: string;
 }
 
-// 🗡️ BẢNG THIẾT KẾ 8 MÓN CHUẨN BẬC 100 (TIER 100 BiS BLUEPRINT)
 const SLOTS_CONFIG: SlotMeta[] = [
     {
         key: 'umbrella',
@@ -145,7 +144,6 @@ const SLOTS_CONFIG: SlotMeta[] = [
     }
 ];
 
-// 📊 DANH MỤC TẤT CẢ DÒNG TẨY LUYỆN (TUNING STATS) & PHÂN NHÓM T0/T1/T2/T3
 export interface StatOption {
     key: string;
     labelVi: string;
@@ -157,27 +155,20 @@ export interface StatOption {
 }
 
 const STAT_OPTIONS: StatOption[] = [
-    // T0 - GOD LINES (CHỈ CÓ Ở DÒNG 1)
     { key: 'ART_UMBRELLA_BOOST', labelVi: '🌟 [T0] Võ học Cửu Trùng Xuân Sắc tăng ST', labelEn: 'Art of Umbrella Boost', group: 'T0', defaultVal: 6.5, unit: '%' },
     { key: 'ALL_MARTIAL_ARTS_BOOST', labelVi: '🌟 [T0] Tất cả võ học tăng sát thương', labelEn: 'All Martial Arts Boost', group: 'T0', defaultVal: 4.8, unit: '%' },
     { key: 'BOSS_DMG_BOOST', labelVi: '🌟 [T0] Tăng sát thương lên Thủ lĩnh (Boss)', labelEn: 'Combat Boost Against Boss Units', group: 'T0', defaultVal: 5.2, unit: '%' },
-
-    // T1 - CHỈ SỐ CHUẨN (0 ĐIỂM XẤU)
     { key: 'MAX_PHYS_ATK', labelVi: '⚔️ [T1] Tấn công ngoại công tối đa (Max Physical)', labelEn: 'Max Physical Attack', group: 'T1', defaultVal: 48, unit: '' },
     { key: 'POWER', labelVi: '💪 [T1] Lực đạo / Sức mạnh (Power)', labelEn: 'Power', group: 'T1', defaultVal: 28, unit: '' },
     { key: 'PRECISION_RATE', labelVi: '🎯 [T1] Tỷ lệ Chính xác (Precision Rate)', labelEn: 'Precision Rate', group: 'T1', defaultVal: 4.5, unit: '%' },
     { key: 'CRIT_RATE', labelVi: '💥 [T1] Tỷ lệ Chí mạng (Critical Rate)', labelEn: 'Critical Rate', group: 'T1', defaultVal: 4.2, unit: '%' },
     { key: 'MYSTIC_DMG_23', labelVi: '🔥 [T1] Tăng ST Kỳ thuật (Dòng Gộp Nón/Áo 2.3)', labelEn: 'Mystic Skill DMG Boost (2.3 Merged)', group: 'T1', defaultVal: 6.0, unit: '%' },
-
-    // T2 - CHỈ SỐ TÌNH HUỐNG (0 HOẶC 0.5 ĐIỂM XẤU)
     { key: 'AGILITY', labelVi: '🌪️ [T2] Nhanh nhẹn / Ngự (Agility)', labelEn: 'Agility', group: 'T2', defaultVal: 28, unit: '' },
     { key: 'MIN_SILKBIND_ATK', labelVi: '🕸️ [T2] Tấn công Kéo Tơ nhỏ nhất (Min Silkbind)', labelEn: 'Min Silkbind Attack', group: 'T2', defaultVal: 26, unit: '' },
     { key: 'MAX_SILKBIND_ATK', labelVi: '🕸️ [T2] Tấn công Kéo Tơ tối đa (Max Silkbind)', labelEn: 'Max Silkbind Attack', group: 'T2', defaultVal: 42, unit: '' },
     { key: 'MOMENTUM', labelVi: '⚡ [T2] Thế (Momentum)', labelEn: 'Momentum', group: 'T2', defaultVal: 25, unit: '' },
     { key: 'FORMLESS_ATK', labelVi: '🌀 [T2] Vô Tướng Công (Formless Attack)', labelEn: 'Formless Attack', group: 'T2', defaultVal: 30, unit: '' },
-
-    // T3 - CHỈ SỐ RÁC / LỆCH HỆ (1.0 ĐIỂM XẤU)
-    { key: 'MIN_PHYS_ATK', labelVi: '⚠️ [T3] Tấn công ngoại công tối thiểu (Đã dư 1513/750)', labelEn: 'Min Physical Attack', group: 'T3', defaultVal: 32, unit: '' },
+    { key: 'MIN_PHYS_ATK', labelVi: '⚠️ [T3] Tấn công ngoại công tối thiểu (Min Physical)', labelEn: 'Min Physical Attack', group: 'T3', defaultVal: 32, unit: '' },
     { key: 'AFFINITY_RATE', labelVi: '⚠️ [T3] Tỉ lệ Hiểu ý (Affinity Rate - Phế trên Thời Vũ 2.3)', labelEn: 'Affinity Rate', group: 'T3', defaultVal: 4.0, unit: '%', crossSpecHint: 'Hợp với Cửu Kiếm / Xuất Huyết' },
     { key: 'BELLSTRIKE_ATK', labelVi: '❌ [T3] Tấn công Tiếng Chuông (Bellstrike - 0% tác dụng)', labelEn: 'Bellstrike Attack', group: 'T3', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Tiếng Chuông Vang (Vô Danh / Cửu Kiếm)' },
     { key: 'BAMBOOCUT_ATK', labelVi: '❌ [T3] Tấn công Phá Tre (Bamboocut - 0% tác dụng)', labelEn: 'Bamboocut Attack', group: 'T3', defaultVal: 40, unit: '', crossSpecHint: 'Thuộc hệ Phá Tre (Song Đao / Quyền)' },
@@ -185,7 +176,6 @@ const STAT_OPTIONS: StatOption[] = [
     { key: 'DEFENSE_HP_BODY', labelVi: '🗑️ [T3] Phòng ngự / Khí huyết / Thể phách (HP/DEF/Body)', labelEn: 'HP / Body / Defense', group: 'T3', defaultVal: 1200, unit: '' },
 ];
 
-// 🔮 DANH MỤC DÒNG ĐỊNH ÂM (SLOT 5 - ATTUNEMENTS) & 4 DÒNG BẪY
 export interface AttunementOption {
     key: string;
     labelVi: string;
@@ -262,16 +252,19 @@ export interface GearItem {
     name: string;
     tier: 96 | 100;
     gearSet: 'Mistwillow' | 'BeyondTheChill' | 'Hawkwing' | 'SilkbindWings' | 'Other';
-    slot1: TuningLine; // Dòng khởi đầu (Initial Tuning)
-    tuningLines: TuningLine[]; // 3 dòng tẩy luyện (Slot 2, 3, 4)
-    attunementKey: string; // Dòng Định Âm (Slot 5)
+    slot1: TuningLine;
+    tuningLines: TuningLine[];
+    attunementKey: string;
     attunementValue: number;
 }
 
 export interface CharacterBaseline {
     agility: number;
+    reqAgility: number;
     minPhysical: number;
+    reqMinPhysical: number;
     minSilkbind: number;
+    reqMinSilkbind: number;
     precisionRate: number;
     critRate: number;
     affinityRate: number;
@@ -283,8 +276,11 @@ export interface CharacterBaseline {
 
 const DEFAULT_BASELINE: CharacterBaseline = {
     agility: 381,
+    reqAgility: 300,
     minPhysical: 1513.2,
+    reqMinPhysical: 750,
     minSilkbind: 469.9,
+    reqMinSilkbind: 352,
     precisionRate: 99.6,
     critRate: 78.5,
     affinityRate: 12.0,
@@ -294,7 +290,7 @@ const DEFAULT_BASELINE: CharacterBaseline = {
     arsenal96Active: true
 };
 
-const createEmptyGear = (slot: SlotKey): GearItem => {
+const createSampleBiSGear = (slot: SlotKey): GearItem => {
     const meta = SLOTS_CONFIG.find(s => s.key === slot)!;
     return {
         slot,
@@ -308,15 +304,32 @@ const createEmptyGear = (slot: SlotKey): GearItem => {
         tuningLines: [
             { statKey: 'MAX_PHYS_ATK', value: 46 },
             { statKey: 'POWER', value: 27 },
-            { statKey: 'CRIT_RATE', value: 4.2 }
+            { statKey: slot === 'fan' || slot === 'helm' || slot === 'bracers' ? 'AGILITY' : 'PRECISION_RATE', value: slot === 'fan' || slot === 'helm' || slot === 'bracers' ? 28 : 4.5 }
         ],
         attunementKey: meta.requiredAttunementKey,
         attunementValue: 5.8
     };
 };
 
-export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfiles, session, lang }: Props) {
-    // 1. Xác định ID Discord và Tên Ingame của người dùng hiện tại
+const createBlankGear = (slot: SlotKey): GearItem => {
+    const meta = SLOTS_CONFIG.find(s => s.key === slot)!;
+    return {
+        slot,
+        name: `${meta.labelVi.split('(')[0].trim()} (Chưa nhập)`,
+        tier: 96,
+        gearSet: meta.side === 'left' ? 'Mistwillow' : 'BeyondTheChill',
+        slot1: { statKey: 'MAX_PHYS_ATK', value: 0 },
+        tuningLines: [
+            { statKey: 'MAX_PHYS_ATK', value: 0 },
+            { statKey: 'POWER', value: 0 },
+            { statKey: 'CRIT_RATE', value: 0 }
+        ],
+        attunementKey: meta.requiredAttunementKey,
+        attunementValue: 0
+    };
+};
+
+export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfiles, session }: Props) {
     const currentUserId = useMemo(() => {
         if (!session?.user) return "guest";
         if (session.user.id) return String(session.user.id);
@@ -336,7 +349,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return session?.user?.name || "Đại Hiệp";
     }, [danhLuc, currentUserId, session]);
 
-    // 2. Danh sách 11 Hệ Võ Học từ Firebase wwm_data.VO_HOC_LIST
     const voHocList: string[] = useMemo(() => {
         if (Array.isArray(wwmData?.VO_HOC_LIST) && wwmData.VO_HOC_LIST.length > 0) {
             return wwmData.VO_HOC_LIST;
@@ -344,9 +356,12 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return DEFAULT_VO_HOC_LIST;
     }, [wwmData]);
 
-    // Tự động chọn hệ Võ Học chính của đại hiệp (Mặc định ưu tiên Kéo Tơ (Dame))
     const [selectedSpec, setSelectedSpec] = useState<string>("Kéo Tơ (Dame)");
     const [viewingUserId, setViewingUserId] = useState<string>(currentUserId);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // 🟢 CHẾ ĐỘ CHỈNH SỬA: 'edit_equipped' (Sửa trực tiếp món đang mặc) | 'compare_new' (Soi phôi mới nhặt & đối chiếu)
+    const [editorMode, setEditorMode] = useState<'edit_equipped' | 'compare_new'>('edit_equipped');
 
     useEffect(() => {
         const userClass = danhLuc?.[currentUserId]?.class;
@@ -359,17 +374,16 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         setViewingUserId(currentUserId);
     }, [currentUserId]);
 
-    // 3. State lưu trữ Hồ sơ Build hiện tại (Baseline + 8 món Equipped + Kho Vũ Khí 96 + Tâm Pháp)
     const [baseline, setBaseline] = useState<CharacterBaseline>(DEFAULT_BASELINE);
     const [equipped, setEquipped] = useState<Record<SlotKey, GearItem>>(() => ({
-        umbrella: createEmptyGear('umbrella'),
-        fan: createEmptyGear('fan'),
-        disc: createEmptyGear('disc'),
-        pendant: createEmptyGear('pendant'),
-        helm: createEmptyGear('helm'),
-        chest: createEmptyGear('chest'),
-        bracers: createEmptyGear('bracers'),
-        greaves: createEmptyGear('greaves'),
+        umbrella: createSampleBiSGear('umbrella'),
+        fan: createSampleBiSGear('fan'),
+        disc: createSampleBiSGear('disc'),
+        pendant: createSampleBiSGear('pendant'),
+        helm: createSampleBiSGear('helm'),
+        chest: createSampleBiSGear('chest'),
+        bracers: createSampleBiSGear('bracers'),
+        greaves: createSampleBiSGear('greaves'),
     }));
     const [arsenal96, setArsenal96] = useState<GearItem[]>([]);
     const [innerWays, setInnerWays] = useState({
@@ -380,9 +394,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         bossStyle: 'flex23' as 'flex23' | 'flying' | 'standing'
     });
 
-    // 4. State cho Máy Quét Ảnh AI & Món Đồ Đang Soi (Candidate Gear)
     const [activeSlot, setActiveSlot] = useState<SlotKey>('umbrella');
-    const [candidateGear, setCandidateGear] = useState<GearItem>(() => createEmptyGear('umbrella'));
+    const [candidateGear, setCandidateGear] = useState<GearItem>(() => createSampleBiSGear('umbrella'));
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [geminiApiKey, setGeminiApiKey] = useState<string>("");
     const [webhookUrl, setWebhookUrl] = useState<string>("");
@@ -390,7 +403,9 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     const [isSavingCloud, setIsSavingCloud] = useState(false);
     const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
-    // Load API Key & Webhook từ localStorage
+    // Khóa bảo vệ không cho Firebase ghi đè ngược khi người dùng đang gõ chỉnh sửa
+    const loadedProfileKeyRef = useRef<string>("");
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setGeminiApiKey(localStorage.getItem('tl_gemini_key') || '');
@@ -398,18 +413,24 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
     }, []);
 
-    // 5. Đồng bộ dữ liệu từ Firebase `wwm_builds -> [selectedSpec] -> [viewingUserId]`
     useEffect(() => {
+        const profileKey = `${selectedSpec}__${viewingUserId}`;
         const specDoc = wwmBuilds?.[selectedSpec];
         const userRecord = specDoc?.[viewingUserId];
+
+        // Chỉ nạp từ Cloud/Local khi đổi Hệ Phái, đổi Người Xem, hoặc lần đầu dữ liệu Cloud tải về mà chưa có thay đổi tay
+        if (loadedProfileKeyRef.current === profileKey && hasUnsavedChanges) {
+            return;
+        }
 
         if (userRecord) {
             if (userRecord.baseline) setBaseline({ ...DEFAULT_BASELINE, ...userRecord.baseline });
             if (userRecord.equipped) setEquipped(prev => ({ ...prev, ...userRecord.equipped }));
             if (Array.isArray(userRecord.arsenal96)) setArsenal96(userRecord.arsenal96);
             if (userRecord.innerWays) setInnerWays(prev => ({ ...prev, ...userRecord.innerWays }));
+            loadedProfileKeyRef.current = profileKey;
+            setHasUnsavedChanges(false);
         } else if (typeof window !== 'undefined' && viewingUserId === currentUserId) {
-            // Fallback đọc từ localStorage nếu trên mây chưa có
             const localRaw = localStorage.getItem(`wwm_build_${selectedSpec}_${currentUserId}`);
             if (localRaw) {
                 try {
@@ -417,18 +438,72 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                     if (parsed.baseline) setBaseline({ ...DEFAULT_BASELINE, ...parsed.baseline });
                     if (parsed.equipped) setEquipped(prev => ({ ...prev, ...parsed.equipped }));
                     if (Array.isArray(parsed.arsenal96)) setArsenal96(parsed.arsenal96);
+                    loadedProfileKeyRef.current = profileKey;
                 } catch {}
             }
         }
-    }, [wwmBuilds, selectedSpec, viewingUserId, currentUserId]);
+    }, [wwmBuilds, selectedSpec, viewingUserId, currentUserId, hasUnsavedChanges]);
 
-    // Khi đổi ô trang bị đang chọn, nạp mẫu cho candidateGear
-    const handleSelectSlot = (slot: SlotKey) => {
-        setActiveSlot(slot);
-        setCandidateGear(createEmptyGear(slot));
+    // Hàm cập nhật Baseline có bật cờ đã chỉnh sửa
+    const updateBaselineField = (patch: Partial<CharacterBaseline>) => {
+        setHasUnsavedChanges(true);
+        setBaseline(prev => ({ ...prev, ...patch }));
     };
 
-    // ☁️ HÀM LƯU ĐỒNG BỘ LÊN FIREBASE COLLECTION `wwm_builds`
+    // Món đồ đang được chỉnh sửa trong Form (Tùy thuộc vào chế độ: Sửa đồ đang mặc HAY Soi phôi mới)
+    const activeEditingGear: GearItem = editorMode === 'edit_equipped' ? equipped[activeSlot] : candidateGear;
+
+    const updateActiveEditingGear = (updater: (prev: GearItem) => GearItem) => {
+        setHasUnsavedChanges(true);
+        if (editorMode === 'edit_equipped') {
+            setEquipped(prev => ({
+                ...prev,
+                [activeSlot]: updater(prev[activeSlot])
+            }));
+        } else {
+            setCandidateGear(prev => updater(prev));
+        }
+    };
+
+    const handleSelectSlot = (slot: SlotKey) => {
+        setActiveSlot(slot);
+        if (editorMode === 'compare_new') {
+            setCandidateGear(createSampleBiSGear(slot));
+        }
+    };
+
+    // Làm trống cả 8 món về 0 để tự nhập từ đầu
+    const handleClearAll8Slots = () => {
+        if (!window.confirm("🧹 Đại hiệp muốn làm trống cả 8 món đang mặc về 0 để tự nhập thông số đồ thực tế của mình chứ?")) return;
+        setHasUnsavedChanges(true);
+        setEquipped({
+            umbrella: createBlankGear('umbrella'),
+            fan: createBlankGear('fan'),
+            disc: createBlankGear('disc'),
+            pendant: createBlankGear('pendant'),
+            helm: createBlankGear('helm'),
+            chest: createBlankGear('chest'),
+            bracers: createBlankGear('bracers'),
+            greaves: createBlankGear('greaves'),
+        });
+    };
+
+    // Nạp mẫu BiS chuẩn 2.3 cho cả 8 món
+    const handleLoadSampleBiS8Slots = () => {
+        if (!window.confirm("✨ Nạp bộ khung 8 món Chuẩn BiS Bậc 100 (Patch 2.3) làm mẫu tham khảo?")) return;
+        setHasUnsavedChanges(true);
+        setEquipped({
+            umbrella: createSampleBiSGear('umbrella'),
+            fan: createSampleBiSGear('fan'),
+            disc: createSampleBiSGear('disc'),
+            pendant: createSampleBiSGear('pendant'),
+            helm: createSampleBiSGear('helm'),
+            chest: createSampleBiSGear('chest'),
+            bracers: createSampleBiSGear('bracers'),
+            greaves: createSampleBiSGear('greaves'),
+        });
+    };
+
     const saveBuildToCloud = async (
         nextBaseline = baseline,
         nextEquipped = equipped,
@@ -454,13 +529,13 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                 localStorage.setItem(`wwm_build_${selectedSpec}_${currentUserId}`, JSON.stringify(payload));
             }
 
-            // Lưu vào collection `wwm_builds` -> Document `[selectedSpec]` -> Field `[currentUserId]`
             const specRef = doc(db, 'wwm_builds', selectedSpec);
             await setDoc(specRef, {
                 [currentUserId]: payload
             }, { merge: true });
 
-            setStatusBanner(`✅ Đã đồng bộ hồ sơ [${selectedSpec}] của ${currentIngame} lên Firebase (wwm_builds)!`);
+            setHasUnsavedChanges(false);
+            setStatusBanner(`✅ Đã lưu & đồng bộ hồ sơ [${selectedSpec}] của ${currentIngame} lên Firebase (wwm_builds)!`);
             setTimeout(() => setStatusBanner(null), 4000);
         } catch (err) {
             console.error("Lỗi lưu wwm_builds:", err);
@@ -470,7 +545,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
     };
 
-    // 🔮 HÀM ĐỒNG BỘ NHANH CHỈ SỐ TỪ HỒ SƠ /SOI_ACC (PLAYER_PROFILES)
     const handleSyncFromSoiAcc = () => {
         if (!playerProfiles) {
             alert("Chưa tải được dữ liệu Đài Chiếu Yêu!");
@@ -482,7 +556,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         });
 
         if (!matchEntry) {
-            alert(`Không tìm thấy hồ sơ /soi_acc của [${currentIngame}]. Đại hiệp có thể nhập trực tiếp con số vào ô!`);
+            alert(`Không tìm thấy hồ sơ /soi_acc của [${currentIngame}]. Đại hiệp có thể gõ trực tiếp con số vào các ô bên dưới!`);
             return;
         }
 
@@ -499,7 +573,6 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         }
     };
 
-    // 📊 THỐNG KÊ TỔNG SỐ DÒNG TRÊN 8 MÓN ĐANG MẶC (TARGET TRACKER)
     const loadoutSummary = useMemo(() => {
         let maxPhysLines = 0;
         let powerLines = 0;
@@ -512,7 +585,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             if (!item) return;
             const allLines = [item.slot1, ...(item.tuningLines || [])];
             allLines.forEach((l, idx) => {
-                if (!l) return;
+                if (!l || Number(l.value) <= 0) return;
                 if (idx === 0 && ['ART_UMBRELLA_BOOST', 'ALL_MARTIAL_ARTS_BOOST', 'BOSS_DMG_BOOST'].includes(l.statKey)) {
                     godLines++;
                 }
@@ -527,18 +600,20 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
         return { maxPhysLines, powerLines, agiLines, critLines, precisionLines, godLines };
     }, [equipped]);
 
-    // 🧮 THUẬT TOÁN CHẤM "ĐIỂM XẤU" (BAD POINTS) & CÂY PHÁN QUYẾT CHO MỘT MÓN ĐỒ
+    const reqAgi = baseline.simulate23 ? baseline.agiThreshold23 : (baseline.reqAgility || 300);
+    const reqPhys = baseline.reqMinPhysical || 750;
+    const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : (baseline.reqMinSilkbind || 352);
+
     const evaluateGear = (item: GearItem) => {
         const slotMeta = SLOTS_CONFIG.find(s => s.key === item.slot)!;
         let badPoints = 0;
-        const line Evaluations: { line: TuningLine; isSlot1: boolean; badPt: number; tier: string; note: string }[] = [];
+        const lineEvaluations: { line: TuningLine; isSlot1: boolean; badPt: number; tier: string; note: string }[] = [];
         const retunePriorities: string[] = [];
         const crossSpecHints: string[] = [];
 
-        const reqAgi = baseline.simulate23 ? baseline.agiThreshold23 : 300;
-        const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : 352;
         const needAgi = loadoutSummary.agiLines <= 3 || baseline.agility < reqAgi + 25;
         const needSilk = !baseline.arsenal96Active || baseline.minSilkbind < reqSilk;
+        const needMinPhys = baseline.minPhysical < reqPhys;
 
         const allLines = [item.slot1, ...(item.tuningLines || [])];
 
@@ -548,7 +623,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             if (!opt) return;
 
             let pt = 0;
-            let tierLabel: string = opt.group;
+            const tierLabel: string = opt.group;
             let note = "Chuẩn";
 
             if (opt.group === 'T0') {
@@ -579,12 +654,16 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
                     note = "Chỉ số T2 Tình huống (+0.5 điểm xấu)";
                 }
             } else {
-                // T3 - Rác (1.0 điểm xấu)
-                pt = 1.0;
-                note = "❌ Dòng Rác / Lệch hệ (+1.0 điểm xấu)";
-                retunePriorities.push(opt.labelVi);
-                if (opt.crossSpecHint) {
-                    crossSpecHints.push(`${opt.labelVi.split(']')[1]?.trim()}: ${opt.crossSpecHint}`);
+                if (line.statKey === 'MIN_PHYS_ATK' && needMinPhys) {
+                    pt = 0;
+                    note = "✅ Đang thiếu Min Physical kích Thiên Phú 2 (0 điểm xấu)";
+                } else {
+                    pt = 1.0;
+                    note = "❌ Dòng Rác / Lệch hệ (+1.0 điểm xấu)";
+                    retunePriorities.push(opt.labelVi);
+                    if (opt.crossSpecHint) {
+                        crossSpecHints.push(`${opt.labelVi.split(']')[1]?.trim()}: ${opt.crossSpecHint}`);
+                    }
                 }
             }
 
@@ -592,11 +671,9 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             lineEvaluations.push({ line, isSlot1, badPt: pt, tier: tierLabel, note });
         });
 
-        // Kiểm tra God Line T0 ở Slot 1
         const hasValidGodLine = Boolean(slotMeta.godLineKey && item.slot1.statKey === slotMeta.godLineKey);
         const missingRequiredGodLine = Boolean(slotMeta.godLineKey && item.slot1.statKey !== slotMeta.godLineKey);
 
-        // Kiểm tra Bộ Set
         let setWarning: string | null = null;
         if (item.gearSet === 'Hawkwing') {
             setWarning = "🚨 CẤM DÙNG HAWKWING Ở BẢN 2.3: Hiệu ứng bộ đã đổi sang cộng Bellstrike Attack (0% tác dụng với Kéo Tơ)!";
@@ -608,11 +685,9 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             setWarning = "⚠️ 4 món Giáp bên phải bắt buộc dùng Bộ Beyond the Chill!";
         }
 
-        // Kiểm tra Định Âm (Slot 5)
         const attuneOpt = ATTUNEMENT_OPTIONS.find(a => a.key === item.attunementKey);
         const attuneTrap = attuneOpt && !attuneOpt.isBiS ? attuneOpt.trapWarning || "Sai dòng Định Âm chuẩn!" : null;
 
-        // CÂY PHÁN QUYẾT (DECISION TREE)
         let verdictTitle = "";
         let verdictColor: 'emerald' | 'amber' | 'rose' = 'emerald';
         let verdictAction = "";
@@ -665,30 +740,27 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
     };
 
     const currentSlotEquipped = equipped[activeSlot];
-    const equippedEval = useMemo(() => evaluateGear(currentSlotEquipped), [currentSlotEquipped, baseline, loadoutSummary]);
-    const candidateEval = useMemo(() => evaluateGear(candidateGear), [candidateGear, baseline, loadoutSummary]);
+    const activeGearEval = useMemo(() => evaluateGear(activeEditingGear), [activeEditingGear, baseline, loadoutSummary, reqAgi, reqPhys, reqSilk]);
 
-    // ⚖️ TÍNH ĐỘ CHÊNH LỆCH (DELTA) KHI THAY ĐỒ MỚI VÀO VỊ TRÍ ĐANG MẶC
     const comparisonDelta = useMemo(() => {
         const sumStat = (item: GearItem, key: string) => {
             const lines = [item.slot1, ...(item.tuningLines || [])];
             return lines.filter(l => l.statKey === key).reduce((acc, cur) => acc + (Number(cur.value) || 0), 0);
         };
 
-        const deltaAgi = sumStat(candidateGear, 'AGILITY') - sumStat(currentSlotEquipped, 'AGILITY');
-        const deltaSilk = sumStat(candidateGear, 'MIN_SILKBIND_ATK') - sumStat(currentSlotEquipped, 'MIN_SILKBIND_ATK');
-        const deltaMaxPhys = sumStat(candidateGear, 'MAX_PHYS_ATK') - sumStat(currentSlotEquipped, 'MAX_PHYS_ATK');
-        const deltaPower = sumStat(candidateGear, 'POWER') - sumStat(currentSlotEquipped, 'POWER');
-        const deltaPrec = sumStat(candidateGear, 'PRECISION_RATE') - sumStat(currentSlotEquipped, 'PRECISION_RATE');
-        const deltaCrit = sumStat(candidateGear, 'CRIT_RATE') - sumStat(currentSlotEquipped, 'CRIT_RATE');
+        const targetGear = editorMode === 'compare_new' ? candidateGear : currentSlotEquipped;
+
+        const deltaAgi = sumStat(targetGear, 'AGILITY') - sumStat(currentSlotEquipped, 'AGILITY');
+        const deltaSilk = sumStat(targetGear, 'MIN_SILKBIND_ATK') - sumStat(currentSlotEquipped, 'MIN_SILKBIND_ATK');
+        const deltaMaxPhys = sumStat(targetGear, 'MAX_PHYS_ATK') - sumStat(currentSlotEquipped, 'MAX_PHYS_ATK');
+        const deltaPower = sumStat(targetGear, 'POWER') - sumStat(currentSlotEquipped, 'POWER');
+        const deltaPrec = sumStat(targetGear, 'PRECISION_RATE') - sumStat(currentSlotEquipped, 'PRECISION_RATE');
+        const deltaCrit = sumStat(targetGear, 'CRIT_RATE') - sumStat(currentSlotEquipped, 'CRIT_RATE');
 
         const newTotalAgi = +(baseline.agility + deltaAgi).toFixed(1);
         const newTotalSilk = +(baseline.minSilkbind + deltaSilk).toFixed(1);
         const newTotalPrec = +(baseline.precisionRate + deltaPrec).toFixed(2);
         const newTotalCrit = +(baseline.critRate + deltaCrit).toFixed(2);
-
-        const reqAgi = baseline.simulate23 ? baseline.agiThreshold23 : 300;
-        const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : 352;
 
         const breaksTalent1 = newTotalAgi < reqAgi;
         const breaksTalent3 = newTotalSilk < reqSilk;
@@ -699,9 +771,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, playerProfil
             newTotalAgi, newTotalSilk, newTotalPrec, newTotalCrit,
             reqAgi, reqSilk, breaksTalent1, breaksTalent3, dropsPrecision
         };
-    }, [candidateGear, currentSlotEquipped, baseline]);
+    }, [candidateGear, currentSlotEquipped, baseline, editorMode, reqAgi, reqSilk]);
 
-    // 📸 HÀM QUÉT ẢNH AI OCR (CTRL+V HOẶC UPLOAD FILE) BẰNG GEMINI 2.5 FLASH
     const runGeminiOcr = async (base64DataUrl: string) => {
         setPreviewImage(base64DataUrl);
         setIsScanning(true);
@@ -723,25 +794,7 @@ Hãy đọc ảnh trang bị và trả về DUY NHẤT 1 JSON object theo cấu 
   ],
   "attunementKey": "PHYS_PEN | UMBRELLA_PROJECTILE_BOOST | TRAP_LIGHT_HEAVY | TRAP_MARTIAL_SKILL | TRAP_FAN_SPECIAL | TRAP_FAN_CHARGED",
   "attunementValue": 5.8
-}
-Bảng quy đổi MÃ_STAT:
-- Art of Umbrella Boost / Võ học Cửu Trùng Xuân Sắc tăng ST -> ART_UMBRELLA_BOOST
-- All Martial Arts Boost / Tất cả võ học tăng ST -> ALL_MARTIAL_ARTS_BOOST
-- Combat Boost Against Boss Units / Tăng ST lên Thủ lĩnh -> BOSS_DMG_BOOST
-- Max Physical Attack / Ngoại công tối đa -> MAX_PHYS_ATK
-- Min Physical Attack / Ngoại công tối thiểu -> MIN_PHYS_ATK
-- Power / Lực đạo / Sức mạnh -> POWER
-- Agility / Nhanh nhẹn / Ngự -> AGILITY
-- Precision Rate / Tỷ lệ Chính xác -> PRECISION_RATE
-- Critical Rate / Tỷ lệ Chí mạng -> CRIT_RATE
-- Affinity Rate / Tỉ lệ Hiểu ý -> AFFINITY_RATE
-- Mystic Skill DMG Boost / Tăng ST Kỳ thuật -> MYSTIC_DMG_23
-- Min Silkbind Attack / Kéo tơ nhỏ nhất -> MIN_SILKBIND_ATK
-- Max Silkbind Attack / Kéo tơ tối đa -> MAX_SILKBIND_ATK
-- Bellstrike Attack / Tiếng chuông -> BELLSTRIKE_ATK
-- Bamboocut Attack / Phá tre -> BAMBOOCUT_ATK
-- Stonesplit Attack / Xé đá -> STONESPLIT_ATK
-- HP / Defense / Body / Khí huyết / Phòng ngự -> DEFENSE_HP_BODY`;
+}`;
 
             if (!geminiApiKey.trim()) {
                 alert("💡 Để AI tự động điền thông số từ ảnh, đại hiệp hãy dán Gemini API Key vào ô cấu hình góc phải trên cùng (hoặc chỉnh trực tiếp bằng menu bên dưới)!");
@@ -767,13 +820,13 @@ Bảng quy đổi MÃ_STAT:
             const cleanedJson = rawText.replace(/```json|```/g, '').trim();
             const parsed = JSON.parse(cleanedJson);
 
-            if (parsed.slot && SLOTS_CONFIG.some(s => s.key === parsed.slot)) {
-                setActiveSlot(parsed.slot);
-            }
-            setCandidateGear(prev => ({
+            const targetSlot: SlotKey = (parsed.slot && SLOTS_CONFIG.some(s => s.key === parsed.slot)) ? parsed.slot : activeSlot;
+            setActiveSlot(targetSlot);
+
+            updateActiveEditingGear(prev => ({
                 ...prev,
                 name: parsed.name || prev.name,
-                slot: parsed.slot || activeSlot,
+                slot: targetSlot,
                 tier: parsed.tier === 96 ? 96 : 100,
                 gearSet: parsed.gearSet || prev.gearSet,
                 slot1: parsed.slot1 || prev.slot1,
@@ -789,7 +842,6 @@ Bảng quy đổi MÃ_STAT:
         }
     };
 
-    // Bắt sự kiện Ctrl+V dán ảnh trực tiếp trên trang
     useEffect(() => {
         const handlePaste = (e: ClipboardEvent) => {
             const items = e.clipboardData?.items;
@@ -811,10 +863,14 @@ Bảng quy đổi MÃ_STAT:
         };
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
-    }, [geminiApiKey, activeSlot]);
+    }, [geminiApiKey, activeSlot, editorMode]);
 
-    // ⚡ HÀM THAY MÓN ĐỒ ĐANG SOI VÀO NGƯỜI & TỰ ĐỘNG ĐẨY ĐỒ 96 CŨ VÀO ARSENAL
     const handleEquipCandidate = () => {
+        if (editorMode === 'edit_equipped') {
+            saveBuildToCloud(baseline, equipped, arsenal96, innerWays);
+            return;
+        }
+
         if (comparisonDelta.breaksTalent1 || comparisonDelta.breaksTalent3) {
             const confirmBreak = window.confirm("🚨 BÁO ĐỘNG ĐỎ: Thay món đồ này sẽ làm GÃY MỐC 100% THIÊN PHÚ VÕ HỌC! Đại hiệp vẫn muốn ép mặc chứ?");
             if (!confirmBreak) return;
@@ -846,39 +902,33 @@ Bảng quy đổi MÃ_STAT:
         saveBuildToCloud(nextBaseline, nextEquipped, nextArsenal, innerWays);
     };
 
-    // 📤 BẮN BÁO CÁO GIÁM ĐỊNH RICH EMBED LÊN DISCORD QUA WEBHOOK
     const handleSendDiscordWebhook = async () => {
         if (!webhookUrl.trim()) {
             alert("Hãy dán Discord Webhook URL vào ô cấu hình phía trên trước!");
             return;
         }
         const slotMeta = SLOTS_CONFIG.find(s => s.key === activeSlot)!;
-        const colorInt = candidateEval.verdictColor === 'emerald' ? 0x10b981 : candidateEval.verdictColor === 'amber' ? 0xf59e0b : 0xef4444;
+        const colorInt = activeGearEval.verdictColor === 'emerald' ? 0x10b981 : activeGearEval.verdictColor === 'amber' ? 0xf59e0b : 0xef4444;
 
         const embed = {
-            title: `☂️ GIÁM ĐỊNH THẦN KHÍ 2.3: ${candidateGear.name} (Bậc ${candidateGear.tier})`,
-            description: `**Đại hiệp:** \`${currentIngame}\` • **Hệ phái:** \`${selectedSpec}\`\n**Phán quyết:** **${candidateEval.verdictTitle}**\n> ${candidateEval.verdictAction}`,
+            title: `☂️ GIÁM ĐỊNH THẦN KHÍ 2.3: ${activeEditingGear.name} (Bậc ${activeEditingGear.tier})`,
+            description: `**Đại hiệp:** \`${currentIngame}\` • **Hệ phái:** \`${selectedSpec}\`\n**Phán quyết:** **${activeGearEval.verdictTitle}**\n> ${activeGearEval.verdictAction}`,
             color: colorInt,
             fields: [
                 {
                     name: `📌 Vị Trí & Bộ Set (${slotMeta.labelVi})`,
-                    value: `Bộ: **${candidateGear.gearSet}** | Điểm xấu: **${candidateEval.badPoints.toFixed(1)} / 2.0**`,
+                    value: `Bộ: **${activeEditingGear.gearSet}** | Điểm xấu: **${activeGearEval.badPoints.toFixed(1)} / 2.0**`,
                     inline: false
                 },
                 {
                     name: '🌟 Dòng Khởi Đầu (Slot 1)',
-                    value: `${STAT_OPTIONS.find(o => o.key === candidateGear.slot1.statKey)?.labelVi || candidateGear.slot1.statKey}: **+${candidateGear.slot1.value}**`,
+                    value: `${STAT_OPTIONS.find(o => o.key === activeEditingGear.slot1.statKey)?.labelVi || activeEditingGear.slot1.statKey}: **+${activeEditingGear.slot1.value}**`,
                     inline: true
                 },
                 {
                     name: '🔮 Dòng Định Âm (Slot 5)',
-                    value: `${ATTUNEMENT_OPTIONS.find(a => a.key === candidateGear.attunementKey)?.labelVi || candidateGear.attunementKey}`,
+                    value: `${ATTUNEMENT_OPTIONS.find(a => a.key === activeEditingGear.attunementKey)?.labelVi || activeEditingGear.attunementKey}`,
                     inline: true
-                },
-                {
-                    name: '⚖️ Độ Chênh Lệch Khi Thay Vào Người (Delta)',
-                    value: `• Nhanh nhẹn (AGI): \`${comparisonDelta.deltaAgi >= 0 ? '+' : ''}${comparisonDelta.deltaAgi}\` (Tổng mới: **${comparisonDelta.newTotalAgi}/${comparisonDelta.reqAgi}**)\n• Kéo Tơ Min: \`${comparisonDelta.deltaSilk >= 0 ? '+' : ''}${comparisonDelta.deltaSilk}\` (Tổng mới: **${comparisonDelta.newTotalSilk}/${comparisonDelta.reqSilk}**)\n• Chính xác: \`${comparisonDelta.deltaPrec >= 0 ? '+' : ''}${comparisonDelta.deltaPrec}%\` (Mới: **${comparisonDelta.newTotalPrec}%**)\n• Chí mạng: \`${comparisonDelta.deltaCrit >= 0 ? '+' : ''}${comparisonDelta.deltaCrit}%\` (Mới: **${comparisonDelta.newTotalCrit}%**)`,
-                    inline: false
                 }
             ],
             footer: { text: 'Thanh Long Sơn Trang • WWM 2.3 Gear Optimizer Hub' },
@@ -897,7 +947,6 @@ Bảng quy đổi MÃ_STAT:
         }
     };
 
-    // Danh sách các đồng môn đã lưu build trong hệ Võ Học đang chọn
     const savedUsersInSpec = useMemo(() => {
         const specDoc = wwmBuilds?.[selectedSpec] || {};
         return Object.entries(specDoc).map(([uid, data]: any) => ({
@@ -907,13 +956,8 @@ Bảng quy đổi MÃ_STAT:
         }));
     }, [wwmBuilds, selectedSpec, danhLuc]);
 
-    const reqAgi = baseline.simulate23 ? baseline.agiThreshold23 : 300;
-    const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : 352;
-
     return (
         <section className="space-y-6 animate-in fade-in duration-300 pb-16">
-            
-            {/* THÔNG BÁO ĐỒNG BỘ */}
             {statusBanner && (
                 <div className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold flex items-center justify-between shadow-lg">
                     <span>{statusBanner}</span>
@@ -921,7 +965,7 @@ Bảng quy đổi MÃ_STAT:
                 </div>
             )}
 
-            {/* 🟢 TẦNG ĐẦU: THANH CHỌN 11 HỆ VÕ HỌC (wwm_builds -> Võ học -> ID) */}
+            {/* THANH CHỌN HỆ VÕ HỌC & LƯU HỒ SƠ */}
             <div className="bg-[#090d16] border border-emerald-500/30 rounded-3xl p-5 shadow-2xl space-y-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
                     <div>
@@ -934,15 +978,18 @@ Bảng quy đổi MÃ_STAT:
                             ⚔️ Thần Khí Các · Giám Định & Tối Ưu Đồ Võ Học
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">
-                            Cấu trúc đồng bộ đám mây: <b className="text-emerald-400 font-mono">wwm_builds ➔ {selectedSpec} ➔ { currentIngame } ({viewingUserId})</b>
+                            Đang chỉnh sửa: <b className="text-emerald-400 font-mono">wwm_builds ➔ {selectedSpec} ➔ {currentIngame}</b>
+                            {hasUnsavedChanges && <span className="ml-2 text-amber-400 font-bold animate-pulse">● (Có thay đổi chưa lưu lên Mây)</span>}
                         </p>
                     </div>
 
-                    {/* ĐỒNG BỘ & CHỌN XEM ĐỒNG MÔN CÙNG HỆ */}
                     <div className="flex flex-wrap items-center gap-2.5">
                         <select
                             value={viewingUserId}
-                            onChange={(e) => setViewingUserId(e.target.value)}
+                            onChange={(e) => {
+                                setHasUnsavedChanges(false);
+                                setViewingUserId(e.target.value);
+                            }}
                             className="bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold focus:outline-none focus:border-emerald-500"
                         >
                             <option value={currentUserId}>👤 Hồ sơ của tôi: {currentIngame}</option>
@@ -964,14 +1011,17 @@ Bảng quy đổi MÃ_STAT:
                             type="button"
                             disabled={isSavingCloud || viewingUserId !== currentUserId}
                             onClick={() => saveBuildToCloud()}
-                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-40 text-zinc-950 font-black text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
+                            className={`px-4 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                                hasUnsavedChanges
+                                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-bounce'
+                                    : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                            }`}
                         >
                             {isSavingCloud ? "⏳ Đang lưu..." : "☁️ Lưu Hồ Sơ Lên Mây"}
                         </button>
                     </div>
                 </div>
 
-                {/* DANH SÁCH 11 HỆ VÕ HỌC TỪ FIREBASE VO_HOC_LIST */}
                 <div>
                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
                         Chọn Nhánh Võ Học (Tự động tách kho trang bị riêng cho từng hệ):
@@ -986,7 +1036,10 @@ Bảng quy đổi MÃ_STAT:
                                 <button
                                     key={specName}
                                     type="button"
-                                    onClick={() => setSelectedSpec(specName)}
+                                    onClick={() => {
+                                        setHasUnsavedChanges(false);
+                                        setSelectedSpec(specName);
+                                    }}
                                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
                                         isSelected
                                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
@@ -1007,25 +1060,24 @@ Bảng quy đổi MÃ_STAT:
                 </div>
             </div>
 
-            {/* 🟢 KHU VỰC 1: BẢNG KHÓA CỨNG 100% THIÊN PHÚ VÕ HỌC & 3 CHỈ SỐ TỶ LỆ SỐ VÀNG */}
+            {/* 🟢 KHU VỰC 1: BẢNG CHỈ SỐ NHÂN VẬT & MỐC THIÊN PHÚ (CHO PHÉP GÕ SỬA TRỰC TIẾP 100%) */}
             <div className="bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
                     <div>
                         <h3 className="text-base font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                            🔒 Quy Tắc Tối Thượng #1: Khóa Cứng 100% Thiên Phú Võ Học (Martial Art Talent Lock)
+                            🔒 Quy Tắc Tối Thượng #1: Khóa Cứng 100% Thiên Phú Võ Học (Bấm Vào Ô Số Để Sửa Trực Tiếp)
                         </h3>
                         <p className="text-xs text-zinc-400 mt-0.5">
-                            Mọi sự thay đổi trang bị PHẢI đảm bảo kích hoạt đủ 100% cả 3 Thiên phú trước khi tối ưu sát thương.
+                            Đại hiệp hãy nhập <b className="text-amber-300">Chỉ số hiện tại của nhân vật</b> và <b className="text-emerald-300">Mốc yêu cầu</b> rồi bấm <b>☁️ Lưu Hồ Sơ Lên Mây</b>.
                         </p>
                     </div>
 
-                    {/* CÔNG TẮC MÔ PHỎNG ĐỘT PHÁ 2.3 & KHO VŨ KHÍ 96 */}
                     <div className="flex flex-wrap items-center gap-3">
                         <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-bold text-amber-300 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={baseline.simulate23}
-                                onChange={(e) => setBaseline({ ...baseline, simulate23: e.target.checked })}
+                                onChange={(e) => updateBaselineField({ simulate23: e.target.checked })}
                                 className="accent-amber-400"
                             />
                             <span>🔥 Mô phỏng &lt;Mười Chiếu Chín Cấp U ·&gt; 2.3</span>
@@ -1035,7 +1087,7 @@ Bảng quy đổi MÃ_STAT:
                             <input
                                 type="checkbox"
                                 checked={baseline.arsenal96Active}
-                                onChange={(e) => setBaseline({ ...baseline, arsenal96Active: e.target.checked })}
+                                onChange={(e) => updateBaselineField({ arsenal96Active: e.target.checked })}
                                 className="accent-emerald-400"
                             />
                             <span>📦 Đã lắp Kho Vũ Khí 96 (Hệ Kéo Tơ)</span>
@@ -1043,89 +1095,140 @@ Bảng quy đổi MÃ_STAT:
                     </div>
                 </div>
 
-                {/* 3 THẺ TIẾN TRÌNH THIÊN PHÚ VÕ HỌC */}
+                {/* 3 THẺ TIẾN TRÌNH THIÊN PHÚ (SỬA ĐƯỢC CẢ CHỈ SỐ LẪN MỐC YÊU CẦU) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* THIÊN PHÚ 1: NHANH NHẸN (AGILITY) */}
-                    <div className={`p-4 rounded-2xl border ${baseline.agility >= reqAgi ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500 animate-pulse'}`}>
+                    {/* THIÊN PHÚ 1: NHANH NHẸN */}
+                    <div className={`p-4 rounded-2xl border ${baseline.agility >= reqAgi ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500'}`}>
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Thiên Phú 1 · Direct Crit (+9.1%)</div>
                                 <div className="text-sm font-black text-zinc-100">Nhanh Nhẹn (Agility)</div>
                             </div>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-black ${baseline.agility >= reqAgi ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500 text-white'}`}>
-                                {baseline.agility >= reqAgi ? '100% ĐẠT' : '⚠️ GÃY MỐC!'}
+                                {baseline.agility >= reqAgi ? '100% ĐẠT' : `THIẾU ${(reqAgi - baseline.agility).toFixed(0)} ĐIỂM`}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 my-2">
-                            <input
-                                type="number"
-                                step="1"
-                                value={baseline.agility}
-                                onChange={(e) => setBaseline({ ...baseline, agility: Number(e.target.value) })}
-                                className="w-24 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-sm font-mono font-black text-amber-300"
-                            />
-                            <span className="text-xs text-zinc-400 font-mono">/ Yêu cầu: <b>{reqAgi}</b></span>
+                            <div className="flex-1">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">✏️ Chỉ số của bạn:</span>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={baseline.agility}
+                                    onChange={(e) => updateBaselineField({ agility: Number(e.target.value) })}
+                                    className="w-full bg-zinc-950 border border-amber-500/40 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-black text-amber-300 focus:outline-none"
+                                />
+                            </div>
+                            <span className="text-zinc-500 font-bold pt-4">/</span>
+                            <div className="w-28">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">🎯 Mốc yêu cầu:</span>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={reqAgi}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        if (baseline.simulate23) updateBaselineField({ agiThreshold23: val });
+                                        else updateBaselineField({ reqAgility: val });
+                                    }}
+                                    className="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-bold text-zinc-300 focus:outline-none"
+                                />
+                            </div>
                         </div>
                         <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-                            <div className={`h-full ${baseline.agility >= reqAgi ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, (baseline.agility / reqAgi) * 100)}%` }}></div>
+                            <div className={`h-full transition-all ${baseline.agility >= reqAgi ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, (baseline.agility / Math.max(1, reqAgi)) * 100)}%` }}></div>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
-                            Khuyến nghị giữ <b className="text-amber-300">3 dòng Nhanh nhẹn</b> trên đồ (Quạt, Nón, Tay). Hiện có: <b className="text-emerald-400">{loadoutSummary.agiLines}/3 dòng</b>.
+                            Khuyến nghị giữ <b className="text-amber-300">3 dòng Nhanh nhẹn</b> trên đồ (Quạt, Nón, Tay). Hiện trên 8 món có: <b className={loadoutSummary.agiLines >= 3 ? "text-emerald-400" : "text-rose-400"}>{loadoutSummary.agiLines}/3 dòng</b>.
                         </p>
                     </div>
 
-                    {/* THIÊN PHÚ 2: NGOẠI CÔNG TỐI THIỂU (MIN PHYSICAL) */}
-                    <div className={`p-4 rounded-2xl border ${baseline.minPhysical >= 750 ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500'}`}>
+                    {/* THIÊN PHÚ 2: NGOẠI CÔNG TỐI THIỂU */}
+                    <div className={`p-4 rounded-2xl border ${baseline.minPhysical >= reqPhys ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500'}`}>
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Thiên Phú 2 · +36% Projectile Crit DMG</div>
                                 <div className="text-sm font-black text-zinc-100">Ngoại Công Tối Thiểu (Min Phys)</div>
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-300">
-                                {Math.min(100, Math.round((baseline.minPhysical / 750) * 100))}% (MAX CAP)
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black ${baseline.minPhysical >= reqPhys ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500 text-white'}`}>
+                                {baseline.minPhysical >= reqPhys ? '100% (MAX CAP)' : `THIẾU ${(reqPhys - baseline.minPhysical).toFixed(1)}`}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 my-2">
-                            <input
-                                type="number"
-                                step="0.1"
-                                value={baseline.minPhysical}
-                                onChange={(e) => setBaseline({ ...baseline, minPhysical: Number(e.target.value) })}
-                                className="w-28 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-sm font-mono font-black text-amber-300"
-                            />
-                            <span className="text-xs text-zinc-400 font-mono">/ Đỉnh mùa: <b>750</b></span>
+                            <div className="flex-1">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">✏️ Chỉ số của bạn:</span>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={baseline.minPhysical}
+                                    onChange={(e) => updateBaselineField({ minPhysical: Number(e.target.value) })}
+                                    className="w-full bg-zinc-950 border border-amber-500/40 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-black text-amber-300 focus:outline-none"
+                                />
+                            </div>
+                            <span className="text-zinc-500 font-bold pt-4">/</span>
+                            <div className="w-28">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">🎯 Đỉnh mùa:</span>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={reqPhys}
+                                    onChange={(e) => updateBaselineField({ reqMinPhysical: Number(e.target.value) })}
+                                    className="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-bold text-zinc-300 focus:outline-none"
+                                />
+                            </div>
                         </div>
                         <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-                            <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (baseline.minPhysical / 750) * 100)}%` }}></div>
+                            <div className={`h-full transition-all ${baseline.minPhysical >= reqPhys ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, (baseline.minPhysical / Math.max(1, reqPhys)) * 100)}%` }}></div>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
-                            Đã gấp đôi yêu cầu (<b className="text-emerald-400">1513.2/750</b>) ➔ <b className="text-rose-400">Tuyệt đối không lấy thêm dòng Min Physical trên đồ!</b>
+                            {baseline.minPhysical >= reqPhys ? (
+                                <>Đã vượt mốc (<b className="text-emerald-400">{baseline.minPhysical}/{reqPhys}</b>) ➔ <b className="text-rose-400">Không cần lấy thêm dòng Min Physical trên đồ!</b></>
+                            ) : (
+                                <>⚠️ Đang thiếu <b className="text-rose-400">{(reqPhys - baseline.minPhysical).toFixed(1)} điểm</b> để đạt trần +36% Crit DMG đạn đạo!</>
+                            )}
                         </p>
                     </div>
 
-                    {/* THIÊN PHÚ 3: KÉO TƠ NHỎ NHẤT (MIN SILKBIND ATTACK) */}
-                    <div className={`p-4 rounded-2xl border ${baseline.minSilkbind >= reqSilk ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500 animate-pulse'}`}>
+                    {/* THIÊN PHÚ 3: KÉO TƠ NHỎ NHẤT */}
+                    <div className={`p-4 rounded-2xl border ${baseline.minSilkbind >= reqSilk ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500'}`}>
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Thiên Phú 3 · +23.6 Xuyên Thấu Kéo Tơ</div>
                                 <div className="text-sm font-black text-zinc-100">Kéo Tơ Nhỏ Nhất (Min Silkbind)</div>
                             </div>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-black ${baseline.minSilkbind >= reqSilk ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500 text-white'}`}>
-                                {baseline.minSilkbind >= reqSilk ? '100% ĐẠT' : '⚠️ THIẾU KÉO TƠ!'}
+                                {baseline.minSilkbind >= reqSilk ? '100% ĐẠT' : `THIẾU ${(reqSilk - baseline.minSilkbind).toFixed(1)}`}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 my-2">
-                            <input
-                                type="number"
-                                step="0.1"
-                                value={baseline.minSilkbind}
-                                onChange={(e) => setBaseline({ ...baseline, minSilkbind: Number(e.target.value) })}
-                                className="w-24 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-sm font-mono font-black text-amber-300"
-                            />
-                            <span className="text-xs text-zinc-400 font-mono">/ Yêu cầu: <b>{reqSilk}</b></span>
+                            <div className="flex-1">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">✏️ Chỉ số của bạn:</span>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={baseline.minSilkbind}
+                                    onChange={(e) => updateBaselineField({ minSilkbind: Number(e.target.value) })}
+                                    className="w-full bg-zinc-950 border border-amber-500/40 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-black text-amber-300 focus:outline-none"
+                                />
+                            </div>
+                            <span className="text-zinc-500 font-bold pt-4">/</span>
+                            <div className="w-28">
+                                <span className="text-[9px] text-zinc-500 uppercase block mb-0.5">🎯 Mốc yêu cầu:</span>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={reqSilk}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        if (baseline.simulate23) updateBaselineField({ silkThreshold23: val });
+                                        else updateBaselineField({ reqMinSilkbind: val });
+                                    }}
+                                    className="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-400 rounded-lg px-2.5 py-1.5 text-sm font-mono font-bold text-zinc-300 focus:outline-none"
+                                />
+                            </div>
                         </div>
                         <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-                            <div className={`h-full ${baseline.minSilkbind >= reqSilk ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, (baseline.minSilkbind / reqSilk) * 100)}%` }}></div>
+                            <div className={`h-full transition-all ${baseline.minSilkbind >= reqSilk ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, (baseline.minSilkbind / Math.max(1, reqSilk)) * 100)}%` }}></div>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
                             Ưu tiên số 1: Dùng <b className="text-amber-300">Kho Vũ Khí Bậc 96 (Hệ Kéo Tơ)</b> để lấy điểm cộng thẳng.
@@ -1133,19 +1236,18 @@ Bảng quy đổi MÃ_STAT:
                     </div>
                 </div>
 
-                {/* THANH 3 CHỈ SỐ TỶ LỆ SỐ MÀU VÀNG (3 GOLDEN RATES) & CẤU HÌNH API/WEBHOOK */}
+                {/* 3 RATES SỐ VÀNG & API KEYS */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2 border-t border-zinc-800/60">
                     <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* PRECISION RATE */}
                         <div className={`p-3 rounded-xl border ${baseline.precisionRate >= 98 ? 'bg-zinc-950/80 border-amber-500/30' : 'bg-rose-950/40 border-rose-500'}`}>
-                            <div className="text-[10px] font-bold text-amber-400 uppercase">🎯 Precision (Số Vàng)</div>
+                            <div className="text-[10px] font-bold text-amber-400 uppercase">🎯 Precision (Số Vàng ✏️)</div>
                             <div className="flex items-center gap-1.5 mt-1">
                                 <input
                                     type="number"
                                     step="0.1"
                                     value={baseline.precisionRate}
-                                    onChange={(e) => setBaseline({ ...baseline, precisionRate: Number(e.target.value) })}
-                                    className="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-sm font-mono font-black text-amber-300"
+                                    onChange={(e) => updateBaselineField({ precisionRate: Number(e.target.value) })}
+                                    className="w-24 bg-zinc-900 border border-amber-500/40 rounded px-2 py-1 text-sm font-mono font-black text-amber-300"
                                 />
                                 <span className="text-xs text-zinc-400">% / 100%</span>
                             </div>
@@ -1154,16 +1256,15 @@ Bảng quy đổi MÃ_STAT:
                             </div>
                         </div>
 
-                        {/* CRITICAL RATE */}
                         <div className={`p-3 rounded-xl border ${baseline.critRate <= 80.5 ? 'bg-zinc-950/80 border-amber-500/30' : 'bg-amber-950/30 border-amber-400'}`}>
-                            <div className="text-[10px] font-bold text-amber-400 uppercase">💥 Critical (Số Vàng)</div>
+                            <div className="text-[10px] font-bold text-amber-400 uppercase">💥 Critical (Số Vàng ✏️)</div>
                             <div className="flex items-center gap-1.5 mt-1">
                                 <input
                                     type="number"
                                     step="0.1"
                                     value={baseline.critRate}
-                                    onChange={(e) => setBaseline({ ...baseline, critRate: Number(e.target.value) })}
-                                    className="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-sm font-mono font-black text-amber-300"
+                                    onChange={(e) => updateBaselineField({ critRate: Number(e.target.value) })}
+                                    className="w-24 bg-zinc-900 border border-amber-500/40 rounded px-2 py-1 text-sm font-mono font-black text-amber-300"
                                 />
                                 <span className="text-xs text-zinc-400">% / 80% Trần</span>
                             </div>
@@ -1172,16 +1273,15 @@ Bảng quy đổi MÃ_STAT:
                             </div>
                         </div>
 
-                        {/* AFFINITY RATE */}
                         <div className="p-3 rounded-xl border bg-zinc-950/80 border-zinc-800">
-                            <div className="text-[10px] font-bold text-zinc-400 uppercase">🌀 Affinity (Hiểu Ý)</div>
+                            <div className="text-[10px] font-bold text-zinc-400 uppercase">🌀 Affinity (Hiểu Ý ✏️)</div>
                             <div className="flex items-center gap-1.5 mt-1">
                                 <input
                                     type="number"
                                     step="0.1"
                                     value={baseline.affinityRate}
-                                    onChange={(e) => setBaseline({ ...baseline, affinityRate: Number(e.target.value) })}
-                                    className="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-sm font-mono font-bold text-zinc-300"
+                                    onChange={(e) => updateBaselineField({ affinityRate: Number(e.target.value) })}
+                                    className="w-24 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm font-mono font-bold text-zinc-300"
                                 />
                                 <span className="text-xs text-zinc-500">% (~12% tự nhiên)</span>
                             </div>
@@ -1191,7 +1291,6 @@ Bảng quy đổi MÃ_STAT:
                         </div>
                     </div>
 
-                    {/* Ô LƯU GEMINI KEY & DISCORD WEBHOOK */}
                     <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
                         <div>
                             <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">🔑 Gemini API Key (Để quét ảnh OCR):</label>
@@ -1223,24 +1322,42 @@ Bảng quy đổi MÃ_STAT:
                 </div>
             </div>
 
-            {/* 🟢 KHU VỰC 2 & 3: LƯỚI CHÍNH 12 CỘT (CỘT TRÁI: 8 MÓN ĐANG MẶC | CỘT PHẢI: MÁY QUÉT AI & BÀN CÂN ĐỐI CHIẾU) */}
+            {/* 🟢 KHU VỰC 2 & 3: LƯỚI 8 MÓN ĐANG MẶC (TRÁI) & BÀN CHỈNH SỬA / GIÁM ĐỊNH ĐỒ (PHẢI) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                {/* CỘT TRÁI (5 CỘT): SƠ ĐỒ 8 MÓN ĐANG MẶC & TIẾN ĐỘ DÒNG CHUẨN */}
-                <div className="lg:col-span-5 bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-5">
-                    <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                {/* CỘT TRÁI (5 CỘT): 8 MÓN ĐANG MẶC */}
+                <div className="lg:col-span-5 bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
                         <div>
                             <h3 className="text-sm font-black text-emerald-400 uppercase tracking-wider">
                                 🛡️ 8 Món Đang Mặc ({currentIngame})
                             </h3>
-                            <p className="text-[11px] text-zinc-500">Nhấp vào từng ô để đối chiếu với phôi đồ mới nhặt</p>
+                            <p className="text-[11px] text-zinc-400">
+                                Nhấp vào món bất kỳ để <b>Sửa chỉ số món đang mặc</b> hoặc <b>Đối chiếu phôi mới</b>
+                            </p>
                         </div>
-                        <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 text-[11px] font-mono text-amber-300 font-bold">
-                            God Lines: {loadoutSummary.godLines}/5
-                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={handleClearAll8Slots}
+                                className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold cursor-pointer"
+                                title="Làm trống cả 8 món về 0 để tự nhập đồ của bạn"
+                            >
+                                🧹 Làm Trống 8 Món
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleLoadSampleBiS8Slots}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold cursor-pointer"
+                                title="Nạp bộ mẫu 8 món chuẩn BiS 2.3"
+                            >
+                                ✨ Nạp Mẫu BiS
+                            </button>
+                        </div>
                     </div>
 
-                    {/* BỘ ĐẾM TIẾN ĐỘ DÒNG MỤC TIÊU (BI-S FORMULA TRACKER) */}
+                    {/* BỘ ĐẾM DÒNG TRÊN 8 MÓN */}
                     <div className="grid grid-cols-3 gap-2 bg-zinc-950/90 p-3 rounded-2xl border border-zinc-800/80 text-center">
                         <div>
                             <div className="text-[10px] text-zinc-500">Max Physical</div>
@@ -1270,7 +1387,7 @@ Bảng quy đổi MÃ_STAT:
                         </div>
                     </div>
 
-                    {/* LƯỚI 8 Ô TRANG BỊ (4 TRÁI MISTWILLOW - 4 PHẢI BEYOND THE CHILL) */}
+                    {/* DANH SÁCH 8 Ô TRANG BỊ */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {SLOTS_CONFIG.map((slot) => {
                             const item = equipped[slot.key];
@@ -1307,17 +1424,15 @@ Bảng quy đổi MÃ_STAT:
                                     <div className="mt-2 pt-2 border-t border-zinc-800/70 text-[10px] text-amber-300 font-medium truncate">
                                         Dòng 1: {STAT_OPTIONS.find(o => o.key === item.slot1.statKey)?.labelVi.replace(/^[^\]]+\]\s*/, '')} (+{item.slot1.value})
                                     </div>
-                                    {ev.attuneTrap && (
-                                        <div className="mt-1 text-[9px] text-rose-400 font-bold truncate">
-                                            🚨 Bẫy Định Âm!
-                                        </div>
-                                    )}
+                                    <div className="mt-1 text-[9px] text-zinc-400 truncate">
+                                        {item.tuningLines.map(l => STAT_OPTIONS.find(o => o.key === l.statKey)?.labelEn.split(' ')[0]).join(' • ')}
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* NGĂN KHO VŨ KHÍ BẬC 96 (TIER 96 ARSENAL) */}
+                    {/* KHO VŨ KHÍ 96 */}
                     <div className="pt-3 border-t border-zinc-800">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
@@ -1334,7 +1449,16 @@ Bảng quy đổi MÃ_STAT:
                                 {arsenal96.map((g, idx) => (
                                     <div key={idx} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 flex justify-between items-center text-xs">
                                         <span className="text-amber-300 font-bold">{g.name} (Bậc 96 • {g.gearSet})</span>
-                                        <span className="text-[10px] text-emerald-400 font-mono">Đang cộng Kéo Tơ</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setHasUnsavedChanges(true);
+                                                setArsenal96(arsenal96.filter((_, i) => i !== idx));
+                                            }}
+                                            className="text-zinc-500 hover:text-rose-400 text-[10px]"
+                                        >
+                                            ✕ Xóa
+                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -1342,18 +1466,47 @@ Bảng quy đổi MÃ_STAT:
                     </div>
                 </div>
 
-                {/* CỘT PHẢI (7 CỘT): MÁY QUÉT ẢNH AI (CTRL+V) + BÀN CÂN ĐỐI CHIẾU 2 CỘT + PHÁN QUYẾT */}
+                {/* CỘT PHẢI (7 CỘT): CHỈNH SỬA MÓN ĐANG MẶC HOẶC SOI PHÔI MỚI NHẶT */}
                 <div className="lg:col-span-7 space-y-6">
-                    
-                    {/* KHUNG QUÉT ẢNH AI OCR & CHỈNH SỬA NHANH PHÔI MỚI */}
                     <div className="bg-[#090d16] border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-5">
+                        
+                        {/* 🟢 CÔNG TẮC CHUYỂN CHẾ ĐỘ: SỬA MÓN ĐANG MẶC vs SOI PHÔI MỚI */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800">
+                            <button
+                                type="button"
+                                onClick={() => setEditorMode('edit_equipped')}
+                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                                    editorMode === 'edit_equipped'
+                                        ? 'bg-emerald-500 text-zinc-950 shadow-md'
+                                        : 'text-zinc-400 hover:text-zinc-200'
+                                }`}
+                            >
+                                <span>✏️ Chế Độ 1: Sửa Món Đang Mặc ({SLOTS_CONFIG.find(s => s.key === activeSlot)?.icon})</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setEditorMode('compare_new')}
+                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                                    editorMode === 'compare_new'
+                                        ? 'bg-amber-500 text-zinc-950 shadow-md'
+                                        : 'text-zinc-400 hover:text-zinc-200'
+                                }`}
+                            >
+                                <span>⚖️ Chế Độ 2: Soi Phôi Mới & So Sánh Delta</span>
+                            </button>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
                             <div>
                                 <h3 className="text-base font-black text-emerald-400 flex items-center gap-2">
-                                    🔍 Máy Giám Định Phôi Đồ Mới & Đối Chiếu Trực Tiếp
+                                    {editorMode === 'edit_equipped'
+                                        ? `🛠️ Đang Chỉnh Sửa Trực Tiếp: ${SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}`
+                                        : `🔍 Đang Soi Phôi Mới Nhặt So Với: ${SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}`}
                                 </h3>
                                 <p className="text-xs text-zinc-400">
-                                    Nhấn <b className="text-amber-300 font-mono">Ctrl + V</b> để dán ảnh chụp màn hình trang bị từ trong game, hoặc chọn nhanh thông số bên dưới.
+                                    {editorMode === 'edit_equipped'
+                                        ? 'Mọi chỉnh sửa bên dưới sẽ cập nhật thẳng vào món đồ đang mặc của bạn ở cột bên trái!'
+                                        : 'Nhấn Ctrl + V dán ảnh phôi mới nhặt hoặc chọn dòng để đọ độ chênh lệch (Delta) với món đang mặc.'}
                                 </p>
                             </div>
 
@@ -1382,12 +1535,12 @@ Bảng quy đổi MÃ_STAT:
                                 <img src={previewImage} alt="Gear Preview" className="w-20 h-20 object-cover rounded-xl border border-amber-500/30" />
                                 <div className="text-xs text-zinc-300 space-y-1">
                                     <div className="font-bold text-emerald-400">✅ Đã nạp ảnh chụp màn hình trang bị!</div>
-                                    <p className="text-[11px] text-zinc-500">Đại hiệp có thể kiểm tra hoặc tinh chỉnh lại các dòng bên dưới để xem Phán Quyết tức thì.</p>
+                                    <p className="text-[11px] text-zinc-500">Đại hiệp có thể kiểm tra hoặc tinh chỉnh lại các dòng bên dưới.</p>
                                 </div>
                             </div>
                         )}
 
-                        {/* BẢNG NHẬP / CHỈNH SỬA MÓN ĐỒ MỚI ĐANG SOI */}
+                        {/* CHỌN VỊ TRÍ, BẬC ĐỒ & BỘ SET */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-zinc-950/70 p-4 rounded-2xl border border-zinc-800/80">
                             <div>
                                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Vị trí món đồ (8 Ô):</label>
@@ -1405,8 +1558,8 @@ Bảng quy đổi MÃ_STAT:
                             <div>
                                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Bậc trang bị (Tier):</label>
                                 <select
-                                    value={candidateGear.tier}
-                                    onChange={(e) => setCandidateGear({ ...candidateGear, tier: Number(e.target.value) as 96 | 100 })}
+                                    value={activeEditingGear.tier}
+                                    onChange={(e) => updateActiveEditingGear(g => ({ ...g, tier: Number(e.target.value) as 96 | 100 }))}
                                     className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-zinc-100 font-bold"
                                 >
                                     <option value={100}>🔥 Bậc 100 (Patch 2.3 Mới)</option>
@@ -1417,8 +1570,8 @@ Bảng quy đổi MÃ_STAT:
                             <div>
                                 <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Bộ Set Trang Bị:</label>
                                 <select
-                                    value={candidateGear.gearSet}
-                                    onChange={(e) => setCandidateGear({ ...candidateGear, gearSet: e.target.value as any })}
+                                    value={activeEditingGear.gearSet}
+                                    onChange={(e) => updateActiveEditingGear(g => ({ ...g, gearSet: e.target.value as any }))}
                                     className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-bold"
                                 >
                                     <option value="Mistwillow">✅ Mistwillow (Bộ Thời Vũ - 4 Trái)</option>
@@ -1430,9 +1583,9 @@ Bảng quy đổi MÃ_STAT:
                             </div>
                         </div>
 
-                        {/* CHỈNH DÒNG KHỞI ĐẦU (SLOT 1), 3 DÒNG TẨY LUYỆN & DÒNG ĐỊNH ÂM (SLOT 5) */}
+                        {/* CHỈNH DÒNG 1, DÒNG 2-4 VÀ ĐỊNH ÂM DÒNG 5 */}
                         <div className="space-y-3">
-                            {/* DÒNG 1: INITIAL TUNING (NƠI DUY NHẤT RA GOD LINE T0) */}
+                            {/* DÒNG 1 */}
                             <div className="bg-amber-500/5 border border-amber-500/30 rounded-2xl p-3.5">
                                 <div className="flex justify-between items-center mb-1.5">
                                     <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
@@ -1444,13 +1597,13 @@ Bảng quy đổi MÃ_STAT:
                                 </div>
                                 <div className="flex gap-2">
                                     <select
-                                        value={candidateGear.slot1.statKey}
+                                        value={activeEditingGear.slot1.statKey}
                                         onChange={(e) => {
                                             const opt = STAT_OPTIONS.find(o => o.key === e.target.value);
-                                            setCandidateGear({
-                                                ...candidateGear,
+                                            updateActiveEditingGear(g => ({
+                                                ...g,
                                                 slot1: { statKey: e.target.value, value: opt ? opt.defaultVal : 40 }
-                                            });
+                                            }));
                                         }}
                                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-bold"
                                     >
@@ -1461,12 +1614,12 @@ Bảng quy đổi MÃ_STAT:
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={candidateGear.slot1.value}
-                                        onChange={(e) => setCandidateGear({
-                                            ...candidateGear,
-                                            slot1: { ...candidateGear.slot1, value: Number(e.target.value) }
-                                        })}
-                                        className="w-24 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 text-center"
+                                        value={activeEditingGear.slot1.value}
+                                        onChange={(e) => updateActiveEditingGear(g => ({
+                                            ...g,
+                                            slot1: { ...g.slot1, value: Number(e.target.value) }
+                                        }))}
+                                        className="w-24 bg-zinc-950 border border-amber-500/40 rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 text-center"
                                     />
                                 </div>
                             </div>
@@ -1479,26 +1632,28 @@ Bảng quy đổi MÃ_STAT:
                                     </span>
                                     <button
                                         type="button"
-                                        onClick={() => setCandidateGear({
-                                            ...candidateGear,
-                                            tuningLines: [...candidateGear.tuningLines, { statKey: 'MAX_PHYS_ATK', value: 45 }]
-                                        })}
+                                        onClick={() => updateActiveEditingGear(g => ({
+                                            ...g,
+                                            tuningLines: [...g.tuningLines, { statKey: 'MAX_PHYS_ATK', value: 45 }]
+                                        }))}
                                         className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold cursor-pointer"
                                     >
                                         + Thêm dòng
                                     </button>
                                 </div>
 
-                                {candidateGear.tuningLines.map((tLine, idx) => (
+                                {activeEditingGear.tuningLines.map((tLine, idx) => (
                                     <div key={idx} className="flex items-center gap-2">
                                         <span className="text-xs font-mono text-zinc-500 w-6">#{idx + 2}</span>
                                         <select
                                             value={tLine.statKey}
                                             onChange={(e) => {
                                                 const opt = STAT_OPTIONS.find(o => o.key === e.target.value);
-                                                const nextLines = [...candidateGear.tuningLines];
-                                                nextLines[idx] = { statKey: e.target.value, value: opt ? opt.defaultVal : 30 };
-                                                setCandidateGear({ ...candidateGear, tuningLines: nextLines });
+                                                updateActiveEditingGear(g => {
+                                                    const nextLines = [...g.tuningLines];
+                                                    nextLines[idx] = { statKey: e.target.value, value: opt ? opt.defaultVal : 30 };
+                                                    return { ...g, tuningLines: nextLines };
+                                                });
                                             }}
                                             className="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-200 font-medium"
                                         >
@@ -1511,19 +1666,22 @@ Bảng quy đổi MÃ_STAT:
                                             step="0.1"
                                             value={tLine.value}
                                             onChange={(e) => {
-                                                const nextLines = [...candidateGear.tuningLines];
-                                                nextLines[idx] = { ...nextLines[idx], value: Number(e.target.value) };
-                                                setCandidateGear({ ...candidateGear, tuningLines: nextLines });
+                                                const val = Number(e.target.value);
+                                                updateActiveEditingGear(g => {
+                                                    const nextLines = [...g.tuningLines];
+                                                    nextLines[idx] = { ...nextLines[idx], value: val };
+                                                    return { ...g, tuningLines: nextLines };
+                                                });
                                             }}
-                                            className="w-20 bg-zinc-900 border border-zinc-700 rounded-xl px-2 py-1.5 text-xs font-mono font-bold text-amber-300 text-center"
+                                            className="w-20 bg-zinc-900 border border-amber-500/40 rounded-xl px-2 py-1.5 text-xs font-mono font-bold text-amber-300 text-center"
                                         />
-                                        {candidateGear.tuningLines.length > 1 && (
+                                        {activeEditingGear.tuningLines.length > 1 && (
                                             <button
                                                 type="button"
-                                                onClick={() => setCandidateGear({
-                                                    ...candidateGear,
-                                                    tuningLines: candidateGear.tuningLines.filter((_, i) => i !== idx)
-                                                })}
+                                                onClick={() => updateActiveEditingGear(g => ({
+                                                    ...g,
+                                                    tuningLines: g.tuningLines.filter((_, i) => i !== idx)
+                                                }))}
                                                 className="text-zinc-600 hover:text-rose-400 px-1.5 text-xs cursor-pointer"
                                             >
                                                 ✕
@@ -1533,8 +1691,8 @@ Bảng quy đổi MÃ_STAT:
                                 ))}
                             </div>
 
-                            {/* DÒNG 5: ĐỊNH ÂM KHÓA CUỐI (ATTUNEMENT VALIDATOR) */}
-                            <div className={`rounded-2xl p-3.5 border ${candidateEval.attuneTrap ? 'bg-rose-950/30 border-rose-500' : 'bg-cyan-950/20 border-cyan-500/30'}`}>
+                            {/* DÒNG 5: ĐỊNH ÂM */}
+                            <div className={`rounded-2xl p-3.5 border ${activeGearEval.attuneTrap ? 'bg-rose-950/30 border-rose-500' : 'bg-cyan-950/20 border-cyan-500/30'}`}>
                                 <div className="flex justify-between items-center mb-1.5">
                                     <span className="text-[11px] font-black text-cyan-400 uppercase tracking-wider">
                                         🔮 Dòng Định Âm Khóa Cuối (Slot 5 - Attunement):
@@ -1544,102 +1702,95 @@ Bảng quy đổi MÃ_STAT:
                                     </span>
                                 </div>
                                 <select
-                                    value={candidateGear.attunementKey}
-                                    onChange={(e) => setCandidateGear({ ...candidateGear, attunementKey: e.target.value })}
+                                    value={activeEditingGear.attunementKey}
+                                    onChange={(e) => updateActiveEditingGear(g => ({ ...g, attunementKey: e.target.value }))}
                                     className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-bold"
                                 >
                                     {ATTUNEMENT_OPTIONS.map(a => (
                                         <option key={a.key} value={a.key}>{a.labelVi}</option>
                                     ))}
                                 </select>
-                                {candidateEval.attuneTrap && (
+                                {activeGearEval.attuneTrap && (
                                     <div className="mt-2 text-xs font-bold text-rose-400 bg-rose-950/60 px-3 py-2 rounded-xl border border-rose-500/40">
-                                        {candidateEval.attuneTrap}
+                                        {activeGearEval.attuneTrap}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* 🏆 HỘP PHÁN QUYẾT TỰ ĐỘNG (DECISION TREE VERDICT BOX) */}
+                        {/* HỘP PHÁN QUYẾT */}
                         <div className={`rounded-2xl p-5 border-2 shadow-xl space-y-3 ${
-                            candidateEval.verdictColor === 'emerald'
+                            activeGearEval.verdictColor === 'emerald'
                                 ? 'bg-emerald-950/30 border-emerald-500/60'
-                                : candidateEval.verdictColor === 'amber'
+                                : activeGearEval.verdictColor === 'amber'
                                     ? 'bg-amber-950/30 border-amber-500/60'
                                     : 'bg-rose-950/30 border-rose-500/60'
                         }`}>
                             <div className="flex flex-wrap justify-between items-center gap-2">
                                 <h4 className={`text-base font-black tracking-wide ${
-                                    candidateEval.verdictColor === 'emerald' ? 'text-emerald-300' : candidateEval.verdictColor === 'amber' ? 'text-amber-300' : 'text-rose-300'
+                                    activeGearEval.verdictColor === 'emerald' ? 'text-emerald-300' : activeGearEval.verdictColor === 'amber' ? 'text-amber-300' : 'text-rose-300'
                                 }`}>
-                                    {candidateEval.verdictTitle}
+                                    {activeGearEval.verdictTitle}
                                 </h4>
                                 <span className="px-3 py-1 rounded-full bg-zinc-950 border border-zinc-700 text-xs font-mono font-black text-amber-400">
-                                    Tổng Điểm Xấu: {candidateEval.badPoints.toFixed(1)} / 2.0
+                                    Tổng Điểm Xấu: {activeGearEval.badPoints.toFixed(1)} / 2.0
                                 </span>
                             </div>
 
                             <p className="text-xs text-zinc-200 leading-relaxed font-medium">
-                                {candidateEval.verdictAction}
+                                {activeGearEval.verdictAction}
                             </p>
 
-                            {/* GỢI Ý CHÉO HỆ PHÁI KHÁC NẾU CÓ DÒNG LỆCH HỆ */}
-                            {candidateEval.crossSpecHints.length > 0 && (
+                            {activeGearEval.crossSpecHints.length > 0 && (
                                 <div className="bg-zinc-950/80 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-300">
-                                    💡 <b>Gợi ý Đa Hệ Võ Học:</b> {candidateEval.crossSpecHints.join(' • ')}
+                                    💡 <b>Gợi ý Đa Hệ Võ Học:</b> {activeGearEval.crossSpecHints.join(' • ')}
                                 </div>
                             )}
 
-                            {/* BẢNG CÂN SO SÁNH 2 CỘT & ĐỘ CHÊNH LỆCH (DELTA) */}
-                            <div className="bg-zinc-950/90 border border-zinc-800 rounded-xl p-3.5 space-y-2">
-                                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                                    ⚖️ Độ Chênh Lệch (Delta) Nếu Thay Món Này Vào [{SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}]:
+                            {/* NẾU Ở CHẾ ĐỘ SOI PHÔI MỚI THÌ HIỆN BẢNG DELTA */}
+                            {editorMode === 'compare_new' && (
+                                <div className="bg-zinc-950/90 border border-zinc-800 rounded-xl p-3.5 space-y-2">
+                                    <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                        ⚖️ Độ Chênh Lệch (Delta) Nếu Thay Món Này Vào [{SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}]:
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                                        <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                                            <span className="text-[10px] text-zinc-500 block">Nhanh nhẹn (AGI)</span>
+                                            <span className={`font-black ${comparisonDelta.deltaAgi >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {comparisonDelta.deltaAgi >= 0 ? `+${comparisonDelta.deltaAgi}` : comparisonDelta.deltaAgi} (➔ {comparisonDelta.newTotalAgi})
+                                            </span>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                                            <span className="text-[10px] text-zinc-500 block">Kéo Tơ Min</span>
+                                            <span className={`font-black ${comparisonDelta.deltaSilk >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {comparisonDelta.deltaSilk >= 0 ? `+${comparisonDelta.deltaSilk}` : comparisonDelta.deltaSilk} (➔ {comparisonDelta.newTotalSilk})
+                                            </span>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                                            <span className="text-[10px] text-zinc-500 block">Chính Xác (Số Vàng)</span>
+                                            <span className={`font-black ${comparisonDelta.deltaPrec >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {comparisonDelta.deltaPrec >= 0 ? `+${comparisonDelta.deltaPrec}%` : `${comparisonDelta.deltaPrec}%`} (➔ {comparisonDelta.newTotalPrec}%)
+                                            </span>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                                            <span className="text-[10px] text-zinc-500 block">Max Physical</span>
+                                            <span className={`font-black ${comparisonDelta.deltaMaxPhys >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {comparisonDelta.deltaMaxPhys >= 0 ? `+${comparisonDelta.deltaMaxPhys}` : comparisonDelta.deltaMaxPhys}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                                    <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                                        <span className="text-[10px] text-zinc-500 block">Nhanh nhẹn (AGI)</span>
-                                        <span className={`font-black ${comparisonDelta.deltaAgi >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {comparisonDelta.deltaAgi >= 0 ? `+${comparisonDelta.deltaAgi}` : comparisonDelta.deltaAgi} (➔ {comparisonDelta.newTotalAgi})
-                                        </span>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                                        <span className="text-[10px] text-zinc-500 block">Kéo Tơ Min</span>
-                                        <span className={`font-black ${comparisonDelta.deltaSilk >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {comparisonDelta.deltaSilk >= 0 ? `+${comparisonDelta.deltaSilk}` : comparisonDelta.deltaSilk} (➔ {comparisonDelta.newTotalSilk})
-                                        </span>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                                        <span className="text-[10px] text-zinc-500 block">Chính Xác (Số Vàng)</span>
-                                        <span className={`font-black ${comparisonDelta.deltaPrec >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {comparisonDelta.deltaPrec >= 0 ? `+${comparisonDelta.deltaPrec}%` : `${comparisonDelta.deltaPrec}%`} (➔ {comparisonDelta.newTotalPrec}%)
-                                        </span>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                                        <span className="text-[10px] text-zinc-500 block">Max Physical</span>
-                                        <span className={`font-black ${comparisonDelta.deltaMaxPhys >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {comparisonDelta.deltaMaxPhys >= 0 ? `+${comparisonDelta.deltaMaxPhys}` : comparisonDelta.deltaMaxPhys}
-                                        </span>
-                                    </div>
-                                </div>
+                            )}
 
-                                {(comparisonDelta.breaksTalent1 || comparisonDelta.breaksTalent3 || comparisonDelta.dropsPrecision) && (
-                                    <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-black">
-                                        🚨 BÁO ĐỘNG ĐỎ:
-                                        {comparisonDelta.breaksTalent1 && ` Thay món này làm Nhanh nhẹn tụt xuống ${comparisonDelta.newTotalAgi}/${comparisonDelta.reqAgi} (Gãy mốc 100% Thiên phú 1)!`}
-                                        {comparisonDelta.breaksTalent3 && ` Thay món này làm Kéo Tơ tụt xuống ${comparisonDelta.newTotalSilk}/${comparisonDelta.reqSilk} (Gãy mốc 100% Thiên phú 3)!`}
-                                        {comparisonDelta.dropsPrecision && ` Chính xác tụt xuống ${comparisonDelta.newTotalPrec}% (<98% sẽ nhảy sát thương xám)!`}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* NÚT HÀNH ĐỘNG: MẶC VÀO NGƯỜI HOẶC BẮN LÊN DISCORD */}
                             <div className="flex flex-wrap gap-3 pt-1">
                                 <button
                                     type="button"
                                     onClick={handleEquipCandidate}
                                     className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg"
                                 >
-                                    ⚡ Mặc Món Này Vào [{SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}] & Lưu Mây
+                                    {editorMode === 'edit_equipped'
+                                        ? `💾 Lưu Cập Nhật Món [${SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}] Lên Mây`
+                                        : `⚡ Thay Phôi Này Vào [${SLOTS_CONFIG.find(s => s.key === activeSlot)?.labelVi}] & Lưu Mây`}
                                 </button>
                                 <button
                                     type="button"
@@ -1652,7 +1803,7 @@ Bảng quy đổi MÃ_STAT:
                         </div>
                     </div>
 
-                    {/* 🟢 KHU VỰC 4: CỐ VẤN TÂM PHÁP (INNER WAYS) & CHUỖI CHIÊU ROTATION 2.3 */}
+                    {/* KHU VỰC 4: TÂM PHÁP */}
                     <div className="bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
                             <div>
@@ -1660,13 +1811,14 @@ Bảng quy đổi MÃ_STAT:
                                     📜 Quy Tắc #6: Cố Vấn Tâm Pháp (Inner Ways) & Chuỗi Chiêu 2.3
                                 </h3>
                                 <p className="text-[11px] text-zinc-400">
-                                    Tận dụng buff 5 giây <b className="text-emerald-400">[Lingering Bone]</b> của Quạt ở bản 2.3 & kỹ thuật giữ nút gồng khi đổi vũ khí (Weapon Swap Charge Queuing).
+                                    Tận dụng buff 5 giây <b className="text-emerald-400">[Lingering Bone]</b> của Quạt ở bản 2.3 & kỹ thuật giữ nút gồng khi đổi vũ khí.
                                 </p>
                             </div>
 
                             <select
                                 value={innerWays.bossStyle}
                                 onChange={(e) => {
+                                    setHasUnsavedChanges(true);
                                     const style = e.target.value as 'flex23' | 'flying' | 'standing';
                                     if (style === 'flex23') {
                                         setInnerWays({ ...innerWays, bossStyle: style, slot3: { name: 'Star Reacher (Trích Tinh)', tier: 5 }, slot4: { name: 'Thunderous Bloom (Xuân Lôi Nhất Nộ)', tier: 5 } });
@@ -1700,7 +1852,10 @@ Bảng quy đổi MÃ_STAT:
                                 </div>
                                 <select
                                     value={innerWays.slot3.tier}
-                                    onChange={(e) => setInnerWays({ ...innerWays, slot3: { ...innerWays.slot3, tier: Number(e.target.value) } })}
+                                    onChange={(e) => {
+                                        setHasUnsavedChanges(true);
+                                        setInnerWays({ ...innerWays, slot3: { ...innerWays.slot3, tier: Number(e.target.value) } });
+                                    }}
                                     className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-amber-300 font-mono font-bold"
                                 >
                                     {[1, 2, 3, 4, 5, 6].map(t => <option key={t} value={t}>Tier {t}</option>)}
@@ -1713,21 +1868,17 @@ Bảng quy đổi MÃ_STAT:
                                 </div>
                                 <select
                                     value={innerWays.slot4.tier}
-                                    onChange={(e) => setInnerWays({ ...innerWays, slot4: { ...innerWays.slot4, tier: Number(e.target.value) } })}
+                                    onChange={(e) => {
+                                        setHasUnsavedChanges(true);
+                                        setInnerWays({ ...innerWays, slot4: { ...innerWays.slot4, tier: Number(e.target.value) } });
+                                    }}
                                     className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-amber-300 font-mono font-bold"
                                 >
                                     {[1, 2, 3, 4, 5, 6].map(t => <option key={t} value={t}>Tier {t}</option>)}
                                 </select>
                             </div>
                         </div>
-
-                        {(innerWays.slot4.name.includes('Breaking Point') && innerWays.slot4.tier < 4) && (
-                            <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500 text-xs text-rose-300 font-bold">
-                                ⚠️ CẢNH BÁO TÂM PHÁP: Chỉ lắp <b>Breaking Point (Phá Cực)</b> khi đã đạt từ <b>Tier 4 trở lên</b>! Nếu mới ở Tier 1–3, hãy đổi sang lắp <b>Thunderous Bloom (Xuân Lôi Nhất Nộ)</b> hoặc <b>Fivefold Bleed (Ngũ Trùng Xuất Huyết)</b> có Tier cao hơn!
-                            </div>
-                        )}
                     </div>
-
                 </div>
             </div>
         </section>

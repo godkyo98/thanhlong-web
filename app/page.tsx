@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/page.tsx
 'use client';
 
@@ -15,11 +16,12 @@ import AdminTab from "@/components/tabs/AdminTab";
 import GiftcodeTab from "@/components/tabs/GiftcodeTab";
 import PointTab from "@/components/tabs/PointTab";
 import SatTuongTab from "@/components/tabs/SatTuongTab";
+import HoatDongTab from "@/components/tabs/HoatDongTab";
 import WwmBuildsTab from "@/components/tabs/WwmBuildsTab";
 
-export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'builds';
+export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatdong' | 'builds';
 
-const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'builds'];
+const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'hoatdong', 'builds'];
 
 const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
@@ -29,7 +31,8 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     soi_acc: { icon: '🔮', title: 'Đài Chiếu Yêu (Soi Căn Cốt)' },
     giftcode: { icon: '🎁', title: 'Tàng Bảo Các (Giftcode)' },
     point: { icon: '💰', title: 'Bảng Vàng Công Trạng' },
-    sattuong: { icon: '⚔️', title: 'Bảng Chiến Thần Sát Tướng' },
+    sattuong: { icon: '👹', title: 'Bảng Chiến Thần Sát Tướng' },
+    hoatdong: { icon: '🔥', title: 'Sổ Điệp Hoạt Động Bang' },
     builds: { icon: '☂️', title: 'Thần Khí Các · Giám Định & Tối Ưu Đồ 2.3' },
     admin: { icon: '⚙️', title: 'Mật Thất Quản Trị Tông Môn' },
 };
@@ -41,10 +44,9 @@ export default function Home() {
 
     const { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, bangHoatDong, wwmBuilds 
     } = useFirebaseData();
 
-    // 🟢 ĐỒNG BỘ URL KHI TẢI TRANG & KHI BẤM NÚT BACK/FORWARD TRÌNH DUYỆT
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
@@ -63,7 +65,6 @@ export default function Home() {
         return () => window.removeEventListener('popstate', syncFromUrl);
     }, []);
 
-    // 🟢 HÀM CHUYỂN TAB CÓ ĐẨY LỊCH SỬ URL (HỖ TRỢ NÚT BACK CHUỘT & ĐIỆN THOẠI)
     const setActiveTab = useCallback((nextTab: TabKey) => {
         setActiveTabState(nextTab);
         if (typeof window !== 'undefined') {
@@ -100,7 +101,6 @@ export default function Home() {
             />
 
             <div className="max-w-7xl mx-auto px-4 py-6">
-                {/* 🟢 THANH ĐƯỜNG DẪN NGƯỢC (BREADCRUMB BAR) KHI ĐANG Ở TRONG MẬT THẤT */}
                 {activeTab !== 'home' && (
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/80 rounded-2xl px-4 py-2.5 shadow-md">
                         <div className="flex items-center gap-2 text-xs">
@@ -124,7 +124,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* CÁC MẬT THẤT */}
                 {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
                 {activeTab === 'danhluc' && <DanhLucTab data={danhLuc} />}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
@@ -142,8 +141,7 @@ export default function Home() {
                 )}
                 {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
                 {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
-                
-                {/* 🟢 MẬT THẤT MỚI: THẦN KHÍ CÁC (WWM_BUILDS) */}
+                {activeTab === 'hoatdong' && <HoatDongTab data={bangHoatDong} danhLuc={danhLuc} />}
                 {activeTab === 'builds' && (
                     <WwmBuildsTab
                         wwmBuilds={wwmBuilds}

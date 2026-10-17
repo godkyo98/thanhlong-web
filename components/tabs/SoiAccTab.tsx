@@ -1,9 +1,10 @@
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/SoiAccTab.tsx
 import { useState } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-// 🔮 TUYỆT KỸ LỘT MẶT NẠ CHUỖI JSON
 const safeParse = (val: any) => {
     if (!val) return {};
     if (typeof val === 'object') return val;
@@ -22,29 +23,12 @@ interface Props {
 }
 
 export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
-    const [soiQuery, setSoiQuery] = useState("");
-    const [isSoiLoading, setIsSoiLoading] = useState(false);
     const [expandedEquip, setExpandedEquip] = useState<Record<string, boolean>>({});
     const [editingDict, setEditingDict] = useState<{ id: string, mapName: string, valVi: string, valEn: string } | null>(null);
-
-    // 🟢 BIẾN QUẢN LÝ THANH TÌM KIẾM TRONG HỒ SƠ ĐÃ LƯU
     const [filterText, setFilterText] = useState("");
 
     const toggleEquip = (uid: string) => {
         setExpandedEquip(prev => ({ ...prev, [uid]: !prev[uid] }));
-    };
-
-    const handleSoiOnWeb = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!soiQuery.trim()) return;
-        setIsSoiLoading(true);
-        try {
-            const response = await fetch('/api/soi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: soiQuery, type: 'acc' }) });
-            const result = await response.json();
-            if (result.error) alert(`❌ Lỗi: ${result.error}`);
-            else { alert(`✅ Đã soi thành công và lưu hồ sơ lên mây!`); setSoiQuery(""); }
-        } catch (error) { alert("❌ Hệ thống API Netease không phản hồi."); }
-        setIsSoiLoading(false);
     };
 
     const handleInlineDictSubmit = async (e: React.FormEvent) => {
@@ -77,6 +61,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
             }, { merge: true });
 
             setEditingDict(null);
+            alert("✅ Đã cập nhật bản dịch lên Tàng Kinh Các thành công!");
         } catch (err) {
             alert("❌ Lỗi khi khảm từ điển lên Mây!");
         }
@@ -88,36 +73,53 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
 
         let translated = "";
         let targetMap = mapNames[0];
+        let valVi = "";
+        let valEn = "";
 
         for (const m of mapNames) {
-            if (wwmData?.[m]?.[strId]?.[lang]) {
-                translated = wwmData[m][strId][lang];
+            const entry = wwmData?.[m]?.[strId];
+            if (entry) {
                 targetMap = m;
-                break;
-            } else if (wwmData?.[m]?.[strId]?.vi) {
-                translated = wwmData[m][strId].vi;
-                targetMap = m;
+                if (typeof entry === 'string') {
+                    valVi = entry;
+                    valEn = entry;
+                } else if (typeof entry === 'object') {
+                    valVi = entry.vi || "";
+                    valEn = entry.en || "";
+                }
+                translated = lang === 'vi' ? (valVi || valEn) : (valEn || valVi);
                 break;
             }
         }
 
         if (translated) {
             return (
-                <span>
-                    {translated}
-                    {extraVal && <span className="text-indigo-400/70 font-mono ml-1 font-bold">({extraVal})</span>}
+                <span className="inline-flex items-center gap-1 group/trans">
+                    <span className="font-bold text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.25)]">
+                        {translated}
+                        {extraVal && <span className="text-indigo-400 font-mono ml-1 font-bold">({extraVal})</span>}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: valVi, valEn: valEn })}
+                        className="opacity-0 group-hover/trans:opacity-100 text-[10px] bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-400 text-zinc-400 px-1 py-0.5 rounded border border-zinc-700/80 cursor-pointer transition-all flex-shrink-0"
+                        title="Bấm để đính chính lại bản dịch nếu bị sai"
+                    >
+                        ✏️ Sửa
+                    </button>
                 </span>
             );
         }
 
         return (
-            <span className="inline-flex items-center gap-1.5 group">
+            <span className="inline-flex items-center gap-1.5 group/trans">
                 <span className="text-zinc-500 italic border-b border-dashed border-zinc-700 pb-0.5">
                     {fallbackText} [{strId}] {extraVal && <span className="font-mono text-zinc-600">({extraVal})</span>}
                 </span>
                 <button
+                    type="button"
                     onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: "", valEn: "" })}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 cursor-pointer transition-all flex-shrink-0"
+                    className="opacity-0 group-hover/trans:opacity-100 text-[10px] bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 cursor-pointer transition-all flex-shrink-0"
                     title="Bổ sung bản dịch"
                 >
                     ✍️ Dịch
@@ -190,70 +192,66 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
         );
     };
 
-    // 🟢 ĐOẠN LỌC TÌM KIẾM ĐÃ ĐƯỢC ĐẢ THÔNG (Dán đè vào vị trí cũ)
-    const filteredProfiles = profiles.filter((data: any) => {
-        const query = soiQuery.toLowerCase();
+    const filteredProfiles = Object.entries(profiles || {})
+        .filter(([uid, data]: any) => {
+            const tuKhoa = (filterText || "").toLowerCase().trim();
+            if (!tuKhoa) return true;
 
-        // Móc dữ liệu thô ra để lấy tên thật đối chiếu khi tìm kiếm
-        let raw: any = {};
-        try { raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data; } catch (e) { }
-        const base = safeParse(raw?.base);
+            let raw: any = {};
+            try { raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data; } catch (e) { }
+            const base = safeParse(raw?.base);
 
-        const ten = String(base?.role_name || data.name || "").toLowerCase();
-        const uid = String(data.id || "").toLowerCase();
+            const name1 = String(base?.role_name || "").toLowerCase();
+            const name2 = String(base?.name || "").toLowerCase();
+            const name3 = String(data.playerName || "").toLowerCase();
+            const name4 = String(data.name || "").toLowerCase();
 
-        // Khớp Tên thật hoặc khớp UID số đều tìm ra được
-        return ten.includes(query) || uid.includes(query);
-    });
+            const uid1 = String(uid || "").toLowerCase();
+            const uid2 = String(data.id || "").toLowerCase();
+
+            return name1.includes(tuKhoa) || name2.includes(tuKhoa) || name3.includes(tuKhoa) || name4.includes(tuKhoa) || uid1.includes(tuKhoa) || uid2.includes(tuKhoa);
+        })
+        .sort((a: any, b: any) => {
+            const dataA = a[1];
+            const dataB = b[1];
+
+            const getTime = (d: any) => {
+                if (!d) return 0;
+                if (d.updatedAt?.seconds) return d.updatedAt.seconds;
+                if (typeof d.updatedAt === 'number') return d.updatedAt;
+                if (d.timestamp?.seconds) return d.timestamp.seconds;
+                if (typeof d.timestamp === 'number') return d.timestamp;
+
+                let raw: any = {};
+                try { raw = typeof d.full_raw_data === 'string' ? JSON.parse(d.full_raw_data) : d.full_raw_data; } catch (e) { }
+                const base = safeParse(raw?.base);
+                return base?.last_logoff_time || base?.create_time || 0;
+            };
+
+            return getTime(dataB) - getTime(dataA);
+        });
 
     return (
-        <section className="animate-in fade-in duration-300">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-cyan-400">🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị</h2>
-                <p className="text-sm text-zinc-400 mt-1">
-                    Chuyển ngôn ngữ ở góc trên bên phải để xem bản tiếng Anh.
-                    <br />Nhấn vào nút <b className="text-amber-400 px-1 bg-amber-500/20 rounded mx-1">✍️ Dịch</b> cạnh các chỉ số chưa biết để đóng góp cho từ điển chung của Bang!
-                </p>
-            </div>
-
-            {/* FORM GỌI API NETEASE ĐỂ KÉO NGƯỜI MỚI */}
-            <form onSubmit={handleSoiOnWeb} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 mb-10 shadow-lg flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-1 w-full">
-                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Tra cứu mới từ Netease (Nhập UID hoặc Tên)</label>
-                    <input
-                        type="text"
-                        value={soiQuery}
-                        onChange={(e) => setSoiQuery(e.target.value)}
-                        placeholder="Ví dụ: 10101002 hoặc KyoĐaoPháp"
-                        className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-cyan-500 transition-colors"
-                        required
-                    />
+        <section className="animate-in fade-in duration-300 space-y-6 pb-16">
+            <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-xl font-black text-cyan-400 flex items-center gap-2">
+                        🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                        Toàn bộ hồ sơ được đồng bộ tự động khi cao thủ dùng lệnh <b className="text-cyan-300 font-mono">/soi_acc</b> trên Discord.
+                        <br />Tên vật phẩm dịch chuẩn được in <b className="text-amber-300">Màu Vàng Hổ Phách</b>. Rê chuột vào để bấm <b className="text-zinc-300">✏️ Sửa</b> nếu cần đính chính!
+                    </p>
                 </div>
-                <button
-                    type="submit"
-                    disabled={isSoiLoading}
-                    className="w-full md:w-auto bg-cyan-500 hover:bg-cyan-600 disabled:bg-zinc-800 text-zinc-950 font-bold py-3 px-8 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] cursor-pointer"
-                >
-                    {isSoiLoading ? "⏳ Đang triệu hồi Netease API..." : "🔍 Khởi Động Thiên Nhãn"}
-                </button>
-            </form>
 
-            {/* 🟢 KHU VỰC SỔ ĐIỆP CHỈ SỐ ĐÃ LƯU TRÊN MÂY */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-3 border-b border-zinc-800/50 gap-4">
-                <h3 className="text-lg font-bold text-zinc-100 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span>📂 Sổ Điệp Chỉ Số Đã Lưu</span>
-                    <span className="text-xs font-normal text-zinc-500">(Dữ liệu đồng bộ trực tiếp cùng Discord Bot)</span>
-                </h3>
-
-                {/* 🟢 THANH TÌM KIẾM HỒ SƠ */}
-                <div className="relative w-full md:w-64">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500">🔍</span>
+                <div className="relative w-full md:w-72 shrink-0">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500 text-xs">🔍</span>
                     <input
                         type="text"
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
-                        placeholder="Lọc Tên hoặc UID..."
-                        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-cyan-500 transition-colors"
+                        placeholder="Lọc Tên Ingame, UID..."
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/50 font-medium transition-colors"
                     />
                 </div>
             </div>
@@ -263,11 +261,10 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                     <div className="col-span-full text-center py-10 text-zinc-500">🔮 Đang lột mật bùa Thiên Thư...</div>
                 ) : filteredProfiles.length === 0 ? (
                     <div className="col-span-full text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-2xl">
-                        {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa tìm kiếm." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy soi ai đó trên Discord hoặc Web!"}
+                        {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa lọc." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy dùng lệnh /soi_acc trên Discord!"}
                     </div>
                 ) : (
-                    filteredProfiles.reverse().map(([uid, data]: any) => {
-                        // 1. Khởi tạo và ép kiểu cục raw
+                    filteredProfiles.map(([uid, data]: any) => {
                         let raw: any = {};
                         try {
                             raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
@@ -275,28 +272,34 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                             console.error(e);
                         }
 
-                        // 2. Bóc tách cơ sở và Bang hội (Thêm clubInfo)
                         const baseInfo = safeParse((raw as any)?.base);
-                        const clubInfo = safeParse((raw as any)?.club); // 👈 Bùa chú moi Bang hội
+                        const clubInfoTop = safeParse((raw as any)?.club);
 
-                        // 3. Khai xuất thông tin chuẩn xác 100%
                         const capDo = baseInfo?.level || data.level || 0;
-                        const lucChien = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
+                        
+                        const attrData = safeParse(raw.attr);
+                        const lucChienHienTai = attrData.XIUWEI_KUNGFU || 0;
+                        const lucChienToiDa = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
+                        const lucChienDisplay = lucChienHienTai > 0 ? lucChienHienTai : lucChienToiDa;
 
-                        // 🌟 LẤY ĐÚNG TÊN VÀ BANG:
-                        const tenNhanVat = baseInfo?.role_name || data.name || data.id;
-                        const tenBangHoi = clubInfo?.club_name || data.club_name || "Lãng Khách";
+                        const tenNhanVat = data.playerName || baseInfo?.role_name || baseInfo?.name || data.name || 'Mật Danh';
 
-                        const schoolId = baseInfo.school || 100;
+                        const schoolId = baseInfo?.school || 100;
                         const monPhai = wwmData?.SECT_MAP?.[schoolId]?.[lang] || wwmData?.SECT_MAP?.[String(schoolId)]?.[lang] || wwmData?.SECT_MAP?.[schoolId]?.vi || wwmData?.SECT_MAP?.[String(schoolId)]?.vi || `Ẩn Thế Phái (${schoolId})`;
 
-                        const clubInfo = safeParse(raw.club || baseInfo.club || {});
-                        let bangHoi = "Không môn không phái";
+                        const clubInfo = safeParse(raw.club || baseInfo?.club || {});
+
+                        let bangHoi = clubInfoTop?.club_name ||
+                            clubInfo?.club_name ||
+                            data.bangHoi ||
+                            data.club_name ||
+                            baseInfo?.club_name ||
+                            "Không môn không phái";
+
                         let chucVu = "Tự do";
 
-                        if (clubInfo.club_id || baseInfo.club_name || data.bangHoi) {
-                            bangHoi = data.bangHoi || baseInfo.club_name || "Có Bang Hội";
-                            if (bangHoi === "Không môn không phái") bangHoi = "Không rõ";
+                        if (clubInfo.club_id || baseInfo?.club_name || clubInfoTop?.club_name || data.bangHoi) {
+                            if (bangHoi === "Không môn không phái") bangHoi = "Có Bang Hội";
 
                             if (clubInfo.post && clubInfo.post.length > 0) {
                                 const postMap: Record<number, string> = { 1: "Bang Chủ 👑", 2: "Bang Phó 🎖️", 5: "Trưởng Lão 摸", 7: "Bông Hồng 🌸" };
@@ -312,29 +315,37 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                             } else { chucVu = "Thành Viên"; }
                         }
 
-                        const gender = (baseInfo.body_type ?? baseInfo.gender) === 1 ? "Nam 🚹" : "Nữ 🚺";
-                        const thietBi = baseInfo.device_name ? baseInfo.device_name.toUpperCase() : "Ẩn Dấu";
-                        const trangThai = baseInfo.is_online === 1 ? `🟢 Đang chơi (${thietBi})` : `🔴 Ngoại tuyến (${thietBi})`;
+                        const gender = (baseInfo?.body_type ?? baseInfo?.gender) === 1 ? "Nam 🚹" : "Nữ 🚺";
+                        const thietBi = baseInfo?.device_name ? baseInfo.device_name.toUpperCase() : "Ẩn Dấu";
+                        const trangThai = baseInfo?.is_online === 1 ? `🟢 Đang chơi (${thietBi})` : `🔴 Ngoại tuyến (${thietBi})`;
 
                         const kyLuat = safeParse(raw.school)?.rule?.jl ?? 100;
                         const kyLuatText = kyLuat < 100 ? "Vi phạm môn quy" : "Nghiêm chỉnh";
 
                         const thoiTrang = safeParse(raw.fashion)?.score || safeParse(raw.fashion)?.fashion_score || 0;
-                        const onlineTime = baseInfo.online_time ? (baseInfo.online_time / 3600).toFixed(1) : "0";
-                        const daysInJianghu = baseInfo.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
-                        const serverHost = baseInfo.hostnum || baseInfo.server_hostnum || "Bí ẩn";
+                        const onlineTime = baseInfo?.online_time ? (baseInfo.online_time / 3600).toFixed(1) : "0";
+                        const daysInJianghu = baseInfo?.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
+                        const serverHost = baseInfo?.hostnum || baseInfo?.server_hostnum || "Bí ẩn";
 
-                        const attrData = safeParse(raw.attr);
                         const str = attrData.STR || 0; const con = attrData.CON || 0; const agi = attrData.AGI || 0; const bas = attrData.BAS || 0; const cri = attrData.CRI || 0;
 
                         const exploreData = safeParse(raw.common_score_data);
-                        const th = exploreData.scores?.["58"] || 0; const kp = exploreData.scores?.["59"] || 0; const ht = exploreData.scores?.["60"] || 0; const ktn = exploreData.scores?.["61"] || 0;
-                        const tuViKP = attrData.XIUWEI_EXPLORE || 0; const tuViNghe = (attrData.XIUWEI_TRADE3 || 0) + (attrData.XIUWEI_TRADE4 || 0);
+                        const th = exploreData.scores?.["58"] || 0; 
+                        const kp = exploreData.scores?.["59"] || 0; 
+                        const ht = exploreData.scores?.["60"] || 0;
+                        const ktn = exploreData.scores?.["61"] || 0;
+
+                        const tuViKP = attrData.XIUWEI_EXPLORE || 0; 
+                        const tuViNghe = (attrData.XIUWEI_TRADE3 || 0) + (attrData.XIUWEI_TRADE4 || 0);
 
                         const kongfu = safeParse(raw.kongfu);
 
                         const lunjian = safeParse(raw.lunjian);
                         const rankGrade = lunjian.grade || 0;
+                        
+                        const rankStars = lunjian.small_grade || 0;
+                        const wuwoScore = lunjian.max_wuwo_score || 0;
+
                         const rankName = wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.vi || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.vi || `Bậc Thầy (${rankGrade})`;
 
                         const gameplayTrail = safeParse(raw.gameplay_trail);
@@ -357,38 +368,41 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl"></div>
                                     <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
                                         <div>
-                                            {/* Dòng 1: Tên nhân vật + UID */}
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <h4 className="font-extrabold text-2xl text-cyan-400 tracking-wide">{tenNhanVat}</h4>
                                                 <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] font-mono rounded border border-zinc-700">Máy chủ: {serverHost} | UID: {uid}</span>
                                                 <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 font-medium text-zinc-400">{trangThai}</span>
                                             </div>
-                                            {/* Dòng 2: Cấp, Phái, Giới tính */}
-                                            <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3">
+
+                                            <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 mt-2">
                                                 <span>Cấp: <b className="text-zinc-200 font-mono">{capDo}</b></span>
                                                 <span>•</span>
                                                 <span>Phái: <b className="text-amber-400">{monPhai}</b></span>
                                                 <span>•</span>
                                                 <span>Giới: <b className="text-zinc-200">{gender}</b></span>
                                             </div>
-                                            {/* Dòng 3: Khối hiển thị Bang Hội (Nổi bật màu Xanh Dương đậm chất Thanh Long) */}
-                                            <div className="flex items-center gap-2 mt-1">
+
+                                            <div className="flex items-center gap-2 mt-2">
                                                 <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-900 rounded-md text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
-                                                    Môn Phái
+                                                    Bang Hội
                                                 </span>
                                                 <span className="text-sm font-black text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
-                                                    {warmBangHoi(tenBangHoi)}
+                                                    {warmBangHoi(bangHoi)}
                                                 </span>
-                                                {chucVu !== "Thành Viên" && (
+                                                {chucVu !== "Tự do" && (
                                                     <span className="px-2 py-0.5 bg-sky-900/30 border border-sky-800/50 rounded-md text-[10px] text-sky-300 font-medium">
                                                         {chucVu}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
+
                                         <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-center md:text-right shrink-0">
                                             <div className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Lực Chiến Võ Học</div>
-                                            <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChien.toLocaleString('vi-VN')}</div>
+                                            <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChienDisplay.toLocaleString('vi-VN')}</div>
+                                            {lucChienHienTai > 0 && lucChienToiDa !== lucChienHienTai && (
+                                                <div className="text-[10px] text-rose-400/80 font-mono mt-0.5">Max: {lucChienToiDa.toLocaleString('vi-VN')}</div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -420,9 +434,15 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                         <div>
                                             <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🏆 1v1 Luận Kiếm Đài</div>
                                             <div className="text-xs text-zinc-300">
-                                                <div>Cảnh giới: <span className="text-indigo-400 font-bold">{rankName}</span></div>
+                                                <div>Cảnh giới: <span className="text-indigo-400 font-bold">{rankName}</span> {rankStars > 0 && <span className="text-amber-400 font-bold text-[11px] ml-1">⭐ {rankStars} Sao</span>}</div>
                                                 <div className="text-zinc-400 mt-0.5 font-mono text-[11px]">
                                                     Trận: <span className="text-zinc-200 font-bold">{matches}</span> | Thắng: <span className="text-emerald-400 font-bold">{winRate}</span> {streak > 1 && <span className="text-rose-400 font-bold bg-rose-950/40 px-1 rounded ml-1">🔥 Chuỗi {streak}</span>}
+                                                </div>
+                                                <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between">
+                                                    <span className="text-zinc-400">Điểm Vô Ngã (Wuwo):</span>
+                                                    <span className="text-cyan-400 font-bold">
+                                                        {wuwoScore > 0 ? wuwoScore.toLocaleString('vi-VN') : (lang === 'vi' ? "Chưa tham ngộ" : "Not comprehended")}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -457,7 +477,7 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                             <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🗺️ Khám Phá & Tu Vi Phụ</div>
                                             <div className="text-xs text-zinc-400 space-y-0.5">
                                                 <div>TH: <span className="text-zinc-300 font-mono">{th.toLocaleString('vi-VN')}</span> | KP: <span className="text-zinc-300 font-mono">{kp.toLocaleString('vi-VN')}</span> | HT: <span className="text-zinc-300 font-mono">{ht.toLocaleString('vi-VN')}</span> | KTN: <span className="text-zinc-300 font-mono">{ktn.toLocaleString('vi-VN')}</span></div>
-                                                <div>KP: <span className="text-amber-300 font-mono">{tuViKP.toLocaleString('vi-VN')}</span> | Nghề: <span className="text-amber-300 font-mono">{tuViNghe.toLocaleString('vi-VN')}</span></div>
+                                                <div>KP Tu Vi: <span className="text-amber-300 font-mono">{tuViKP.toLocaleString('vi-VN')}</span> | Nghề: <span className="text-amber-300 font-mono">{tuViNghe.toLocaleString('vi-VN')}</span></div>
                                             </div>
                                         </div>
                                         <div>
@@ -497,13 +517,12 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                 )}
             </div>
 
-            {/* 🟢 POPUP ĐIỀN TỪ ĐIỂN SONG NGỮ THÔNG MINH */}
             {editingDict && (
                 <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
-                        <h3 className="text-lg font-bold text-amber-400 mb-2">✍️ Đóng Góp Bản Dịch</h3>
+                        <h3 className="text-lg font-bold text-amber-400 mb-2">✍️ Cập Nhật & Sửa Bản Dịch</h3>
                         <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-                            Đại hiệp đang thêm tên cho Mã ID <b className="text-cyan-400 font-mono text-sm bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.id}</b> vào nhóm <b className="text-zinc-200 font-mono bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.mapName}</b>.
+                            Đại hiệp đang sửa bản dịch cho Mã ID <b className="text-cyan-400 font-mono text-sm bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.id}</b> thuộc nhóm <b className="text-zinc-200 font-mono bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.mapName}</b>.
                         </p>
                         <form onSubmit={handleInlineDictSubmit} className="space-y-4">
                             <div>
@@ -534,12 +553,12 @@ export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
                                     required={lang === 'en'}
                                 />
                                 <p className="text-[10px] text-zinc-500 mt-1 italic">
-                                    Nếu bỏ trống ngôn ngữ còn lại, hệ thống sẽ tự động dùng bản {lang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'} đắp chéo sang để tránh bị khuyết!
+                                    Đính chính tên chuẩn để toàn thể huynh đệ cùng nhìn thấy dữ liệu chính xác!
                                 </p>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setEditingDict(null)} className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-bold rounded-xl transition-colors cursor-pointer">Hủy Bỏ</button>
-                                <button type="submit" className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-bold rounded-xl transition-colors cursor-pointer">Lưu Trữ Khí Khẩu</button>
+                                <button type="submit" className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-bold rounded-xl transition-colors cursor-pointer">💾 Cập Nhật Bản Dịch</button>
                             </div>
                         </form>
                     </div>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/DanhLucTab.tsx
 import { useState } from 'react';
 

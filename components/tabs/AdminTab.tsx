@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/AdminTab.tsx
 import { useState } from 'react';
 import { doc, setDoc } from 'firebase/firestore';

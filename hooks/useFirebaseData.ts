@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // hooks/useFirebaseData.ts
 import { useState, useEffect } from "react";
 import { doc, collection, onSnapshot } from "firebase/firestore"; 
@@ -14,6 +15,9 @@ export default function useFirebaseData() {
     const [pointData, setPointData] = useState<any>(null);
     const [satTuongData, setSatTuongData] = useState<any>(null);
     
+    // 🟢 HỨNG DỮ LIỆU HOẠT ĐỘNG BANG (bang_hoat_dong)
+    const [bangHoatDong, setBangHoatDong] = useState<any>(null);
+    
     // 🟢 HỨNG DỮ LIỆU TỔNG ĐỒ BUILD (wwm_builds -> Võ học -> ID)
     const [wwmBuilds, setWwmBuilds] = useState<Record<string, any>>({});
 
@@ -26,12 +30,13 @@ export default function useFirebaseData() {
         const unsub6 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_data'), (snap) => setGiftcodeData(snap.exists() ? snap.data() : { codes: {} }));
         const unsub7 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_claims'), (snap) => setGiftcodeClaims(snap.exists() ? snap.data() : {}));
         const unsub8 = onSnapshot(doc(db, 'thanhlong_config', 'points_data'), (snap) => setPointData(snap.exists() ? snap.data() : {}));
-        const unsub9 = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_data'), (snap) => {
-            setSatTuongData(snap.exists() ? snap.data() : {});
-        });
+        const unsub9 = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_data'), (snap) => setSatTuongData(snap.exists() ? snap.data() : {}));
+        
+        // 🟢 ĐƯỜNG TRUYỀN HOẠT ĐỘNG BANG
+        const unsub10 = onSnapshot(doc(db, 'thanhlong_config', 'bang_hoat_dong'), (snap) => setBangHoatDong(snap.exists() ? snap.data() : {}));
 
-        // 🟢 LẮNG NGHE TOÀN BỘ COLLECTION wwm_builds (Mỗi docId là tên 1 hệ Võ Học)
-        const unsub10 = onSnapshot(
+        // 🟢 ĐƯỜNG TRUYỀN TỔNG ĐỒ BUILD (wwm_builds)
+        const unsub11 = onSnapshot(
             collection(db, 'wwm_builds'),
             (querySnap) => {
                 const buildsMap: Record<string, any> = {};
@@ -47,12 +52,12 @@ export default function useFirebaseData() {
 
         return () => { 
             unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
-            unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); unsub11(); 
         };
     }, []);
 
     return { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, bangHoatDong, wwmBuilds 
     };
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from "next-auth"
 import DiscordProvider from "next-auth/providers/discord"
 
@@ -16,9 +17,8 @@ const handler = NextAuth({
         DiscordProvider({
             clientId: process.env.DISCORD_CLIENT_ID!,
             clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-            // Yêu cầu Discord cấp quyền xem người dùng đang ở trong những Server nào
-            authorization: "https://discord.com/api/oauth2/authorize?scope=identify+guilds.members.read",
-        })
+            issuer: "https://discord.com", // 🟢 Thêm dòng này để khớp với chuẩn OAuth mới của Discord
+        } as any),
     ],
     callbacks: {
         async signIn({ account }) {
@@ -32,11 +32,11 @@ const handler = NextAuth({
 
                 if (!res.ok) {
                     // Trả về false -> Kẻ này không ở trong Server Thanh Long -> Cấm cửa!
-                    return false; 
+                    return false;
                 }
 
                 const member = await res.json();
-                
+
                 // Kiểm tra xem áo họ mặc có đúng là Bang Chúng hoặc Cán Bộ không
                 const hasAllowedRole = member.roles.some((roleId: string) => ALLOWED_ROLES.includes(roleId));
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/GiftcodeTab.tsx
 import React, { useState, useMemo } from 'react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';

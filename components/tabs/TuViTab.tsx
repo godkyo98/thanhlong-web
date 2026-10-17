@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/TuViTab.tsx
 import React, { useState } from 'react';
 
