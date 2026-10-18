@@ -1,8 +1,7 @@
 // components/layout/Header.tsx
 import React from 'react';
 
-// 🟢 Kyo đã giữ nguyên bản, CHỈ THÊM 'hoatDong' VÀO ĐÂY ĐỂ TYPESCRIPT KHÔNG LỖI, TUYỆT ĐỐI KHÔNG VẼ THÊM NÚT XẤU XÍ
-type TabType = 'home' | 'danhluc' | 'talent' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'sattuong' | 'hoatDong';
+export type TabType = 'home' | 'danhluc' | 'tuvi' | 'soi_acc' | 'talent' | 'giftcode' | 'point' | 'sattuong' | 'hoatdong' | 'builds' | 'admin';
 
 interface HeaderProps {
     activeTab: TabType;
@@ -13,58 +12,59 @@ interface HeaderProps {
     signOut: () => void;
 }
 
-export default function Header({ 
-    activeTab, 
-    setActiveTab, 
-    displayLang, 
-    setDisplayLang, 
-    isMaster, 
-    signOut 
+export default function Header({
+    activeTab,
+    setActiveTab,
+    displayLang,
+    setDisplayLang,
+    isMaster,
+    signOut
 }: HeaderProps) {
     return (
-        <header className="border-b border-zinc-800/80 bg-zinc-900/50 backdrop-blur sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                
-                {/* 🐉 LOGO TIÊU ĐỀ: Bấm vào đây là tự động lật trận pháp quay về Chính Điện */}
-                <div 
-                    onClick={() => setActiveTab('home')} 
-                    className="flex items-center gap-3 cursor-pointer select-none group"
-                    title="Quay về Chính Điện"
+        <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80">
+            {/* 🟢 Dùng chung max-w-[1440px] mx-auto px-4 sm:px-6 để thẳng hàng 100% với Banner bên dưới */}
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+                <div
+                    onClick={() => setActiveTab('home')}
+                    className="flex items-center gap-3 cursor-pointer group"
                 >
                     <span className="text-2xl group-hover:scale-110 transition-transform">🐉</span>
-                    <h1 className="text-xl font-black tracking-wider text-amber-400 group-hover:text-amber-300 transition-colors">
+                    <h1 className="text-lg sm:text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500">
                         ĐẠI ĐIỆN THANH LONG
                     </h1>
                 </div>
-                
-                <div className="flex gap-1 items-center">
-                    {/* ⚙️ MẬT THẤT QUẢN TRỊ: Phía trên Header chỉ giữ lại duy nhất đặc quyền này */}
+
+                <div className="flex items-center gap-3">
                     {isMaster && (
-                        <button 
-                            onClick={() => setActiveTab('admin')} 
-                            className={`shrink-0 px-3 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                                activeTab === 'admin' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'text-zinc-400 hover:text-red-400/80'
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('admin')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                activeTab === 'admin'
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                    : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
                             }`}
                         >
-                            ⚙️ Quản Trị
+                            <span>⚙️</span>
+                            <span>Quản Trị</span>
                         </button>
                     )}
-                    
-                    {isMaster && <div className="w-px h-6 bg-zinc-800 mx-2 shrink-0"></div>}
-                    
-                    {/* NÚT GẠT CHUYỂN SONG NGỮ */}
-                    <button 
-                        onClick={() => setDisplayLang(displayLang === 'vi' ? 'en' : 'vi')} 
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 shrink-0"
+
+                    <div className="h-4 w-[1px] bg-zinc-800 hidden sm:block"></div>
+
+                    <button
+                        type="button"
+                        onClick={() => setDisplayLang(displayLang === 'vi' ? 'en' : 'vi')}
+                        className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-200 transition-colors cursor-pointer"
                     >
                         {displayLang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN'}
                     </button>
 
-                    {/* NÚT ĐĂNG XUẤT */}
-                    <button 
-                        onClick={() => signOut()} 
-                        className="p-2 text-zinc-400 hover:text-red-400 rounded-lg transition-all cursor-pointer shrink-0"
-                        title="Rời khỏi sơn trang"
+                    <button
+                        type="button"
+                        onClick={() => signOut()}
+                        className="px-2.5 py-1.5 rounded-xl bg-zinc-900/60 hover:bg-rose-950/40 border border-zinc-800/80 hover:border-rose-500/30 text-xs text-zinc-400 hover:text-rose-300 transition-colors cursor-pointer"
+                        title="Đăng xuất"
                     >
                         🚪
                     </button>

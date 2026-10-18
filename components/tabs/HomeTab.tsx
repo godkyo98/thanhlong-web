@@ -45,38 +45,47 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
 
     return (
         <section className="w-full animate-in fade-in zoom-in-95 duration-500 space-y-8">
-            {/* BANNER CHÀO MỪNG */}
-            <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border border-zinc-800/80">
-                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black"></div>
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 mix-blend-overlay"></div>
-                
+            {/* BANNER CHÀO MỪNG (ĐÃ BỎ LỚP NỀN ĐEN ĐẶC to-black) */}
+            <div
+                className="relative w-full rounded-3xl overflow-hidden shadow-2xl border border-cyan-500/30 backdrop-blur-md"
+                style={{
+                    background: "linear-gradient(135deg, rgba(8, 47, 73, 0.55) 0%, rgba(15, 23, 42, 0.65) 50%, rgba(6, 78, 59, 0.4) 100%)",
+                    boxShadow: "0 0 50px -10px rgba(6, 182, 212, 0.2)"
+                }}
+            >
+                {/* Ánh sáng trang trí góc phải Banner */}
+                <div
+                    className="absolute -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none blur-3xl"
+                    style={{ background: "radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, transparent 70%)" }}
+                />
+
                 <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div>
-                        <div className="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-bold tracking-widest mb-4">
+                        <div className="inline-block px-3 py-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold tracking-widest mb-4">
                             ⛩️ ĐỆ NHẤT SƠN TRANG
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-600 mb-2 drop-shadow-sm">
+                        <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 mb-2 drop-shadow-sm">
                             Hoan nghênh, {userName}!
                         </h2>
-                        <p className="text-zinc-400 max-w-xl leading-relaxed text-sm">
+                        <p className="text-slate-300 max-w-xl leading-relaxed text-sm">
                             Chào mừng đại hiệp bước vào Chính Điện của Thanh Long. Hãy chọn một trong các lối đi bên dưới để bắt đầu kiểm tra mật thư bang hội.
                         </p>
                     </div>
                     
                     <div className="hidden md:flex flex-col gap-3 shrink-0">
-                        <div className="bg-zinc-950/60 backdrop-blur border border-zinc-800 p-4 rounded-xl flex items-center gap-4 w-48">
+                        <div className="bg-slate-950/60 backdrop-blur-md border border-cyan-500/25 p-4 rounded-xl flex items-center gap-4 w-48">
                             <div className="text-3xl">👥</div>
                             <div>
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Quân Số Sơn Trang</div>
-                                <div className="text-xl font-black text-zinc-200">{totalMembers}</div>
+                                <div className="text-[10px] text-cyan-400/80 uppercase font-bold tracking-wider">Quân Số Sơn Trang</div>
+                                <div className="text-xl font-black text-white">{totalMembers}</div>
                             </div>
                         </div>
                         {top1TuVi && (
-                            <div className="bg-zinc-950/60 backdrop-blur border border-amber-500/10 p-4 rounded-xl flex items-center gap-4 w-48">
+                            <div className="bg-slate-950/60 backdrop-blur-md border border-amber-500/30 p-4 rounded-xl flex items-center gap-4 w-48">
                                 <div className="text-3xl">👑</div>
                                 <div className="overflow-hidden">
-                                    <div className="text-[10px] text-amber-500/80 uppercase font-bold tracking-wider">Top 1 Phong Thần</div>
-                                    <div className="text-sm font-black text-amber-400 truncate w-full">{top1TuVi.name}</div>
+                                    <div className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Top 1 Phong Thần</div>
+                                    <div className="text-sm font-black text-amber-300 truncate w-full">{top1TuVi.name}</div>
                                 </div>
                             </div>
                         )}

@@ -568,9 +568,15 @@ export interface CharacterBaseline {
     reqMinPhysical: number;
     minSilkbind: number;
     reqMinSilkbind: number;
-    precisionRate: number;
+    resistanceRate?: number; // 15 | 30 | 45 | 65 | 85 (%)
+    rawPrecisionRate?: number;
+    precisionRate: number;   // Không khóa trần 100% để thấy rõ số % bị thừa!
+    rawCritRate?: number;
     critRate: number;
+    rawAffinityRate?: number;
     affinityRate: number;
+    directCritRate?: number;
+    directAffinityRate?: number;
     simulate23: boolean;
     agiThreshold23: number;
     silkThreshold23: number;
@@ -589,9 +595,15 @@ const DEFAULT_BASELINE: CharacterBaseline = {
     reqMinPhysical: 750,
     minSilkbind: 469.9,
     reqMinSilkbind: 352,
-    precisionRate: 99.6,
-    critRate: 78.5,
-    affinityRate: 12.0,
+    resistanceRate: 85,      // Chuẩn Lv. 18/19 (Lv. 100): 85% Resistance
+    rawPrecisionRate: 134.5,
+    precisionRate: 100.4,    // 134.5 / 1.34 = 100.4% (Thừa 0.4%)
+    rawCritRate: 117.6,
+    critRate: 63.6,          // 117.6 / 1.85 = 63.6%
+    rawAffinityRate: 37.6,
+    affinityRate: 20.3,      // 37.6 / 1.85 = 20.3%
+    directCritRate: 9.2,
+    directAffinityRate: 0.0,
     simulate23: false,
     agiThreshold23: 365,
     silkThreshold23: 440,
@@ -946,7 +958,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     const [activeSlot, setActiveSlot] = useState<SlotKey>('umbrella');
     const [candidateGear, setCandidateGear] = useState<GearItem>(() => createSampleBiSGear('umbrella'));
     const [previewImage, setPreviewImage] = useState<string | null>(null);
-    
+
     const [geminiApiKey, setGeminiApiKey] = useState<string>("");
     const [geminiModel, setGeminiModel] = useState<string>("gemini-3.5-flash-lite");
     const [webhookUrl, setWebhookUrl] = useState<string>("");
@@ -1038,7 +1050,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                     if (parsed.innerWays) setInnerWays({ ...specDefaultInnerWays, ...parsed.innerWays });
                     loadedProfileKeyRef.current = profileKey;
                     return;
-                } catch {}
+                } catch { }
             }
             setBaseline(specDefaultBaseline);
             setInnerWays(specDefaultInnerWays);
@@ -1521,6 +1533,24 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     const reqPhys = baseline.reqMinPhysical || 750;
     const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : (baseline.reqMinSilkbind || 352);
 
+    // 🟢 HỆ SỐ KHÁNG THUỘC TÍNH THEO CẤP ĐỘ (RESISTANCE BRACKET: 15% | 30% | 45% | 65% | 85%)
+    const activeResistance = (Number(baseline.resistanceRate) || 85) / 100; // Mặc định 0.85 (85%)
+    const critAffDivisor = +(1 + activeResistance).toFixed(4);              // Lv.100 (85%): 1.85 (x0.54054)
+    const precisionDivisor = +(1 + activeResistance * 0.4).toFixed(4);      // Lv.100 (85%): 1.34 (Cần 134% Trắng = 100% Vàng)
+
+    const calcYellowCritOrAff = (rawVal: number) => +(rawVal / critAffDivisor).toFixed(1);
+    // KHÔNG dùng Math.min(100) để hiển thị chính xác số % Chính xác bị thừa (Overcap)!
+    const calcYellowPrecision = (rawVal: number) => +(rawVal / precisionDivisor).toFixed(1);
+
+    const precisionOvercap = +(baseline.precisionRate - 100).toFixed(1);
+    const totalEffectiveCrit = +((Number(baseline.critRate) || 0) + (Number(baseline.directCritRate) || 0)).toFixed(1);
+    const finalCritAffinityRate = +(
+        (Number(baseline.critRate) || 0) +
+        (Number(baseline.affinityRate) || 0) +
+        (Number(baseline.directCritRate) || 0) +
+        (Number(baseline.directAffinityRate) || 0)
+    ).toFixed(1);
+
     const evaluateGear = (rawItem: GearItem) => {
         const item = normalizeGearItemLines(rawItem);
         const slotMeta = SLOTS_CONFIG.find(s => s.key === item.slot)!;
@@ -1562,9 +1592,17 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                 hasValidGodLine = true;
                 note = "🔥 GOD LINE T0 (>2 dòng Ngoại Công)";
             } else if (effGroup === 'T1') {
-                if (line.statKey === 'CRIT_RATE' && baseline.critRate > 80.5) {
+                if (line.statKey === 'PRECISION_RATE' && baseline.precisionRate > 103.5) {
                     pt = 0.5;
-                    note = "⚠️ Overcap >80% Crit số vàng";
+                    note = `⚠️ Dư thừa Chính xác (${baseline.precisionRate}% > 100%, thừa +${precisionOvercap}%)`;
+                } else if (line.statKey === 'CRIT_RATE' && (totalEffectiveCrit > 80.5 || finalCritAffinityRate > 100.5)) {
+                    pt = 0.5;
+                    note = finalCritAffinityRate > 100.5
+                        ? `⚠️ Tràn Bảng Phán Định Cuối (${finalCritAffinityRate}% > 100%)`
+                        : `⚠️ Overcap >80% Crit thực tế (${totalEffectiveCrit}%)`;
+                } else if (line.statKey === 'AFFINITY_RATE' && finalCritAffinityRate > 100.5) {
+                    pt = 0.5;
+                    note = `⚠️ Tràn Bảng Phán Định Cuối (${finalCritAffinityRate}% > 100%)`;
                 } else {
                     pt = 0;
                     note = `✅ Chỉ số T1 Chuẩn của [${selectedSpec}]`;
@@ -2010,11 +2048,10 @@ ${statKeysCatalog}`;
                             type="button"
                             disabled={isSavingCloud || viewingUserId !== currentUserId}
                             onClick={() => saveBuildToCloud()}
-                            className={`px-4 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                                hasUnsavedChanges
+                            className={`px-4 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${hasUnsavedChanges
                                     ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-bounce'
                                     : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                            }`}
+                                }`}
                         >
                             {isSavingCloud ? "⏳ Đang lưu..." : "☁️ Lưu Hồ Sơ Lên Mây"}
                         </button>
@@ -2057,11 +2094,10 @@ ${statKeysCatalog}`;
                                             setHasUnsavedChanges(false);
                                             setSelectedSpec(specName);
                                         }}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
-                                            isSelected
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${isSelected
                                                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                                                 : 'bg-zinc-900/70 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
-                                        }`}
+                                            }`}
                                     >
                                         <span>{(specName.includes('Kéo Tơ') || specName.includes('Khiên Ty')) ? '☂️' : (specName.includes('Chuông') || specName.includes('Chung Minh') || specName.includes('Minh Kim')) ? '🗡️' : (specName.includes('Xé Đá') || specName.includes('Liệt Thạch')) ? '🪓' : '⚔️'}</span>
                                         <span>{specName}</span>
@@ -2094,11 +2130,10 @@ ${statKeysCatalog}`;
                         <button
                             type="button"
                             onClick={() => setIsEditingTalentMeta(!isEditingTalentMeta)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${
-                                isEditingTalentMeta
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${isEditingTalentMeta
                                     ? 'bg-amber-500 text-zinc-950 border-amber-400'
                                     : 'bg-zinc-900 text-amber-300 border-amber-500/40 hover:bg-amber-500/15'
-                            }`}
+                                }`}
                         >
                             {isEditingTalentMeta ? '✅ Xong Chỉnh Sửa Khung' : `✏️ Sửa Khung 3 Thiên Phú`}
                         </button>
@@ -2137,7 +2172,7 @@ ${statKeysCatalog}`;
 
                 {/* 3 THẺ TIẾN TRÌNH THIÊN PHÚ VÕ HỌC */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    
+
                     {/* THIÊN PHÚ 1 */}
                     <div className={`p-4 rounded-2xl border ${baseline.agility >= reqAgi ? 'bg-zinc-900/60 border-emerald-500/30' : 'bg-rose-950/30 border-rose-500'}`}>
                         <div className="flex justify-between items-start gap-2 mb-2">
@@ -2426,60 +2461,264 @@ ${statKeysCatalog}`;
 
                 {/* 3 RATES SỐ VÀNG & CẤU HÌNH GEMINI-3.5-FLASH-LITE / WEBHOOK */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2 border-t border-zinc-800/60">
-                    <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className={`p-3 rounded-xl border ${baseline.precisionRate >= 98 ? 'bg-zinc-950/80 border-amber-500/30' : 'bg-rose-950/40 border-rose-500'}`}>
-                            <div className="text-[10px] font-bold text-amber-400 uppercase">🎯 Precision (Số Vàng ✏️)</div>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={baseline.precisionRate}
-                                    onChange={(e) => updateBaselineField({ precisionRate: Number(e.target.value) })}
-                                    className="w-24 bg-zinc-900 border border-amber-500/40 rounded px-2 py-1 text-sm font-mono font-black text-amber-300"
-                                />
-                                <span className="text-xs text-zinc-400">% / 100%</span>
+                    {/* 🟢 BẢNG THUỘC TÍNH PHÁN ĐỊNH & ĐỐI CHIẾU KHÁNG CẤP ĐỘ (RESISTANCE) */}
+                    <div className="lg:col-span-12 space-y-3 bg-zinc-950/70 p-4 rounded-2xl border border-zinc-800/90">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+                            <div>
+                                <div className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span>⚖️ Bảng Thuộc Tính Phán Định (Không Khóa Trần 100% Để Soi Phần Trăm Bị Thừa)</span>
+                                </div>
+                                <p className="text-[11px] text-zinc-400 mt-0.5">
+                                    Công thức Kháng <b className="text-rose-400">{baseline.resistanceRate ?? 85}%</b>: Chí mạng & Hiểu ý chia cho <b className="text-emerald-400">{critAffDivisor}</b> (×{(1 / critAffDivisor).toFixed(4)}) • Chính xác chia cho <b className="text-emerald-400">{precisionDivisor}</b> (Cần <b>{(100 * precisionDivisor).toFixed(1)}%</b> Trắng = <b>100%</b> Vàng).
+                                </p>
                             </div>
-                            <div className="text-[10px] text-zinc-500 mt-1">
-                                {baseline.precisionRate < 98 ? '🚨 <98% bị nhảy Sát Thương Xám!' : '✅ Chuẩn (Mục tiêu 99.5% - 100%)'}
+
+                            {/* CHỌN 5 MỐC RESISTANCE CHUẨN IN-GAME */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase">🛡️ Kháng Cấp Độ (Resistance):</span>
+                                <select
+                                    value={baseline.resistanceRate ?? 85}
+                                    onChange={(e) => {
+                                        const resVal = Number(e.target.value);
+                                        const cDiv = 1 + resVal / 100;
+                                        const pDiv = 1 + (resVal / 100) * 0.4;
+                                        updateBaselineField({
+                                            resistanceRate: resVal,
+                                            precisionRate: +((baseline.rawPrecisionRate ?? 134.5) / pDiv).toFixed(1),
+                                            critRate: +((baseline.rawCritRate ?? 117.6) / cDiv).toFixed(1),
+                                            affinityRate: +((baseline.rawAffinityRate ?? 37.6) / cDiv).toFixed(1),
+                                        });
+                                    }}
+                                    className="bg-zinc-900 border border-rose-500/40 rounded-xl px-2.5 py-1.5 text-xs font-bold text-rose-300"
+                                >
+                                    <option value={85}>Lv. 18/19 (Lv. 100): 85% Resistance</option>
+                                    <option value={65}>Lv. 16/17 (Lv. 96-100): 65% Resistance</option>
+                                    <option value={45}>Lv. 14/15 (Lv. 91-95): 45% Resistance</option>
+                                    <option value={30}>Lv. 13 (Lv. 86-90): 30% Resistance</option>
+                                    <option value={15}>Lv. 12 (Lv. 81-85): 15% Resistance</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div className={`p-3 rounded-xl border ${baseline.critRate <= 80.5 ? 'bg-zinc-950/80 border-amber-500/30' : 'bg-amber-950/30 border-amber-400'}`}>
-                            <div className="text-[10px] font-bold text-amber-400 uppercase">💥 Critical (Số Vàng ✏️)</div>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={baseline.critRate}
-                                    onChange={(e) => updateBaselineField({ critRate: Number(e.target.value) })}
-                                    className="w-24 bg-zinc-900 border border-amber-500/40 rounded px-2 py-1 text-sm font-mono font-black text-amber-300"
-                                />
-                                <span className="text-xs text-zinc-400">% / 80% Trần</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                            {/* 1. TỶ LỆ CHÍNH XÁC (HIỂN THỊ CẢ SỐ VƯỢT TRẦN >100% ĐỂ BIẾT DƯ BAO NHIÊU) */}
+                            <div className={`p-3 rounded-xl border ${
+                                baseline.precisionRate < 98
+                                    ? 'bg-rose-950/40 border-rose-500'
+                                    : baseline.precisionRate > 103.5
+                                        ? 'bg-amber-950/30 border-amber-500/60'
+                                        : 'bg-zinc-900/70 border-emerald-500/40'
+                            }`}>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-zinc-200 uppercase">🎯 1. Tỷ Lệ Chính Xác</span>
+                                    <span className="text-[9px] font-mono text-zinc-400">Trần: 100%</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                    <div>
+                                        <span className="text-[9px] text-zinc-500 block">Số Trắng (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.rawPrecisionRate ?? 134.5}
+                                            onChange={(e) => {
+                                                const rawVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    rawPrecisionRate: rawVal,
+                                                    precisionRate: calcYellowPrecision(rawVal)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs font-mono font-bold text-zinc-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] text-amber-400 block font-bold">Số Vàng Thực (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.precisionRate}
+                                            onChange={(e) => {
+                                                const yVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    precisionRate: yVal,
+                                                    rawPrecisionRate: +(yVal * precisionDivisor).toFixed(1)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-amber-500/50 rounded px-2 py-1 text-xs font-mono font-black text-amber-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-[10px] mt-1.5 font-medium">
+                                    {baseline.precisionRate > 100.0 ? (
+                                        <span className={baseline.precisionRate > 103.5 ? "text-amber-300 font-bold" : "text-emerald-300"}>
+                                            {baseline.precisionRate > 103.5 ? '⚠️ ' : '✅ '}
+                                            Đạt 100% (Đang thừa <b>+{precisionOvercap}%</b> Vàng ≈ <b>+{((baseline.rawPrecisionRate ?? 134.5) - 100 * precisionDivisor).toFixed(1)}%</b> Trắng)
+                                        </span>
+                                    ) : baseline.precisionRate >= 98.0 ? (
+                                        <span className="text-emerald-300">
+                                            ✅ Chuẩn (Thiếu nhẹ <b>{(100 - baseline.precisionRate).toFixed(1)}%</b> Vàng)
+                                        </span>
+                                    ) : (
+                                        <span className="text-rose-400 font-bold">
+                                            🚨 Thiếu <b>{(100 - baseline.precisionRate).toFixed(1)}%</b> Vàng (Bị nhảy Trầy xước!)
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="text-[10px] text-zinc-500 mt-1">
-                                {baseline.critRate > 80.5 ? '⚠️ Overcap >80% lãng phí!' : '✅ Mục tiêu chạm trần 80%'}
-                            </div>
-                        </div>
 
-                        <div className="p-3 rounded-xl border bg-zinc-950/80 border-zinc-800">
-                            <div className="text-[10px] font-bold text-zinc-400 uppercase">🌀 Affinity (Hiểu Ý ✏️)</div>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={baseline.affinityRate}
-                                    onChange={(e) => updateBaselineField({ affinityRate: Number(e.target.value) })}
-                                    className="w-24 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm font-mono font-bold text-zinc-300"
-                                />
-                                <span className="text-xs text-zinc-500">%</span>
+                            {/* 2. TỶ LỆ CHÍ MẠNG */}
+                            <div className="p-3 rounded-xl border bg-zinc-900/70 border-amber-500/30">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-zinc-200 uppercase">💥 2. Tỷ Lệ Chí Mạng</span>
+                                    <span className="text-[9px] font-mono text-zinc-400">×{(1 / critAffDivisor).toFixed(4)}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                    <div>
+                                        <span className="text-[9px] text-zinc-500 block">Số Trắng (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.rawCritRate ?? 117.6}
+                                            onChange={(e) => {
+                                                const rawVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    rawCritRate: rawVal,
+                                                    critRate: calcYellowCritOrAff(rawVal)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs font-mono font-bold text-zinc-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] text-amber-400 block font-bold">Số Vàng (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.critRate}
+                                            onChange={(e) => {
+                                                const yVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    critRate: yVal,
+                                                    rawCritRate: +(yVal * critAffDivisor).toFixed(1)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-amber-500/50 rounded px-2 py-1 text-xs font-mono font-black text-amber-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-zinc-400 mt-1.5">
+                                    Kèm Crit trực tiếp: <b className={totalEffectiveCrit > 80.5 ? "text-rose-400" : "text-amber-300"}>{totalEffectiveCrit}% / 80%</b>
+                                </div>
                             </div>
-                            <div className="text-[10px] text-emerald-400/90 mt-1">
-                                Phẩm cấp tại [{selectedSpec}]: <b>{resolveStatGroupForSpec(statOptions.find(s => s.key === 'AFFINITY_RATE') || DEFAULT_STAT_OPTIONS[8], selectedSpec)}</b>
+
+                            {/* 3. TỶ LỆ HIỂU Ý */}
+                            <div className="p-3 rounded-xl border bg-zinc-900/70 border-zinc-800">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-zinc-200 uppercase">🌀 3. Tỷ Lệ Hiểu Ý</span>
+                                    <span className="text-[9px] font-mono text-zinc-400">×{(1 / critAffDivisor).toFixed(4)}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                    <div>
+                                        <span className="text-[9px] text-zinc-500 block">Số Trắng (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.rawAffinityRate ?? 37.6}
+                                            onChange={(e) => {
+                                                const rawVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    rawAffinityRate: rawVal,
+                                                    affinityRate: calcYellowCritOrAff(rawVal)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs font-mono font-bold text-zinc-100"
+                                        />
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] text-amber-400 block font-bold">Số Vàng (%)</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.affinityRate}
+                                            onChange={(e) => {
+                                                const yVal = Number(e.target.value);
+                                                updateBaselineField({
+                                                    affinityRate: yVal,
+                                                    rawAffinityRate: +(yVal * critAffDivisor).toFixed(1)
+                                                });
+                                            }}
+                                            className="w-full bg-zinc-950 border border-amber-500/50 rounded px-2 py-1 text-xs font-mono font-black text-amber-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-emerald-400 mt-1.5">
+                                    Phẩm cấp tại [{selectedSpec}]: <b>{resolveStatGroupForSpec(statOptions.find(s => s.key === 'AFFINITY_RATE') || DEFAULT_STAT_OPTIONS[8], selectedSpec)}</b>
+                                </div>
+                            </div>
+
+                            {/* 4. TỶ LỆ TRỰC TIẾP */}
+                            <div className="p-3 rounded-xl border bg-zinc-900/70 border-zinc-800">
+                                <div className="text-[10px] font-bold text-amber-300 uppercase">⚡ 4. Tỷ Lệ Trực Tiếp</div>
+                                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                    <div>
+                                        <span className="text-[9px] text-amber-400 block">Crit Trực Tiếp</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.directCritRate ?? 9.2}
+                                            onChange={(e) => updateBaselineField({ directCritRate: Number(e.target.value) })}
+                                            className="w-full bg-zinc-950 border border-amber-500/40 rounded px-2 py-1 text-xs font-mono font-black text-amber-300"
+                                        />
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] text-cyan-400 block">Hiểu Ý Trực Tiếp</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={baseline.directAffinityRate ?? 0.0}
+                                            onChange={(e) => updateBaselineField({ directAffinityRate: Number(e.target.value) })}
+                                            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs font-mono font-bold text-cyan-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-zinc-400 mt-1.5">
+                                    Không bị trừ bởi {baseline.resistanceRate ?? 85}% Kháng
+                                </div>
+                            </div>
+
+                            {/* 5. TỶ LỆ CHÍ MẠNG HIỂU Ý CUỐI CÙNG (CỘT MỐC 100%) */}
+                            <div className={`p-3 rounded-xl border-2 flex flex-col justify-between ${
+                                finalCritAffinityRate > 100.5
+                                    ? 'bg-rose-950/40 border-rose-500'
+                                    : finalCritAffinityRate >= 90
+                                        ? 'bg-emerald-950/30 border-emerald-500/60'
+                                        : 'bg-zinc-900/80 border-amber-500/40'
+                            }`}>
+                                <div>
+                                    <div className="text-[10px] font-black text-emerald-400 uppercase">🔥 5. Chí Mạng Hiểu Ý Cuối</div>
+                                    <div className="text-xl font-black font-mono text-amber-300 mt-1">
+                                        {finalCritAffinityRate}% <span className="text-xs text-zinc-400 font-normal">/ 100%</span>
+                                    </div>
+                                </div>
+                                <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 my-1">
+                                    <div
+                                        className={`h-full ${finalCritAffinityRate > 100.5 ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-emerald-400'}`}
+                                        style={{ width: `${Math.min(100, finalCritAffinityRate)}%` }}
+                                    />
+                                </div>
+                                <div className="text-[10px] font-bold">
+                                    {finalCritAffinityRate > 100.5 ? (
+                                        <span className="text-rose-400">⚠️ Tràn bàn tròn &gt;100% (Thừa +{(finalCritAffinityRate - 100).toFixed(1)}%)!</span>
+                                    ) : finalCritAffinityRate >= 95 ? (
+                                        <span className="text-emerald-300">💎 Chuẩn Build Tối Thượng (Sát 100%)!</span>
+                                    ) : (
+                                        <span className="text-amber-300">✨ Còn trống {(100 - finalCritAffinityRate).toFixed(1)}% tới trần 100%</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+                    <div className="lg:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
                         <div>
                             <label className="block text-[10px] font-bold text-emerald-400 uppercase mb-1">🤖 Model AI OCR:</label>
                             <input
@@ -2525,7 +2764,7 @@ ${statKeysCatalog}`;
 
             {/* KHU VỰC 2 & 3: LƯỚI 8 MÓN ĐANG MẶC (TRÁI) & BÀN CHỈNH SỬA / GIÁM ĐỊNH ĐỒ (PHẢI) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
+
                 {/* CỘT TRÁI (5 CỘT): 8 MÓN ĐANG MẶC */}
                 <div className="lg:col-span-5 bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
@@ -2597,11 +2836,10 @@ ${statKeysCatalog}`;
                                 <div
                                     key={slot.key}
                                     onClick={() => handleSelectSlot(slot.key)}
-                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${
-                                        isSelected
+                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${isSelected
                                             ? 'bg-emerald-950/30 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
                                             : 'bg-zinc-900/50 border-zinc-800/80 hover:border-zinc-700'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex justify-between items-start gap-1">
                                         <div className="flex items-center gap-2">
@@ -2614,9 +2852,8 @@ ${statKeysCatalog}`;
                                             </div>
                                         </div>
                                         <div className="text-right shrink-0">
-                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-black block ${
-                                                ev.badPointsAfterOneRetune <= 0.5 ? 'bg-emerald-500/20 text-emerald-300' : ev.badPointsAfterOneRetune <= 2.0 ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300'
-                                            }`}>
+                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-black block ${ev.badPointsAfterOneRetune <= 0.5 ? 'bg-emerald-500/20 text-emerald-300' : ev.badPointsAfterOneRetune <= 2.0 ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300'
+                                                }`}>
                                                 {ev.badPoints.toFixed(1)} ➔ {ev.badPointsAfterOneRetune.toFixed(1)} xấu
                                             </span>
                                         </div>
@@ -2669,27 +2906,25 @@ ${statKeysCatalog}`;
                 {/* CỘT PHẢI (7 CỘT): CẤU TRÚC 6 DÒNG CHUẨN XÁC */}
                 <div className="lg:col-span-7 space-y-6">
                     <div className="bg-[#090d16] border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-5">
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800">
                             <button
                                 type="button"
                                 onClick={() => setEditorMode('edit_equipped')}
-                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                                    editorMode === 'edit_equipped'
+                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${editorMode === 'edit_equipped'
                                         ? 'bg-emerald-500 text-zinc-950 shadow-md'
                                         : 'text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                    }`}
                             >
                                 <span>✏️ Chế Độ 1: Sửa Món Đang Mặc ({currentSlotDisplay.icon})</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setEditorMode('compare_new')}
-                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                                    editorMode === 'compare_new'
+                                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${editorMode === 'compare_new'
                                         ? 'bg-amber-500 text-zinc-950 shadow-md'
                                         : 'text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                    }`}
                             >
                                 <span>⚖️ Chế Độ 2: Soi Phôi Mới & So Sánh Delta</span>
                             </button>
@@ -2949,13 +3184,12 @@ ${statKeysCatalog}`;
                                     return (
                                         <div
                                             key={idx}
-                                            className={`flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 rounded-xl border transition-all ${
-                                                isSelectedRetune
+                                            className={`flex flex-wrap sm:flex-nowrap items-center gap-2 p-1.5 rounded-xl border transition-all ${isSelectedRetune
                                                     ? 'bg-emerald-950/30 border-emerald-500/50'
                                                     : isRecommendedToRetune
                                                         ? 'bg-amber-950/20 border-amber-500/40'
                                                         : 'border-transparent'
-                                            }`}
+                                                }`}
                                         >
                                             <span className="text-xs font-mono font-bold text-zinc-400 w-6">#{lineNo}</span>
                                             <select
@@ -2995,15 +3229,14 @@ ${statKeysCatalog}`;
                                                     ...g,
                                                     retunedLineIndex: g.retunedLineIndex === idx ? null : idx
                                                 }))}
-                                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black shrink-0 cursor-pointer transition-all border ${
-                                                    isSelectedRetune
+                                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black shrink-0 cursor-pointer transition-all border ${isSelectedRetune
                                                         ? 'bg-emerald-500 text-zinc-950 border-emerald-400 shadow-sm'
                                                         : isLockedByOtherRetune
                                                             ? 'bg-zinc-900/60 text-zinc-600 border-zinc-800'
                                                             : isRecommendedToRetune
                                                                 ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse'
                                                                 : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                                                }`}
+                                                    }`}
                                                 title="Trong các dòng mở Tuning, bạn chỉ được phép tẩy lại (Retune) duy nhất 1 dòng!"
                                             >
                                                 {isSelectedRetune
@@ -3080,17 +3313,15 @@ ${statKeysCatalog}`;
                         </div>
 
                         {/* HỘP PHÁN QUYẾT */}
-                        <div className={`rounded-2xl p-5 border-2 shadow-xl space-y-3 ${
-                            activeGearEval.verdictColor === 'emerald'
+                        <div className={`rounded-2xl p-5 border-2 shadow-xl space-y-3 ${activeGearEval.verdictColor === 'emerald'
                                 ? 'bg-emerald-950/30 border-emerald-500/60'
                                 : activeGearEval.verdictColor === 'amber'
                                     ? 'bg-amber-950/30 border-amber-500/60'
                                     : 'bg-rose-950/30 border-rose-500/60'
-                        }`}>
+                            }`}>
                             <div className="flex flex-wrap justify-between items-center gap-2">
-                                <h4 className={`text-base font-black tracking-wide ${
-                                    activeGearEval.verdictColor === 'emerald' ? 'text-emerald-300' : activeGearEval.verdictColor === 'amber' ? 'text-amber-300' : 'text-rose-300'
-                                }`}>
+                                <h4 className={`text-base font-black tracking-wide ${activeGearEval.verdictColor === 'emerald' ? 'text-emerald-300' : activeGearEval.verdictColor === 'amber' ? 'text-amber-300' : 'text-rose-300'
+                                    }`}>
                                     {activeGearEval.verdictTitle}
                                 </h4>
                                 <div className="flex items-center gap-2">
@@ -3277,63 +3508,56 @@ ${statKeysCatalog}`;
                             <button
                                 type="button"
                                 onClick={() => setDictTab('tuning')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'tuning' ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'tuning' ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 🛠️ 1. Dòng Tẩy Luyện ({statOptions.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('attunement')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'attunement' ? 'bg-cyan-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'attunement' ? 'bg-cyan-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 🔮 2. Dòng Định Âm ({attunementOptions.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('gearset')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'gearset' ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'gearset' ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 🛡️ 3. Bộ Set ({gearSetOptions.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('tier')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'tier' ? 'bg-rose-500 text-white' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'tier' ? 'bg-rose-500 text-white' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 🔥 4. Bậc Tier ({tierOptions.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('weapon')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'weapon' ? 'bg-purple-500 text-white' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'weapon' ? 'bg-purple-500 text-white' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 ⚔️ 5. Vũ Khí ({weaponTypeOptions.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('vohoc')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'vohoc' ? 'bg-sky-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'vohoc' ? 'bg-sky-500 text-zinc-950' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 🥋 6. Nhánh Võ Học ({voHocList.length})
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setDictTab('tamphap')}
-                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${
-                                    dictTab === 'tamphap' ? 'bg-indigo-500 text-white' : 'bg-zinc-900 text-zinc-400'
-                                }`}
+                                className={`px-3 py-2 rounded-xl text-xs font-black cursor-pointer ${dictTab === 'tamphap' ? 'bg-indigo-500 text-white' : 'bg-zinc-900 text-zinc-400'
+                                    }`}
                             >
                                 📜 7. Tâm Pháp ({tamPhapList.length})
                             </button>

@@ -1,39 +1,70 @@
 // app/layout.tsx
-import './globals.css';
-import { Providers } from './providers';
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-export const metadata = {
-    title: 'Thanh Long Sơn Trang',
-    description: 'Tổng Hành Dinh Thanh Long Bang',
+const geistSans = Geist({
+    variable: "--font-geist-sans",
+    subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+    variable: "--font-geist-mono",
+    subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+    title: "Thanh Long Sơn Trang",
+    description: "Đại Điện Thanh Long Sơn Trang - Where Winds Meet",
 };
 
 export default function RootLayout({
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     return (
-        <html lang="vi">
-            {/* 🎨 Kyo giải mật: Bỏ bg-zinc-950 khỏi body, chuyển xuống lớp nền z-[-3] biệt lập.
-              Nếu để bg-zinc-950 ở body, các hiệu ứng z-[-1] và z-[-2] sẽ bị chôn vùi bên dưới lớp nền đen này.
-            */}
-            <body className="text-zinc-100 min-h-screen selection:bg-sky-500/30 selection:text-sky-100 relative">
-                
-                {/* 🖤 LỚP NỀN ĐEN ĐÁY CÙNG */}
-                <div className="fixed inset-0 bg-zinc-950 z-[-3] pointer-events-none"></div>
+        <html lang="vi" className="dark">
+            <body
+                className={`${geistSans.variable} ${geistMono.variable} antialiased text-zinc-100 min-h-screen relative selection:bg-cyan-500/30 selection:text-cyan-200`}
+                style={{ backgroundColor: "#040814" }}
+            >
+                {/* 🟢 LỚP NỀN DÙNG INLINE STYLE: Không bao giờ bị Tailwind hay globals.css làm mất màu */}
+                <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                    {/* 1. Vầng hào quang Xanh Thanh Long (Cyan/Blue) tỏa rực từ đỉnh và hai bên */}
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            background: `
+                                radial-gradient(circle 800px at 50% -100px, rgba(6, 182, 212, 0.28), transparent 70%),
+                                radial-gradient(circle 600px at 85% 20%, rgba(14, 165, 233, 0.18), transparent 70%),
+                                radial-gradient(circle 600px at 15% 80%, rgba(16, 185, 129, 0.15), transparent 70%)
+                            `
+                        }}
+                    />
 
-                {/* 🌊 HIỆU ỨNG 1: Hào quang Thanh Long (Khảm lại z-[-1] chuẩn chỉ để ẩn sau nội dung) */}
-                <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-500/35 via-zinc-950/80 to-zinc-950 z-[-1]"></div>
-                
-                {/* 🕸️ HIỆU ỨNG 2: Thiên La Địa Võng (Khảm lại z-[-2] để hiển thị mờ ảo dưới nội dung) */}
-                <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(to_right,#0ea5e90f_1px,transparent_1px),linear-gradient(to_bottom,#0ea5e90f_1px,transparent_1px)] bg-[size:40px_32px] z-[-2]"></div>
+                    {/* 2. Lưới Càn Khôn (Caro) sáng rõ trên nền xanh đêm */}
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            backgroundImage: `
+                                linear-gradient(to right, rgba(56, 189, 248, 0.12) 1px, transparent 1px),
+                                linear-gradient(to bottom, rgba(56, 189, 248, 0.12) 1px, transparent 1px)
+                            `,
+                            backgroundSize: "32px 32px",
+                            maskImage: "radial-gradient(ellipse 90% 80% at 50% 30%, #000 60%, transparent 100%)",
+                            WebkitMaskImage: "radial-gradient(ellipse 90% 80% at 50% 30%, #000 60%, transparent 100%)"
+                        }}
+                    />
+                </div>
 
-                <Providers>
-                    {children}
-                </Providers>
-                
+                {/* 🟢 Nội dung trang nổi lên trên lớp nền */}
+                <div className="relative z-10">
+                    <Providers>{children}</Providers>
+                </div>
                 <Analytics />
                 <SpeedInsights />
             </body>

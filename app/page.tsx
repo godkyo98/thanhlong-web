@@ -90,7 +90,7 @@ export default function Home() {
     const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
 
     return (
-        <main className="min-h-screen bg-zinc-950 text-zinc-100 pb-12 relative overflow-x-hidden">
+        <main className="min-h-screen bg-transparent text-zinc-100 pb-12 relative overflow-x-hidden">
             <Header 
                 activeTab={activeTab as any} 
                 setActiveTab={setActiveTab as any} 
@@ -100,7 +100,7 @@ export default function Home() {
                 signOut={signOut} 
             />
 
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6">
                 {activeTab !== 'home' && (
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/80 rounded-2xl px-4 py-2.5 shadow-md">
                         <div className="flex items-center gap-2 text-xs">
