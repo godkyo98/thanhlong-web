@@ -92,6 +92,20 @@ const DEFAULT_TIER_OPTIONS: TierOption[] = [
     { tier: 86, labelVi: '🛡️ Bậc 86 (Kho Vũ Khí Cũ)', isArsenal: true },
 ];
 
+// 🛡️ DANH MỤC MỐC KHÁNG CẤP ĐỘ (RESISTANCE BRACKETS - MỞ RỘNG ĐỘNG CHO LV. 20+)
+export interface ResistanceBracketOption {
+    rate: number;
+    labelVi: string;
+}
+
+const DEFAULT_RESISTANCE_BRACKETS: ResistanceBracketOption[] = [
+    { rate: 85, labelVi: 'Lv. 18/19 (Lv. 100): 85% Resistance' },
+    { rate: 65, labelVi: 'Lv. 16/17 (Lv. 96-100): 65% Resistance' },
+    { rate: 45, labelVi: 'Lv. 14/15 (Lv. 91-95): 45% Resistance' },
+    { rate: 30, labelVi: 'Lv. 13 (Lv. 86-90): 30% Resistance' },
+    { rate: 15, labelVi: 'Lv. 12 (Lv. 81-85): 15% Resistance' },
+];
+
 export interface TamPhapOption {
     id: string;
     vi: string;
@@ -884,6 +898,50 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         return merged.sort((a, b) => b.tier - a.tier);
     }, [wwmData]);
 
+    // 🟢 HỢP NHẤT DANH SÁCH MỐC KHÁNG (RESISTANCE) TỪ FIREBASE (SẴN SÀNG CHO LV. 20, 21+)
+    const resistanceOptions: ResistanceBracketOption[] = useMemo(() => {
+        const customRes = wwmData?.CUSTOM_RESISTANCE_TIERS || {};
+        const merged = DEFAULT_RESISTANCE_BRACKETS.map(item =>
+            customRes[String(item.rate)] ? { ...item, ...customRes[String(item.rate)] } : item
+        );
+        Object.entries(customRes).forEach(([k, val]: any) => {
+            const numRate = Number(k);
+            if (!isNaN(numRate) && !merged.some(m => m.rate === numRate) && val && typeof val === 'object') {
+                merged.push({
+                    rate: numRate,
+                    labelVi: val.labelVi || `Lv. Mới: ${numRate}% Resistance`
+                });
+            }
+        });
+        return merged.sort((a, b) => b.rate - a.rate);
+    }, [wwmData]);
+
+    const [editingResistanceItem, setEditingResistanceItem] = useState<ResistanceBracketOption>({
+        rate: 105,
+        labelVi: 'Lv. 20/21 (Lv. 105): 105% Resistance'
+    });
+
+    const handleSaveCustomResistance = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const numRate = Number(editingResistanceItem.rate);
+        if (isNaN(numRate) || numRate < 0) return;
+
+        const newResObj: ResistanceBracketOption = {
+            rate: numRate,
+            labelVi: editingResistanceItem.labelVi.trim() || `Lv. Mới: ${numRate}% Resistance`
+        };
+
+        try {
+            const currentRes = wwmData?.CUSTOM_RESISTANCE_TIERS || {};
+            await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
+                CUSTOM_RESISTANCE_TIERS: { ...currentRes, [String(numRate)]: newResObj }
+            }, { merge: true });
+            alert(`✅ Đã lưu mốc kháng [${newResObj.labelVi}] lên Đám Mây cho toàn bang!`);
+        } catch {
+            alert("❌ Lỗi khi lưu mốc kháng cấp độ!");
+        }
+    };
+
     const weaponTypeOptions: WeaponTypeOption[] = useMemo(() => {
         const customWeapons = wwmData?.CUSTOM_WEAPON_TYPES || {};
         const merged = DEFAULT_WEAPON_TYPES.map(item => customWeapons[item.key] ? { ...item, ...customWeapons[item.key] } : item);
@@ -966,7 +1024,14 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     const [isSavingCloud, setIsSavingCloud] = useState(false);
     const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
-    const loadedProfileKeyRef = useRef<string>("");
+    // Tự động nạp Webhook chung từ Firebase nếu máy thành viên chưa nhập
+    useEffect(() => {
+        if (!webhookUrl && wwmData?.SHARED_DISCORD_WEBHOOK) {
+            setWebhookUrl(wwmData.SHARED_DISCORD_WEBHOOK);
+        }
+    }, [wwmData?.SHARED_DISCORD_WEBHOOK, webhookUrl]);
+
+    const loadedTimestampRef = useRef<string>("");
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -988,13 +1053,23 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
 
     useEffect(() => {
         if (!selectedSpec) return;
-        const profileKey = `${selectedSpec}__${viewingUserId}`;
         const specDoc = wwmBuilds?.[selectedSpec];
         const userRecord = specDoc?.[viewingUserId];
+        const cloudStamp = `${selectedSpec}__${viewingUserId}__${userRecord?.updatedAt || 'init'}`;
 
-        if (loadedProfileKeyRef.current === profileKey && hasUnsavedChanges) {
+        // Nếu trên Cloud vừa có bản cập nhật mới từ Discord Bot (updatedAt thay đổi), lập tức đồng bộ vào Web!
+        if (loadedTimestampRef.current === cloudStamp && hasUnsavedChanges) {
             return;
         }
+        if (
+            loadedTimestampRef.current &&
+            loadedTimestampRef.current.startsWith(`${selectedSpec}__${viewingUserId}__`) &&
+            loadedTimestampRef.current !== cloudStamp
+        ) {
+            setStatusBanner(`⚡ Đồng bộ trực tuyến từ Discord: Hồ sơ [${selectedSpec}] vừa được cập nhật mới!`);
+            setTimeout(() => setStatusBanner(null), 5000);
+        }
+        loadedTimestampRef.current = cloudStamp;
 
         const specTemplate = wwmData?.SPEC_TALENTS_MAP?.[selectedSpec] || getDefaultSpecTalentsTemplate(selectedSpec);
         const specDefaultInnerWays = wwmData?.SPEC_INNER_WAYS_MAP?.[selectedSpec] || {
@@ -1037,7 +1112,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             if (Array.isArray(userRecord.arsenal96)) setArsenal96(userRecord.arsenal96);
             if (userRecord.innerWays) setInnerWays(prev => ({ ...specDefaultInnerWays, ...userRecord.innerWays }));
             else setInnerWays(specDefaultInnerWays);
-            loadedProfileKeyRef.current = profileKey;
+            loadedTimestampRef.current = cloudStamp;
             setHasUnsavedChanges(false);
         } else if (typeof window !== 'undefined' && viewingUserId === currentUserId) {
             const localRaw = localStorage.getItem(`wwm_build_${selectedSpec}_${currentUserId}`);
@@ -1048,7 +1123,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                     if (parsed.equipped) setEquipped(prev => normalizeEquippedMap({ ...prev, ...parsed.equipped }));
                     if (Array.isArray(parsed.arsenal96)) setArsenal96(parsed.arsenal96);
                     if (parsed.innerWays) setInnerWays({ ...specDefaultInnerWays, ...parsed.innerWays });
-                    loadedProfileKeyRef.current = profileKey;
+                    loadedTimestampRef.current = cloudStamp;
                     return;
                 } catch { }
             }
@@ -1064,7 +1139,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                 greaves: createSampleBiSGear('greaves', selectedSpec),
                 bracers: createSampleBiSGear('bracers', selectedSpec),
             });
-            loadedProfileKeyRef.current = profileKey;
+            loadedTimestampRef.current = cloudStamp;
         }
     }, [wwmBuilds, wwmData, selectedSpec, viewingUserId, currentUserId, hasUnsavedChanges]);
 
@@ -2473,12 +2548,13 @@ ${statKeysCatalog}`;
                                 </p>
                             </div>
 
-                            {/* CHỌN 5 MỐC RESISTANCE CHUẨN IN-GAME */}
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-zinc-400 uppercase">🛡️ Kháng Cấp Độ (Resistance):</span>
+                            {/* 🟢 CHỌN MỐC KHÁNG HOẶC GÕ TRỰC TIẾP % KHÁNG (SẴN SÀNG CHO LV. 20+) */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase">🛡️ Kháng Cấp Độ:</span>
                                 <select
-                                    value={baseline.resistanceRate ?? 85}
+                                    value={resistanceOptions.some(r => r.rate === Number(baseline.resistanceRate ?? 85)) ? Number(baseline.resistanceRate ?? 85) : "custom"}
                                     onChange={(e) => {
+                                        if (e.target.value === "custom") return;
                                         const resVal = Number(e.target.value);
                                         const cDiv = 1 + resVal / 100;
                                         const pDiv = 1 + (resVal / 100) * 0.4;
@@ -2491,12 +2567,59 @@ ${statKeysCatalog}`;
                                     }}
                                     className="bg-zinc-900 border border-rose-500/40 rounded-xl px-2.5 py-1.5 text-xs font-bold text-rose-300"
                                 >
-                                    <option value={85}>Lv. 18/19 (Lv. 100): 85% Resistance</option>
-                                    <option value={65}>Lv. 16/17 (Lv. 96-100): 65% Resistance</option>
-                                    <option value={45}>Lv. 14/15 (Lv. 91-95): 45% Resistance</option>
-                                    <option value={30}>Lv. 13 (Lv. 86-90): 30% Resistance</option>
-                                    <option value={15}>Lv. 12 (Lv. 81-85): 15% Resistance</option>
+                                    {resistanceOptions.map(opt => (
+                                        <option key={opt.rate} value={opt.rate}>{opt.labelVi}</option>
+                                    ))}
+                                    {!resistanceOptions.some(r => r.rate === Number(baseline.resistanceRate ?? 85)) && (
+                                        <option value="custom">⚡ Tùy chỉnh: {baseline.resistanceRate}% Resistance</option>
+                                    )}
                                 </select>
+
+                                {/* Ô GÕ SỐ % KHÁNG TRỰC TIẾP (DÙ LÊN LV.20 HAY BẤT KỲ % NÀO CŨNG TÍNH ĐƯỢC NGAY) */}
+                                <div className="flex items-center bg-zinc-900 border border-amber-500/40 rounded-xl px-2 py-1">
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        value={baseline.resistanceRate ?? 85}
+                                        onChange={(e) => {
+                                            const resVal = Math.max(0, Number(e.target.value));
+                                            const cDiv = 1 + resVal / 100;
+                                            const pDiv = 1 + (resVal / 100) * 0.4;
+                                            updateBaselineField({
+                                                resistanceRate: resVal,
+                                                precisionRate: +((baseline.rawPrecisionRate ?? 134.5) / pDiv).toFixed(1),
+                                                critRate: +((baseline.rawCritRate ?? 117.6) / cDiv).toFixed(1),
+                                                affinityRate: +((baseline.rawAffinityRate ?? 37.6) / cDiv).toFixed(1),
+                                            });
+                                        }}
+                                        className="w-12 bg-transparent text-xs font-mono font-black text-amber-300 text-center focus:outline-none"
+                                        title="Nhập trực tiếp % Kháng bất kỳ (VD: 85, 95, 105...)"
+                                    />
+                                    <span className="text-[10px] font-bold text-zinc-400">%</span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const label = window.prompt("Nhập tên mốc Kháng mới (VD: Lv. 20/21 (Lv. 105): 105% Resistance):", "Lv. 20/21 (Lv. 105): 105% Resistance");
+                                        if (!label) return;
+                                        const rateStr = window.prompt("Nhập số % Kháng của mốc này (VD: 105):", "105");
+                                        const numRate = Number(rateStr);
+                                        if (isNaN(numRate) || numRate <= 0) return;
+
+                                        const currentRes = wwmData?.CUSTOM_RESISTANCE_TIERS || {};
+                                        setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
+                                            CUSTOM_RESISTANCE_TIERS: {
+                                                ...currentRes,
+                                                [String(numRate)]: { rate: numRate, labelVi: label.trim() }
+                                            }
+                                        }, { merge: true });
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[10px] font-black text-rose-300 cursor-pointer"
+                                    title="Thêm mốc cấp độ kháng mới (Lv. 20+) lên Firebase"
+                                >
+                                    + Thêm Mốc Lv.20+
+                                </button>
                             </div>
                         </div>
 
