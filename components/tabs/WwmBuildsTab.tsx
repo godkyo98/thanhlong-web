@@ -351,6 +351,62 @@ const resolveStatGroupForSpec = (stat: StatOption, specName: string): StatGroupT
     return stat.group || 'T1';
 };
 
+// 🎯 BỂ 6 DÒNG CHUYỂN ÂM (RETUNE POOL) CHUẨN IN-GAME THEO HỆ PHÁI (TUYỆT ĐỐI KHÔNG CÓ DÒNG T0)
+export interface RetunePoolItem {
+    statKey: string;
+    nameVi: string;
+    rangeText: string;
+}
+
+const getRetunePoolForSpec = (specName: string): RetunePoolItem[] => {
+    const isBellstrike = specName.includes('Tiếng Chuông') || specName.includes('Chung Minh') || specName.includes('Minh Kim');
+    const isBamboocut = specName.includes('Phá Tre') || specName.includes('Phá Trúc');
+    const isStonesplit = specName.includes('Xé Đá') || specName.includes('Liệt Thạch');
+
+    if (isBellstrike) {
+        return [
+            { statKey: 'MAX_PHYS_ATK', nameVi: 'Công kích Ngoại công tối đa', rangeText: '+45.3~90.6' },
+            { statKey: 'AFFINITY_RATE', nameVi: 'Tỷ lệ Hiểu ý / Bạo kích', rangeText: '+5.2%~10.4%' },
+            { statKey: 'POWER', nameVi: 'Lực', rangeText: '+28.7~57.4' },
+            { statKey: 'MOMENTUM', nameVi: 'Thế', rangeText: '+28.7~57.4' },
+            { statKey: 'BELLSTRIKE_ATK', nameVi: 'Công kích Minh Kim tối đa', rangeText: '+25.7~51.4' },
+            { statKey: 'MIN_PHYS_ATK', nameVi: 'Công kích Ngoại công tối thiểu', rangeText: '+45.3~90.6' },
+        ];
+    }
+
+    if (isBamboocut) {
+        return [
+            { statKey: 'MAX_PHYS_ATK', nameVi: 'Công kích Ngoại công tối đa', rangeText: '+45.3~90.6' },
+            { statKey: 'CRIT_RATE', nameVi: 'Tỷ lệ Bạo kích', rangeText: '+5.2%~10.4%' },
+            { statKey: 'POWER', nameVi: 'Lực', rangeText: '+28.7~57.4' },
+            { statKey: 'AGILITY', nameVi: 'Mẫn', rangeText: '+28.7~57.4' },
+            { statKey: 'BAMBOOCUT_ATK', nameVi: 'Công kích Phá Trúc tối đa', rangeText: '+25.7~51.4' },
+            { statKey: 'MIN_PHYS_ATK', nameVi: 'Công kích Ngoại công tối thiểu', rangeText: '+45.3~90.6' },
+        ];
+    }
+
+    if (isStonesplit) {
+        return [
+            { statKey: 'MAX_PHYS_ATK', nameVi: 'Công kích Ngoại công tối đa', rangeText: '+45.3~90.6' },
+            { statKey: 'CRIT_RATE', nameVi: 'Tỷ lệ Bạo kích', rangeText: '+5.2%~10.4%' },
+            { statKey: 'POWER', nameVi: 'Lực', rangeText: '+28.7~57.4' },
+            { statKey: 'DEFENSE_HP_BODY', nameVi: 'Thể / Thế', rangeText: '+28.7~57.4' },
+            { statKey: 'STONESPLIT_ATK', nameVi: 'Công kích Liệt Thạch tối đa', rangeText: '+25.7~51.4' },
+            { statKey: 'MIN_PHYS_ATK', nameVi: 'Công kích Ngoại công tối thiểu', rangeText: '+45.3~90.6' },
+        ];
+    }
+
+    // Mặc định nhánh Khiên Ty / Kéo Tơ (Chuẩn 100% theo ảnh chụp màn hình Chuyển âm)
+    return [
+        { statKey: 'MIN_PHYS_ATK', nameVi: 'Công kích Ngoại công tối thiểu', rangeText: '+45.3~90.6' },
+        { statKey: 'MAX_PHYS_ATK', nameVi: 'Công kích Ngoại công tối đa', rangeText: '+45.3~90.6' },
+        { statKey: 'MAX_SILKBIND_ATK', nameVi: 'Công kích Khiên Ty tối đa', rangeText: '+25.7~51.4' },
+        { statKey: 'CRIT_RATE', nameVi: 'Tỷ lệ Bạo kích', rangeText: '+5.2%~10.4%' },
+        { statKey: 'POWER', nameVi: 'Lực', rangeText: '+28.7~57.4' },
+        { statKey: 'AGILITY', nameVi: 'Mẫn', rangeText: '+28.7~57.4' },
+    ];
+};
+
 export interface AttunementOption {
     key: string;
     labelVi: string;
@@ -1727,13 +1783,52 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         });
 
         const hasAlreadyRetunedOneLine = typeof item.retunedLineIndex === 'number' && item.retunedLineIndex >= 0;
-        const badPointsAfterOneRetune = hasAlreadyRetunedOneLine
-            ? rawBadPoints
-            : Math.max(0, +(rawBadPoints - maxReducibleBadPt).toFixed(1));
+        const lockedRetuneEval = hasAlreadyRetunedOneLine ? middleEvals[item.retunedLineIndex!] : null;
 
-        const bestTargetLineToRetune = (!hasAlreadyRetunedOneLine && worstMiddleIdx !== -1 && maxReducibleBadPt > 0)
-            ? middleEvals[worstMiddleIdx]
-            : null;
+        // 🟢 NẾU ĐÃ KHÓA DÒNG CHUYỂN ÂM (#2-#5) NHƯNG DÒNG ĐÓ VẪN ĐANG LÀ DÒNG XẤU (badPt > 0):
+        // Mỗi tuần vẫn được Chuyển âm lại đúng dòng đó 1 lần! Nên tiềm năng sau khi tẩy trúng T1 sẽ trừ đi badPt của chính dòng đã khóa đó!
+        const reduciblePt = hasAlreadyRetunedOneLine
+            ? (lockedRetuneEval ? lockedRetuneEval.badPt : 0)
+            : maxReducibleBadPt;
+
+        const badPointsAfterOneRetune = Math.max(0, +(rawBadPoints - reduciblePt).toFixed(1));
+
+        const targetRetuneEval = hasAlreadyRetunedOneLine
+            ? (lockedRetuneEval && lockedRetuneEval.badPt > 0 ? lockedRetuneEval : null)
+            : (worstMiddleIdx !== -1 && maxReducibleBadPt > 0 ? middleEvals[worstMiddleIdx] : null);
+
+        // 🟢 PHÂN TÍCH BỂ 6 DÒNG CHUYỂN ÂM (LOẠI TRỪ CÁC DÒNG ĐÃ CÓ TRÊN ĐỒ NHƯ TRONG GAME)
+        const existingMiddleKeys = new Set(
+            (item.tuningLines || []).map(l => l.statKey)
+        );
+        // Đồng bộ tên mã Khiên Ty tối thiểu/tối đa để nhận diện trùng lặp
+        if (existingMiddleKeys.has('MIN_SILKBIND_ATK')) existingMiddleKeys.add('MAX_SILKBIND_ATK');
+
+        const rawPool6 = getRetunePoolForSpec(selectedSpec);
+        const retunePoolPreview = rawPool6.map(pItem => {
+            const opt = statOptions.find(o => o.key === pItem.statKey);
+            const tier = opt ? resolveStatGroupForSpec(opt, selectedSpec) : 'T1';
+            const isGreyedOut = existingMiddleKeys.has(pItem.statKey);
+            const isGoodTarget = tier === 'T1' || (pItem.statKey === activeTalentsMeta.t1.linkedStatKey);
+            return {
+                ...pItem,
+                tier,
+                isGreyedOut,
+                isGoodTarget
+            };
+        });
+
+        const availableGoodTargets = retunePoolPreview
+            .filter(p => !p.isGreyedOut && p.isGoodTarget)
+            .map(p => `${p.nameVi} (${p.rangeText})`);
+
+        const allGoodTargetsInPool = retunePoolPreview
+            .filter(p => p.isGoodTarget)
+            .map(p => `${p.nameVi} (${p.rangeText})`);
+
+        const suggestedTargetsText = availableGoodTargets.length > 0
+            ? availableGoodTargets.join(' hoặc ')
+            : allGoodTargetsInPool.join(', ');
 
         const missingRequiredGodLine = Boolean(slotMeta.godLineKey && !hasValidGodLine);
 
@@ -1757,39 +1852,45 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         } else if (slot1Eval && slot1Eval.badPt >= 1.0 && !hasValidGodLine) {
             verdictTitle = "⚠️ DÒNG #1 GỐC BỊ LỆCH HỆ (T3 - KHÔNG THỂ TẨY LẺ DÒNG #1)";
             verdictColor = 'rose';
-            verdictAction = `Dòng #1 [${slot1Eval.labelVi}] là dòng gốc sinh ra cùng phôi (không thể dùng đá Retune tẩy lẻ) đã mất 1.0 điểm xấu. Tổng điểm xấu hiện tại: ${rawBadPoints.toFixed(1)} (Sau khi tẩy 1 dòng giữa còn ${badPointsAfterOneRetune.toFixed(1)}).`;
+            verdictAction = `Dòng #1 [${slot1Eval.labelVi}] là dòng gốc sinh ra cùng phôi (không thể dùng đá Chuyển âm tẩy lẻ) đã mất 1.0 điểm xấu. Tổng điểm xấu hiện tại: ${rawBadPoints.toFixed(1)} (Sau khi tẩy 1 dòng giữa còn ${badPointsAfterOneRetune.toFixed(1)}).`;
         } else if (badPointsAfterOneRetune <= 0.5) {
-            if (bestTargetLineToRetune) {
-                verdictTitle = `💎 PHÔI CỰC PHẨM! TẨY DUY NHẤT DÒNG #${bestTargetLineToRetune.lineNumber} LÀ THÀNH BiS (${badPointsAfterOneRetune.toFixed(1)} XẤU)`;
+            if (targetRetuneEval) {
+                verdictTitle = hasAlreadyRetunedOneLine
+                    ? `🔄 DÒNG #${targetRetuneEval.lineNumber} ĐANG RA DÒNG PHỤ — TUẦN SAU CHUYỂN ÂM TIẾP SẼ VỀ ${badPointsAfterOneRetune.toFixed(1)} XẤU (BiS!)`
+                    : `💎 PHÔI CỰC PHẨM! CHUYỂN ÂM DÒNG #${targetRetuneEval.lineNumber} LÀ THÀNH BiS (${badPointsAfterOneRetune.toFixed(1)} XẤU)`;
                 verdictColor = 'emerald';
-                verdictAction = `Hiện tại ${rawBadPoints.toFixed(1)} điểm xấu. Vì các dòng giữa chỉ được phép Retune 1 dòng duy nhất, hãy chọn tẩy dòng #${bestTargetLineToRetune.lineNumber} [${bestTargetLineToRetune.labelVi}] sang T1 ➔ Điểm xấu sẽ giảm xuống còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
+                verdictAction = hasAlreadyRetunedOneLine
+                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang dừng ở [${targetRetuneEval.labelVi}] (+${targetRetuneEval.badPt} xấu). Mỗi tuần được Chuyển âm lại 1 lần: Hãy tẩy tiếp dòng #${targetRetuneEval.lineNumber} để lấy [${suggestedTargetsText}] ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
+                    : `Hiện tại ${rawBadPoints.toFixed(1)} điểm xấu. Hãy khóa Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] và tìm [${suggestedTargetsText}] trong bể 6 dòng ➔ Điểm xấu giảm còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
             } else {
-                verdictTitle = "💎 CỰC PHẨM HOÀN MỸ (GOD ROLL / BiS) - MẶC NGAY!";
+                verdictTitle = "💎 CỰC PHẨM HOÀN MỸ (GOD ROLL / BiS) - ĐÃ CHỐT HẠ!";
                 verdictColor = 'emerald';
-                verdictAction = `Hoàn mỹ (${rawBadPoints.toFixed(1)} điểm xấu)! Đạt chuẩn T0/T1 tối ưu cho hệ [${selectedSpec}].`;
+                verdictAction = `Hoàn mỹ (${rawBadPoints.toFixed(1)} điểm xấu)! Dòng Chuyển âm đã đạt chuẩn tối ưu, không cần tốn lượt Chuyển âm hàng tuần vào món này nữa.`;
             }
         } else if (badPointsAfterOneRetune <= 2.0) {
-            verdictTitle = "✨ DÙNG TỐT - TẬN DỤNG QUYỀN TẨY 1 DÒNG TRONG CÁC DÒNG GIỮA";
+            verdictTitle = "✨ DÙNG TỐT - TẬN DỤNG LƯỢT CHUYỂN ÂM MỖI TUẦN (BỂ 6 DÒNG)";
             verdictColor = 'amber';
-            if (bestTargetLineToRetune) {
-                verdictAction = `Điểm xấu hiện tại: ${rawBadPoints.toFixed(1)}/2.0. Hãy dùng quyền Retune duy nhất vào Dòng #${bestTargetLineToRetune.lineNumber} [${bestTargetLineToRetune.labelVi}] (các dòng kia sẽ khóa lại) ➔ Điểm xấu sau tẩy còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
+            if (targetRetuneEval) {
+                verdictAction = hasAlreadyRetunedOneLine
+                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang bị +${targetRetuneEval.badPt} điểm xấu ([${targetRetuneEval.labelVi}]). Mỗi tuần 1 lần, hãy Chuyển âm lại Dòng #${targetRetuneEval.lineNumber} lấy [${suggestedTargetsText}] ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
+                    : `Điểm xấu hiện tại: ${rawBadPoints.toFixed(1)}/2.0. Hãy dùng quyền Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] để tìm [${suggestedTargetsText}] ➔ Điểm xấu sau tẩy còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
             } else {
-                verdictAction = `Món đồ đã khóa dòng Retune (#${(item.retunedLineIndex ?? 0) + 2}), tổng điểm xấu chốt hạ: ${rawBadPoints.toFixed(1)}/2.0 (Dùng tốt).`;
+                verdictAction = `Món đồ đã tối ưu hết mức của dòng Chuyển âm (#${(item.retunedLineIndex ?? 0) + 2}), tổng điểm xấu chốt hạ: ${rawBadPoints.toFixed(1)}/2.0 (Dùng tốt).`;
             }
         } else {
             const tierMeta = tierOptions.find(t => t.tier === item.tier);
             if (item.tier <= 96 || tierMeta?.isArsenal) {
                 verdictTitle = `📦 KHÔNG TẨY THÊM - CẤT VÀO KHO VŨ KHÍ (BẬC ${item.tier})`;
                 verdictColor = 'amber';
-                verdictAction = `Đồ Bậc ${item.tier} có ${rawBadPoints.toFixed(1)} điểm xấu. Không tốn nguyên liệu retune, hãy chuyển vào Kho Vũ Khí (Arsenal) để lấy chỉ số cộng thẳng!`;
+                verdictAction = `Đồ Bậc ${item.tier} có ${rawBadPoints.toFixed(1)} điểm xấu. Không tốn nguyên liệu Chuyển âm, hãy đưa vào Kho Vũ Khí (Arsenal) để lấy chỉ số cộng thẳng!`;
             } else if (slot1Eval && slot1Eval.badPt === 0) {
                 verdictTitle = `🔄 GIỮ PHÔI GỐC #1 NGON & DÙNG [GEAR TUNING RESET] (ĐỒ BẬC ${item.tier})`;
                 verdictColor = 'amber';
-                verdictAction = `Dòng #1 gốc [${slot1Eval.labelVi}] rất đẹp (0 xấu), nhưng các dòng giữa có quá nhiều dòng xấu (${rawBadPoints.toFixed(1)} xấu, dù chỉ được tẩy 1 dòng vẫn còn ${badPointsAfterOneRetune.toFixed(1)} > 2.0). Hãy dùng [Gear Tuning Reset] để mở lại các dòng giữa!`;
+                verdictAction = `Dòng #1 gốc [${slot1Eval.labelVi}] rất đẹp (0 xấu), nhưng các dòng giữa có quá nhiều dòng xấu (${rawBadPoints.toFixed(1)} xấu, dù Chuyển âm 1 dòng vẫn còn ${badPointsAfterOneRetune.toFixed(1)} > 2.0). Hãy dùng [Gear Tuning Reset] để mở lại 4 dòng giữa!`;
             } else {
-                verdictTitle = "🗑️ PHÔI NHIỀU DÒNG XẤU (>2.0 ĐIỂM XẤU KỂ CẢ SAU KHI TẨY 1 DÒNG)";
+                verdictTitle = "🗑️ PHÔI NHIỀU DÒNG XẤU (>2.0 ĐIỂM XẤU KỂ CẢ SAU KHI CHUYỂN ÂM)";
                 verdictColor = 'rose';
-                verdictAction = `Kể cả khi dùng quyền tẩy 1 dòng ở cụm giữa, món đồ vẫn còn ${badPointsAfterOneRetune.toFixed(1)} điểm xấu (>2.0).`;
+                verdictAction = `Kể cả khi Chuyển âm 1 dòng ở cụm giữa ra chỉ số T1, món đồ vẫn còn ${badPointsAfterOneRetune.toFixed(1)} điểm xấu (>2.0).`;
             }
         }
 
@@ -1798,7 +1899,9 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             badPointsAfterOneRetune,
             lineEvaluations,
             slot1Eval,
-            bestTargetLineToRetune,
+            bestTargetLineToRetune: targetRetuneEval,
+            retunePoolPreview,
+            availableGoodTargets,
             hasValidGodLine,
             missingRequiredGodLine,
             setWarning,
@@ -3460,6 +3563,50 @@ ${statKeysCatalog}`;
                             <p className="text-xs text-zinc-200 leading-relaxed font-medium">
                                 {activeGearEval.verdictAction}
                             </p>
+
+                            {/* 🟢 BẢNG XEM TRƯỚC KẾT QUẢ CHUYỂN ÂM (BỂ 6 DÒNG CỐ ĐỊNH — MỖI TUẦN 1 LẦN, KHÔNG CÓ T0) */}
+                            <div className="bg-zinc-950/90 border border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
+                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2">
+                                    <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
+                                        🎲 Xem Trước Bể 6 Dòng Chuyển Âm — Nhánh [{selectedSpec}] (1 Lần/Tuần • Không Có T0)
+                                    </span>
+                                    <span className="text-[10px] text-zinc-400">
+                                        Các dòng đã có trên đồ sẽ tự động bị làm mờ (Loại trừ trùng lặp)
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {activeGearEval.retunePoolPreview.map((pItem) => (
+                                        <div
+                                            key={pItem.statKey}
+                                            className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                                                pItem.isGreyedOut
+                                                    ? 'bg-zinc-900/30 border-zinc-800/60 opacity-40'
+                                                    : pItem.isGoodTarget
+                                                        ? 'bg-emerald-950/40 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                                                        : 'bg-zinc-900/80 border-zinc-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className={`text-[11px] font-bold truncate ${
+                                                    pItem.isGreyedOut ? 'text-zinc-500 line-through' : pItem.isGoodTarget ? 'text-emerald-300' : 'text-zinc-200'
+                                                }`}>
+                                                    {pItem.nameVi}
+                                                </span>
+                                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-950 text-amber-300 shrink-0">
+                                                    {pItem.tier}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <span className="text-[10px] font-mono text-zinc-400">{pItem.rangeText}</span>
+                                                <span className="text-[9px] font-black">
+                                                    {pItem.isGreyedOut ? '🔒 Đã có trên đồ' : pItem.isGoodTarget ? '🌟 Cửa Sáng Nên Lấy' : '⚠️ Tránh'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
                             {activeGearEval.crossSpecHints.length > 0 && (
                                 <div className="bg-zinc-950/80 border border-amber-500/30 rounded-xl p-2.5 text-[11px] text-amber-300">
