@@ -14,6 +14,8 @@ export default function useFirebaseData() {
     const [giftcodeClaims, setGiftcodeClaims] = useState<any>(null);
     const [pointData, setPointData] = useState<any>(null);
     const [satTuongData, setSatTuongData] = useState<any>(null);
+    const [satTuongMeta, setSatTuongMeta] = useState<any>(null);
+    const [bossRotation, setBossRotation] = useState<any>(null);
     
     // 🟢 HỨNG DỮ LIỆU HOẠT ĐỘNG BANG (bang_hoat_dong)
     const [bangHoatDong, setBangHoatDong] = useState<any>(null);
@@ -30,7 +32,22 @@ export default function useFirebaseData() {
         const unsub6 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_data'), (snap) => setGiftcodeData(snap.exists() ? snap.data() : { codes: {} }));
         const unsub7 = onSnapshot(doc(db, 'thanhlong_config', 'giftcode_claims'), (snap) => setGiftcodeClaims(snap.exists() ? snap.data() : {}));
         const unsub8 = onSnapshot(doc(db, 'thanhlong_config', 'points_data'), (snap) => setPointData(snap.exists() ? snap.data() : {}));
-        const unsub9 = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_data'), (snap) => setSatTuongData(snap.exists() ? snap.data() : {}));
+        
+        // 🟢 SÁT TƯỚNG DATA & METADATA
+        const unsub9 = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_data'), (snap) => {
+            if (snap.exists()) setSatTuongData((prev: any) => ({ ...(prev || {}), ...snap.data() }));
+        });
+        const unsub9b = onSnapshot(doc(db, 'thanhlong_config', 'sattuong_data'), (snap) => {
+            if (snap.exists()) setSatTuongData((prev: any) => ({ ...(prev || {}), ...snap.data() }));
+        });
+        const unsub9c = onSnapshot(doc(db, 'thanhlong_config', 'sattuong_metadata'), (snap) => {
+            setSatTuongMeta(snap.exists() ? snap.data() : null);
+        });
+
+        // 🟢 BỐC THĂM BOSS SÁT TƯỚNG (boss_rotation)
+        const unsub9d = onSnapshot(doc(db, 'thanhlong_config', 'boss_rotation'), (snap) => {
+            setBossRotation(snap.exists() ? snap.data() : null);
+        });
         
         // 🟢 ĐƯỜNG TRUYỀN HOẠT ĐỘNG BANG
         const unsub10 = onSnapshot(doc(db, 'thanhlong_config', 'bang_hoat_dong'), (snap) => setBangHoatDong(snap.exists() ? snap.data() : {}));
@@ -52,12 +69,12 @@ export default function useFirebaseData() {
 
         return () => { 
             unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
-            unsub6(); unsub7(); unsub8(); unsub9(); unsub10(); unsub11(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub10(); unsub11(); 
         };
     }, []);
 
     return { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, bangHoatDong, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, bangHoatDong, wwmBuilds 
     };
 }

@@ -4,6 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { doc, setDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { buildSatTuongTitleMap, SatTuongBadge } from '@/lib/satTuongUtils';
 
 interface Props {
     danhLuc: Record<string, any>;
@@ -11,6 +12,7 @@ interface Props {
     tuViData?: Record<string, any>;
     isMaster?: boolean;
     wwmData?: any;
+    satTuongData?: any;
 }
 
 type SortField = 'ingame' | 'discord' | 'class' | 'gw' | 'talent';
@@ -109,7 +111,8 @@ function getGwBadge(gwStatus?: string) {
     return { label: '⏳ Chưa Báo Danh', code: 'Chưa báo', cls: 'bg-zinc-900 text-zinc-500 border-zinc-800' };
 }
 
-export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, isMaster = false, wwmData }: Props) {
+export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, isMaster = false, wwmData, satTuongData }: Props) {
+    const satTuongTitleMap = useMemo(() => buildSatTuongTitleMap(satTuongData, danhLuc), [satTuongData, danhLuc]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSectFilter, setSelectedSectFilter] = useState<string>('ALL');
     const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
@@ -202,7 +205,8 @@ export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, is
                 gwRaw: info?.gw || '',
                 gwBadge: getGwBadge(info?.gw),
                 talents: userTalents,
-                talentCount: userTalents.length
+                talentCount: userTalents.length,
+                satTuongTitle: satTuongTitleMap[discordId] || (info?.ingame ? satTuongTitleMap[info.ingame.trim().toLowerCase()] : null)
             };
         });
 
@@ -610,8 +614,9 @@ export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, is
                                                             {m.sectMeta.icon}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <div className="text-sm font-black text-amber-300 group-hover:text-amber-200 transition-colors break-words">
-                                                                {m.ingame}
+                                                            <div className="text-sm font-black text-amber-300 group-hover:text-amber-200 transition-colors break-words flex items-center gap-1.5 flex-wrap">
+                                                                <span>{m.ingame}</span>
+                                                                {m.satTuongTitle && <SatTuongBadge titleInfo={m.satTuongTitle} size="xs" />}
                                                             </div>
                                                             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                                                                 <a
@@ -770,7 +775,10 @@ export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, is
                                             {m.sectMeta.icon}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="text-sm font-black text-amber-300 truncate">{m.ingame}</div>
+                                            <div className="text-sm font-black text-amber-300 truncate flex items-center gap-1.5">
+                                                <span className="truncate">{m.ingame}</span>
+                                                {m.satTuongTitle && <SatTuongBadge titleInfo={m.satTuongTitle} size="xs" />}
+                                            </div>
                                             <a
                                                 href={`https://discord.com/users/${m.discordId}`}
                                                 target="_blank"

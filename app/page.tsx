@@ -46,7 +46,7 @@ export default function Home() {
 
     const { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, bangHoatDong, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, bangHoatDong, wwmBuilds 
     } = useFirebaseData();
 
     useEffect(() => {
@@ -134,6 +134,7 @@ export default function Home() {
                         tuViData={tuViData}
                         isMaster={isMaster}
                         wwmData={wwmData}
+                        satTuongData={satTuongData}
                     />
                 )}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
@@ -150,7 +151,16 @@ export default function Home() {
                     />
                 )}
                 {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
-                {activeTab === 'sattuong' && <SatTuongTab data={satTuongData} danhLuc={danhLuc} />}
+                {activeTab === 'sattuong' && (
+                    <SatTuongTab
+                        data={satTuongData}
+                        bossRotation={bossRotation}
+                        pointData={pointData}
+                        danhLuc={danhLuc}
+                        session={session}
+                        isMaster={isMaster}
+                    />
+                )}
                 {activeTab === 'hoatdong' && <HoatDongTab data={bangHoatDong} danhLuc={danhLuc} />}
                 {activeTab === 'builds' && (
                     <WwmBuildsTab

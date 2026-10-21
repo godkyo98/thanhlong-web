@@ -4,12 +4,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { buildSatTuongTitleMap, SatTuongBadge } from '@/lib/satTuongUtils';
 
 interface Props {
     danhLuc: any;
     wwmData: any;
     session: any;
     isMaster: boolean;
+    satTuongData?: any;
 }
 
 export interface DynamicMatch {
@@ -310,7 +312,8 @@ function propagateDynamicBracket(data: DynamicTournamentData): DynamicTournament
     return next;
 }
 
-export default function PvpTournamentTab({ danhLuc, wwmData, session, isMaster }: Props) {
+export default function PvpTournamentTab({ danhLuc, wwmData, session, isMaster, satTuongData }: Props) {
+    const satTuongTitleMap = useMemo(() => buildSatTuongTitleMap(satTuongData, danhLuc), [satTuongData, danhLuc]);
     const [tournament, setTournament] = useState<DynamicTournamentData>(() =>
         buildDynamicTournament(
             Array.from({ length: 8 }, (_, i) => `Hạt Giống #${i + 1}`),
@@ -1136,6 +1139,9 @@ export default function PvpTournamentTab({ danhLuc, wwmData, session, isMaster }
                                             #{String(idx + 1).padStart(2, '0')}
                                         </span>
                                         <span className="text-xs font-black text-zinc-100 break-words">{p.ingame}</span>
+                                        {satTuongTitleMap[p.ingame.toLowerCase()] && (
+                                            <SatTuongBadge titleInfo={satTuongTitleMap[p.ingame.toLowerCase()]} size="xs" />
+                                        )}
                                     </div>
                                     <div className="text-[10px] text-emerald-400 break-words mt-0.5">
                                         {p.class || 'Chưa rõ phái'}
