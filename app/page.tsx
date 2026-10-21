@@ -18,10 +18,11 @@ import PointTab from "@/components/tabs/PointTab";
 import SatTuongTab from "@/components/tabs/SatTuongTab";
 import HoatDongTab from "@/components/tabs/HoatDongTab";
 import WwmBuildsTab from "@/components/tabs/WwmBuildsTab";
+import PvpTournamentTab from "@/components/tabs/PvpTournamentTab";
 
-export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatdong' | 'builds';
+export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatdong' | 'builds' | 'pvp';
 
-const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'hoatdong', 'builds'];
+const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'hoatdong', 'builds', 'pvp'];
 
 const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
@@ -34,6 +35,7 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     sattuong: { icon: '👹', title: 'Bảng Chiến Thần Sát Tướng' },
     hoatdong: { icon: '🔥', title: 'Sổ Điệp Hoạt Động Bang' },
     builds: { icon: '⚔️', title: 'Thần Khí Các · Giám Định & Tối Ưu Trang Bị' },
+    pvp: { icon: '🏆', title: 'Võ Lâm Tranh Bá · Sơ Đồ Giải Đấu PvP' },
     admin: { icon: '⚙️', title: 'Mật Thất Quản Trị Tông Môn' },
 };
 
@@ -150,6 +152,14 @@ export default function Home() {
                         playerProfiles={playerProfiles}
                         session={session}
                         lang={displayLang}
+                        isMaster={isMaster}
+                    />
+                )}
+                {activeTab === 'pvp' && (
+                    <PvpTournamentTab
+                        danhLuc={danhLuc}
+                        wwmData={wwmData}
+                        session={session}
                         isMaster={isMaster}
                     />
                 )}

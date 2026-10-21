@@ -195,6 +195,33 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         Tiến Vào Thần Khí Các ➔
                     </div>
                 </div>
+
+                <div
+                    onClick={() => setActiveTab('pvp')}
+                    className="group relative overflow-hidden bg-gradient-to-r from-rose-950/40 via-zinc-900/70 to-zinc-950 border border-rose-500/30 hover:border-amber-400/60 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-4"
+                >
+                    <div className="flex items-start sm:items-center gap-4">
+                        <div className="text-4xl p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 group-hover:scale-110 transition-transform">
+                            🏆
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-lg font-black text-rose-400 group-hover:text-amber-300 transition-colors">
+                                    Võ Lâm Tranh Bá · Sơ Đồ Giải Đấu PvP (Nhánh Thắng / Thua)
+                                </h4>
+                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                    DOUBLE ELIMINATION • BO
+                                </span>
+                            </div>
+                            <p className="text-xs text-zinc-400 leading-relaxed">
+                                Sơ đồ thi đấu Nhánh Thắng - Nhánh Thua trực tiếp, tùy chỉnh BO1/BO3/BO5/BO7/BO9, tự động đôn nhánh và đồng bộ danh sách báo danh với Discord.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="shrink-0 px-4 py-2 rounded-xl bg-rose-500/15 group-hover:bg-amber-500 text-rose-300 group-hover:text-zinc-950 font-black text-xs transition-all">
+                        Mở Sơ Đồ Giải Đấu ➔
+                    </div>
+                </div>
             </div>
         </section>
     );
