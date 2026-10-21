@@ -127,7 +127,15 @@ export default function Home() {
                 )}
 
                 {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
-                {activeTab === 'danhluc' && <DanhLucTab data={danhLuc} />}
+                {activeTab === 'danhluc' && (
+                    <DanhLucTab
+                        danhLuc={danhLuc}
+                        talentData={talent}
+                        tuViData={tuViData}
+                        isMaster={isMaster}
+                        wwmData={wwmData}
+                    />
+                )}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
                 {activeTab === 'soi_acc' && <SoiAccTab profiles={playerProfiles} wwmData={wwmData} lang={displayLang} />}
                 {activeTab === 'talent' && <TalentTab data={talent} danhLuc={danhLuc} />}
