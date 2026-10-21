@@ -1,12 +1,15 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
+const beVietnamPro = Be_Vietnam_Pro({
+    variable: "--font-be-vietnam-pro",
+    subsets: ["latin", "vietnamese"],
+    weight: ["400", "500", "600", "700", "800", "900"],
+    display: "swap",
+    fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
 });
 
 const geistMono = Geist_Mono({
@@ -26,8 +29,16 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="vi" className="dark">
+            <head>
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap"
+                    rel="stylesheet"
+                />
+            </head>
             <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased text-zinc-100 min-h-screen relative selection:bg-cyan-500/30 selection:text-cyan-200`}
+                className={`${beVietnamPro.variable} ${geistMono.variable} antialiased text-zinc-100 min-h-screen relative selection:bg-cyan-500/30 selection:text-cyan-200`}
                 style={{ backgroundColor: "#040814" }}
             >
                 {/* 🟢 LỚP NỀN ÁNH SÁNG MỊN (KHÔNG LƯỚI CARO) */}
