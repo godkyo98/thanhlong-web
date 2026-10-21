@@ -360,11 +360,8 @@ export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, is
                             <span>ĐỒNG BỘ REAL-TIME VỚI DISCORD</span>
                         </div>
                         <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
-                            📜 Sổ Danh Lục Bang Chúng ({membersList.length} Đại Hiệp)
+                            📜 Sổ Danh Lục Bang Chúng
                         </h2>
-                        <p className="text-xs text-zinc-400 mt-1">
-                            Hiển thị song song <b>Tên Nhân Vật In-game</b> và <b>Tài Khoản Discord</b> • Phân loại theo chuẩn dịch thuật mới nhất của <code>VO_HOC_LIST</code>.
-                        </p>
                     </div>
 
                     {/* NÚT CHUẨN HÓA BẢN DỊCH VÕ HỌC LÊN FIREBASE (DÀNH CHO MASTER) */}

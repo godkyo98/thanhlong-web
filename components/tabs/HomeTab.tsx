@@ -24,7 +24,7 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
         return discordName;
     })();
 
-    const totalMembers = danhLuc ? Object.values(danhLuc).filter((p: any) => p.ingame).length : 0;
+    const totalMembers = danhLuc ? Object.keys(danhLuc).length : 0;
     
     const top1TuVi = (() => {
         if (!tuViData || Object.keys(tuViData).length === 0) return null;
