@@ -444,7 +444,7 @@ export default function SatTuongTab({
     // 3. 🏆 BẢNG PHONG THẦN (TỔNG ĐIỂM THÁNG)
     const monthlyList = useMemo(() => {
         const monthlyObj = data?.monthlyRanking || data?.monthly_ranking || {};
-        const list: Array<{
+        const playerMap = new Map<string, {
             id: string;
             ingame: string;
             discordName: string;
@@ -452,30 +452,70 @@ export default function SatTuongTab({
             class: string;
             points: number;
             titleInfo: SatTuongTitleInfo | null;
-        }> = [];
+        }>();
 
-        Object.entries(monthlyObj).forEach(([id, d]: [string, any]) => {
+        Object.entries(monthlyObj).forEach(([rawKey, d]: [string, any]) => {
             const pts = Number(typeof d === 'object' ? (d?.points ?? 0) : d) || 0;
-            const member = danhLuc[id] || {};
+            if (pts <= 0) return;
+
+            const cleanKey = rawKey.trim();
+            const dName = typeof d === 'object' ? (d?.name || d?.username || d?.ingame || '') : '';
+            
+            // Tìm thông tin thành viên trong danhLuc
+            const member = danhLuc[cleanKey] || findMemberInDanhLuc(cleanKey, danhLuc) || (dName ? findMemberInDanhLuc(dName, danhLuc) : null);
+            
+            // Khóa định danh chuẩn (ưu tiên Discord ID Snowflake 17-21 chữ số)
+            const isSnowflake = /^\d{16,21}$/.test(cleanKey);
+            const officialId = isSnowflake 
+                ? cleanKey 
+                : (member?.discordId || (Object.keys(danhLuc).find(k => danhLuc[k] === member)) || cleanKey);
+            
+            const officialName = member?.ingame || member?.name || dName || cleanKey;
+            const officialDiscord = member?.discordName || (typeof d === 'object' && d?.username) || '';
+            const officialUid = member?.uid || '—';
+            const officialClass = normalizeVoHocName(member?.class || 'Lãng Khách');
+
             const userSeasonTitle = resolveSatTuongTitle(
-                data?.seasonRanking?.[id]?.satTuongSeasonPts ??
-                data?.seasonRanking?.[id]?.title ??
-                member.satTuongSeasonPts ??
-                member.satTuongTitle
+                data?.seasonRanking?.[officialId]?.satTuongSeasonPts ??
+                data?.seasonRanking?.[officialId]?.title ??
+                member?.satTuongSeasonPts ??
+                member?.satTuongTitle
             );
 
-            list.push({
-                id,
-                ingame: member.ingame || (typeof d === 'object' && d?.name) || `Hiệp Khách #${id.slice(-4)}`,
-                discordName: member.discordName || (typeof d === 'object' && d?.username) || '',
-                uid: member.uid || '—',
-                class: normalizeVoHocName(member.class || 'Lãng Khách'),
-                points: pts,
-                titleInfo: userSeasonTitle
-            });
+            // Khóa gộp chống trùng lặp theo tên Ingame (hoặc ID)
+            const dedupKey = officialName.toLowerCase().trim();
+
+            if (playerMap.has(dedupKey)) {
+                const existing = playerMap.get(dedupKey)!;
+                const bestPts = Math.max(existing.points, pts);
+                const bestId = (/^\d{16,21}$/.test(existing.id)) ? existing.id : officialId;
+                const bestUid = existing.uid !== '—' ? existing.uid : officialUid;
+                const bestDiscord = existing.discordName || officialDiscord;
+                const bestClass = existing.class !== 'Lãng Khách' ? existing.class : officialClass;
+
+                playerMap.set(dedupKey, {
+                    ...existing,
+                    id: bestId,
+                    uid: bestUid,
+                    discordName: bestDiscord,
+                    class: bestClass,
+                    points: bestPts,
+                    titleInfo: existing.titleInfo || userSeasonTitle
+                });
+            } else {
+                playerMap.set(dedupKey, {
+                    id: officialId,
+                    ingame: officialName,
+                    discordName: officialDiscord,
+                    uid: officialUid,
+                    class: officialClass,
+                    points: pts,
+                    titleInfo: userSeasonTitle
+                });
+            }
         });
 
-        return list.sort((a, b) => b.points - a.points);
+        return Array.from(playerMap.values()).sort((a, b) => b.points - a.points);
     }, [data, danhLuc]);
 
     // 4. ⚔️ NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS
