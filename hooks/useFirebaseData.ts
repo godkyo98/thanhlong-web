@@ -17,9 +17,6 @@ export default function useFirebaseData() {
     const [satTuongMeta, setSatTuongMeta] = useState<any>(null);
     const [bossRotation, setBossRotation] = useState<any>(null);
     
-    // 🟢 HỨNG DỮ LIỆU HOẠT ĐỘNG BANG (bang_hoat_dong)
-    const [bangHoatDong, setBangHoatDong] = useState<any>(null);
-    
     // 🟢 HỨNG DỮ LIỆU TỔNG ĐỒ BUILD (wwm_builds -> Võ học -> ID)
     const [wwmBuilds, setWwmBuilds] = useState<Record<string, any>>({});
 
@@ -49,9 +46,6 @@ export default function useFirebaseData() {
             setBossRotation(snap.exists() ? snap.data() : null);
         });
         
-        // 🟢 ĐƯỜNG TRUYỀN HOẠT ĐỘNG BANG
-        const unsub10 = onSnapshot(doc(db, 'thanhlong_config', 'bang_hoat_dong'), (snap) => setBangHoatDong(snap.exists() ? snap.data() : {}));
-
         // 🟢 ĐƯỜNG TRUYỀN TỔNG ĐỒ BUILD (wwm_builds)
         const unsub11 = onSnapshot(
             collection(db, 'wwm_builds'),
@@ -69,12 +63,12 @@ export default function useFirebaseData() {
 
         return () => { 
             unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
-            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub10(); unsub11(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub11(); 
         };
     }, []);
 
     return { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, bangHoatDong, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, wwmBuilds 
     };
 }

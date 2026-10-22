@@ -1,569 +1,1259 @@
-/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/SoiAccTab.tsx
-import { useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+'use client';
 
-const safeParse = (val: any) => {
-    if (!val) return {};
-    if (typeof val === 'object') return val;
-    try { return JSON.parse(val); } catch { return {}; }
-};
-
-function warmBangHoi(name: string) {
-    if (name && (name.includes("Thanh Long") || name.toLowerCase() === "thanhlong")) return "🐉 Thanh Long Sơn Trang";
-    return name;
-}
+import React, { useState, useMemo } from 'react';
+import {
+    SlotKey,
+    GearItem,
+    CharacterBaseline,
+    SLOTS_CONFIG,
+    DEFAULT_STAT_OPTIONS,
+    DEFAULT_GEAR_SETS,
+    DEFAULT_WEAPON_TYPES,
+    DEFAULT_ATTUNEMENT_OPTIONS,
+    resolveStatGroupForSpec,
+    TIER_BADGE_PREFIX,
+    stripHardcodedTierPrefix,
+    StatOption
+} from './WwmBuildsTab';
 
 interface Props {
-    profiles: any;
+    wwmBuilds: Record<string, any>;
+    danhLuc: any;
     wwmData: any;
+    session?: any;
     lang: 'vi' | 'en';
+    setActiveTab?: (tab: any) => void;
 }
 
-export default function SoiAccTab({ profiles, wwmData, lang }: Props) {
-    const [expandedEquip, setExpandedEquip] = useState<Record<string, boolean>>({});
-    const [editingDict, setEditingDict] = useState<{ id: string, mapName: string, valVi: string, valEn: string } | null>(null);
-    const [filterText, setFilterText] = useState("");
-
-    const toggleEquip = (uid: string) => {
-        setExpandedEquip(prev => ({ ...prev, [uid]: !prev[uid] }));
+interface BuildCardData {
+    id: string;
+    userId: string;
+    spec: string;
+    ingame: string;
+    uid: string;
+    avatar: string;
+    discordName: string;
+    baseline: CharacterBaseline;
+    equipped: Record<SlotKey, GearItem>;
+    arsenal96: any;
+    innerWays: any;
+    updatedAt: string;
+    totalT0: number;
+    totalT1: number;
+    totalT2: number;
+    totalT3: number;
+    godLinesCount: number;
+    buildScore: number;
+    tierRank: {
+        titleVi: string;
+        titleEn: string;
+        color: string;
+        badgeClass: string;
+        icon: string;
     };
+    activeSets: { key: string; name: string; count: number }[];
+    attunementSummary: { okCount: number; trapCount: number };
+}
 
-    const handleInlineDictSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingDict) return;
+export default function SoiAccTab({
+    wwmBuilds,
+    danhLuc,
+    wwmData,
+    session,
+    lang,
+    setActiveTab
+}: Props) {
+    const isVi = lang === 'vi';
 
-        const viText = editingDict.valVi.trim();
-        const enText = editingDict.valEn.trim();
+    // Filters and sorting
+    const [selectedSpecFilter, setSelectedSpecFilter] = useState<string>('ALL');
+    const [selectedTierFilter, setSelectedTierFilter] = useState<string>('ALL');
+    const [sortBy, setSortBy] = useState<string>('SCORE_DESC');
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [inspectingBuild, setInspectingBuild] = useState<BuildCardData | null>(null);
+    const [copiedBuildId, setCopiedBuildId] = useState<string | null>(null);
 
-        if (!viText && !enText) {
-            alert("Đại hiệp phải nhập bản dịch cho ít nhất một ngôn ngữ chứ!");
-            return;
-        }
-
-        try {
-            const targetMapName = editingDict.mapName;
-            const currentMap = wwmData?.[targetMapName] || {};
-            const oldData = currentMap[editingDict.id] || {};
-
-            const finalVi = viText || oldData.vi || enText;
-            const finalEn = enText || oldData.en || viText;
-
-            const updatedMap = {
-                ...currentMap,
-                [editingDict.id]: { vi: finalVi, en: finalEn }
-            };
-            await setDoc(doc(db, 'thanhlong_config', 'wwm_data'), {
-                ...wwmData,
-                [targetMapName]: updatedMap
-            }, { merge: true });
-
-            setEditingDict(null);
-            alert("✅ Đã cập nhật bản dịch lên Tàng Kinh Các thành công!");
-        } catch (err) {
-            alert("❌ Lỗi khi khảm từ điển lên Mây!");
-        }
-    };
-
-    const renderTranslable = (id: string | number | undefined, mapNames: string[], fallbackText: string, extraVal?: string) => {
-        if (!id) return <span>{fallbackText}</span>;
-        const strId = String(id);
-
-        let translated = "";
-        let targetMap = mapNames[0];
-        let valVi = "";
-        let valEn = "";
-
-        for (const m of mapNames) {
-            const entry = wwmData?.[m]?.[strId];
-            if (entry) {
-                targetMap = m;
-                if (typeof entry === 'string') {
-                    valVi = entry;
-                    valEn = entry;
-                } else if (typeof entry === 'object') {
-                    valVi = entry.vi || "";
-                    valEn = entry.en || "";
-                }
-                translated = lang === 'vi' ? (valVi || valEn) : (valEn || valVi);
-                break;
-            }
-        }
-
-        if (translated) {
-            return (
-                <span className="inline-flex items-center gap-1 group/trans">
-                    <span className="font-bold text-amber-300 drop-shadow-[0_0_8px_rgba(252,211,77,0.25)]">
-                        {translated}
-                        {extraVal && <span className="text-indigo-400 font-mono ml-1 font-bold">({extraVal})</span>}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: valVi, valEn: valEn })}
-                        className="opacity-0 group-hover/trans:opacity-100 text-[10px] bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-400 text-zinc-400 px-1 py-0.5 rounded border border-zinc-700/80 cursor-pointer transition-all flex-shrink-0"
-                        title="Bấm để đính chính lại bản dịch nếu bị sai"
-                    >
-                        ✏️ Sửa
-                    </button>
-                </span>
-            );
-        }
-
-        return (
-            <span className="inline-flex items-center gap-1.5 group/trans">
-                <span className="text-zinc-500 italic border-b border-dashed border-zinc-700 pb-0.5">
-                    {fallbackText} [{strId}] {extraVal && <span className="font-mono text-zinc-600">({extraVal})</span>}
-                </span>
-                <button
-                    type="button"
-                    onClick={() => setEditingDict({ id: strId, mapName: targetMap, valVi: "", valEn: "" })}
-                    className="opacity-0 group-hover/trans:opacity-100 text-[10px] bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 cursor-pointer transition-all flex-shrink-0"
-                    title="Bổ sung bản dịch"
-                >
-                    ✍️ Dịch
-                </button>
-            </span>
-        );
-    };
-
-    const renderEquipment = (raw: any) => {
-        let cpChiTiet = safeParse(raw.combat_plan_chi_tiet);
-        if (Object.keys(cpChiTiet).length === 0 && raw.combat_plan) cpChiTiet = raw;
-
-        const equips = safeParse(cpChiTiet.wear_equips) || safeParse(raw.wear_equips) || safeParse(raw.equipment) || {};
-        const equipKeys = Object.keys(equips);
-
-        if (equipKeys.length === 0) return <div className="text-zinc-500 text-xs py-6 text-center italic">🍃 Tàng y các trống rỗng.</div>;
-
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {equipKeys.map(key => {
-                    const eq = safeParse(equips[key]);
-                    if (!eq || typeof eq !== 'object') return null;
-
-                    const itemId = eq.No || eq.equip_id || eq.item_id || eq.base_id;
-                    if (!itemId) return null;
-
-                    const ex = safeParse(eq.ex) || {};
-                    const affixes = ex.base_affixes || ex.affix_list || eq.affix_list || eq.random_attrs || eq.affixes || [];
-
-                    return (
-                        <div key={key} className="bg-zinc-950/60 border border-zinc-800 hover:border-amber-500/40 rounded-xl p-4 transition-all duration-200 shadow-md">
-                            <div className="font-bold text-amber-400 text-sm flex justify-between items-center border-b border-zinc-800/80 pb-2 mb-2">
-                                <span className="flex items-center gap-1.5">
-                                    🛡️ {renderTranslable(itemId, ['ARMOR_MAP', 'WEAPON_MAP'], 'Trang bị')}
-                                </span>
-                                {ex.suffix && <span className="text-zinc-500 text-[11px] font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 shrink-0">Lv.{ex.suffix}</span>}
-                            </div>
-
-                            {affixes.length > 0 ? (
-                                <ul className="space-y-1.5">
-                                    {affixes.map((affix: any, idx: number) => {
-                                        let affixId = affix;
-                                        let valText = "";
-
-                                        if (Array.isArray(affix)) {
-                                            affixId = affix[0];
-                                            const affVal = affix[1];
-                                            if (affVal === 1 && parseInt(affixId) > 260000) valText = "";
-                                            else if (affVal < 1) valText = `+${(affVal * 100).toFixed(2)}%`;
-                                            else valText = `+${Number(affVal).toFixed(2)}`;
-                                        } else if (typeof affix === 'object') {
-                                            affixId = affix.affix_id || affix.id;
-                                        }
-
-                                        return (
-                                            <li key={idx} className="text-xs text-indigo-300 flex items-center gap-2 leading-relaxed bg-indigo-950/20 px-2 py-1 rounded border border-indigo-950/40">
-                                                <span className="text-indigo-400 shrink-0">✦</span>
-                                                {renderTranslable(affixId, ['AFFIX_MAP'], 'Dòng ẩn', valText)}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            ) : (
-                                <div className="text-[11px] text-zinc-600 italic pl-1">Không khảm dòng ẩn</div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        );
-    };
-
-    const filteredProfiles = Object.entries(profiles || {})
-        .filter(([uid, data]: any) => {
-            const tuKhoa = (filterText || "").toLowerCase().trim();
-            if (!tuKhoa) return true;
-
-            let raw: any = {};
-            try { raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data; } catch (e) { }
-            const base = safeParse(raw?.base);
-
-            const name1 = String(base?.role_name || "").toLowerCase();
-            const name2 = String(base?.name || "").toLowerCase();
-            const name3 = String(data.playerName || "").toLowerCase();
-            const name4 = String(data.name || "").toLowerCase();
-
-            const uid1 = String(uid || "").toLowerCase();
-            const uid2 = String(data.id || "").toLowerCase();
-
-            return name1.includes(tuKhoa) || name2.includes(tuKhoa) || name3.includes(tuKhoa) || name4.includes(tuKhoa) || uid1.includes(tuKhoa) || uid2.includes(tuKhoa);
-        })
-        .sort((a: any, b: any) => {
-            const dataA = a[1];
-            const dataB = b[1];
-
-            const getTime = (d: any) => {
-                if (!d) return 0;
-                if (d.updatedAt?.seconds) return d.updatedAt.seconds;
-                if (typeof d.updatedAt === 'number') return d.updatedAt;
-                if (d.timestamp?.seconds) return d.timestamp.seconds;
-                if (typeof d.timestamp === 'number') return d.timestamp;
-
-                let raw: any = {};
-                try { raw = typeof d.full_raw_data === 'string' ? JSON.parse(d.full_raw_data) : d.full_raw_data; } catch (e) { }
-                const base = safeParse(raw?.base);
-                return base?.last_logoff_time || base?.create_time || 0;
-            };
-
-            return getTime(dataB) - getTime(dataA);
+    // Dynamic stat lookup dictionary (combining local defaults and wwmData)
+    const statDict = useMemo(() => {
+        const dict: Record<string, StatOption> = {};
+        DEFAULT_STAT_OPTIONS.forEach(s => {
+            dict[s.key] = s;
         });
 
+        // Also incorporate any custom stat definitions from wwmData if present
+        if (wwmData?.STAT_MAP && typeof wwmData.STAT_MAP === 'object') {
+            Object.entries(wwmData.STAT_MAP).forEach(([key, val]: any) => {
+                if (!dict[key]) {
+                    dict[key] = {
+                        key,
+                        labelVi: val.vi || val.label || key,
+                        labelEn: val.en || val.label || key,
+                        group: val.group || 'T2',
+                        defaultVal: Number(val.defaultVal) || 0,
+                        unit: val.unit || ''
+                    };
+                }
+            });
+        }
+        return dict;
+    }, [wwmData]);
+
+    // Format stat label with effective tier badge for a specific spec
+    const formatLineForSpec = (statKey: string, spec: string) => {
+        const stat = statDict[statKey] || {
+            key: statKey,
+            labelVi: stripHardcodedTierPrefix(statKey),
+            labelEn: stripHardcodedTierPrefix(statKey),
+            group: 'T2',
+            defaultVal: 0,
+            unit: ''
+        };
+        const effTier = resolveStatGroupForSpec(stat, spec);
+        const label = isVi ? stat.labelVi : (stat.labelEn || stat.labelVi);
+        return {
+            tier: effTier,
+            badge: TIER_BADGE_PREFIX[effTier],
+            label: stripHardcodedTierPrefix(label),
+            unit: stat.unit || ''
+        };
+    };
+
+    // Helper to get weapon or slot display title & icon
+    const getSlotDisplay = (slotKey: SlotKey, item?: GearItem) => {
+        const slotMeta = SLOTS_CONFIG.find(s => s.key === slotKey);
+        if (!slotMeta) return { icon: '🛡️', title: slotKey };
+        if (!slotMeta.isWeaponSlot) {
+            return {
+                icon: slotMeta.icon,
+                title: isVi ? slotMeta.labelVi : slotMeta.labelEn
+            };
+        }
+        const wp = DEFAULT_WEAPON_TYPES.find(w => w.key === item?.weaponType);
+        if (wp) {
+            return {
+                icon: wp.icon,
+                title: isVi ? `${slotMeta.labelVi} (${wp.labelVi})` : `${slotMeta.labelEn} (${wp.labelEn})`
+            };
+        }
+        return {
+            icon: slotMeta.icon,
+            title: isVi ? slotMeta.labelVi : slotMeta.labelEn
+        };
+    };
+
+    // Parse and enrich all builds from Firestore wwm_builds
+    const allBuilds: BuildCardData[] = useMemo(() => {
+        if (!wwmBuilds || typeof wwmBuilds !== 'object') return [];
+        const result: BuildCardData[] = [];
+
+        Object.entries(wwmBuilds).forEach(([specKey, specUsersMap]: any) => {
+            if (!specUsersMap || typeof specUsersMap !== 'object') return;
+
+            Object.entries(specUsersMap).forEach(([userId, rawBuild]: any) => {
+                if (!rawBuild || typeof rawBuild !== 'object') return;
+
+                // Match with Danh Lục for player details
+                const dlEntry = danhLuc?.[userId] || {};
+                const ingame = dlEntry.ingame || rawBuild.ingame || `Cao thủ #${userId.slice(0, 5)}`;
+                const uid = dlEntry.uid || rawBuild.uid || '';
+                const avatar = dlEntry.avatar || dlEntry.image || '';
+                const discordName = dlEntry.discordName || '';
+
+                const baseline: CharacterBaseline = rawBuild.baseline || {
+                    agility: 0,
+                    reqAgility: 0,
+                    minPhysical: 0,
+                    reqMinPhysical: 0,
+                    minSilkbind: 0,
+                    reqMinSilkbind: 0,
+                    critRate: 0,
+                    precisionRate: 0,
+                    affinityRate: 0,
+                    simulate23: false,
+                    agiThreshold23: 0,
+                    silkThreshold23: 0,
+                    arsenal96Active: false
+                };
+
+                const equipped: Record<SlotKey, GearItem> = rawBuild.equipped || {};
+
+                // Count lines and tiers
+                let totalT0 = 0;
+                let totalT1 = 0;
+                let totalT2 = 0;
+                let totalT3 = 0;
+                let godLinesCount = 0;
+                let attunementOk = 0;
+                let attunementTrap = 0;
+                const setCounts: Record<string, number> = {};
+
+                SLOTS_CONFIG.forEach(slotMeta => {
+                    const item = equipped[slotMeta.key];
+                    if (!item) return;
+
+                    // Set counting
+                    if (item.gearSet) {
+                        setCounts[item.gearSet] = (setCounts[item.gearSet] || 0) + 1;
+                    }
+
+                    // Attunement analysis
+                    if (item.attunementKey) {
+                        if (item.attunementKey === 'PHYS_PEN' || item.attunementKey === 'UMBRELLA_PROJECTILE_BOOST') {
+                            attunementOk++;
+                        } else if (item.attunementKey.startsWith('TRAP_')) {
+                            attunementTrap++;
+                        }
+                    }
+
+                    // Tuning lines analysis
+                    const lines = Array.isArray(item.tuningLines) ? item.tuningLines : [];
+                    lines.forEach(line => {
+                        if (!line?.statKey) return;
+                        const stat = statDict[line.statKey] || {
+                            key: line.statKey,
+                            labelVi: line.statKey,
+                            labelEn: line.statKey,
+                            group: 'T2',
+                            defaultVal: 0,
+                            unit: ''
+                        };
+                        const effTier = resolveStatGroupForSpec(stat, specKey);
+                        if (effTier === 'T0') totalT0++;
+                        else if (effTier === 'T1') totalT1++;
+                        else if (effTier === 'T2') totalT2++;
+                        else if (effTier === 'T3') totalT3++;
+
+                        // Slot-specific BiS God line match
+                        if (slotMeta.godLineKey && line.statKey === slotMeta.godLineKey) {
+                            godLinesCount++;
+                        }
+                    });
+                });
+
+                // Calculate Build Score
+                const buildScore = (totalT0 * 120) + (totalT1 * 35) + (totalT2 * 10) - (totalT3 * 15) + (attunementOk * 20) - (attunementTrap * 30);
+
+                // Tier classification
+                let tierRank = {
+                    titleVi: '🛡️ Tiên Phong Nhập Đạo',
+                    titleEn: '🛡️ Adept Pioneer',
+                    color: 'text-zinc-400 border-zinc-700 bg-zinc-900/60',
+                    badgeClass: 'from-zinc-700 to-zinc-900 border-zinc-600 text-zinc-300',
+                    icon: '🛡️'
+                };
+
+                if (totalT0 >= 5) {
+                    tierRank = {
+                        titleVi: '🌌 Tuyệt Thế Thần Khí',
+                        titleEn: '🌌 Supreme Godly Relic',
+                        color: 'text-amber-300 border-amber-500/60 bg-amber-950/40 shadow-[0_0_20px_rgba(245,158,11,0.25)]',
+                        badgeClass: 'from-amber-500/30 via-yellow-500/20 to-amber-900/40 border-amber-400 text-amber-300',
+                        icon: '🌌'
+                    };
+                } else if (totalT0 >= 3) {
+                    tierRank = {
+                        titleVi: '👑 Đỉnh Phong Tông Sư',
+                        titleEn: '👑 Peak Grandmaster',
+                        color: 'text-yellow-400 border-yellow-500/50 bg-yellow-950/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]',
+                        badgeClass: 'from-yellow-500/25 via-amber-600/20 to-zinc-900 border-yellow-500 text-yellow-300',
+                        icon: '👑'
+                    };
+                } else if (totalT0 >= 1 || totalT1 >= 8) {
+                    tierRank = {
+                        titleVi: '⚔️ Danh Môn Xuất Thế',
+                        titleEn: '⚔️ Renowned Master',
+                        color: 'text-purple-300 border-purple-500/40 bg-purple-950/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]',
+                        badgeClass: 'from-purple-500/25 to-zinc-900 border-purple-400 text-purple-300',
+                        icon: '⚔️'
+                    };
+                }
+
+                // Active sets
+                const activeSets: { key: string; name: string; count: number }[] = [];
+                Object.entries(setCounts).forEach(([setKey, cnt]) => {
+                    if (cnt >= 2) {
+                        const setOpt = DEFAULT_GEAR_SETS.find(s => s.key === setKey);
+                        const cleanName = setOpt ? (isVi ? setOpt.labelVi.split('(')[0].trim() : setOpt.labelEn) : setKey;
+                        activeSets.push({ key: setKey, name: cleanName, count: cnt });
+                    }
+                });
+
+                result.push({
+                    id: `${specKey}__${userId}`,
+                    userId,
+                    spec: specKey,
+                    ingame,
+                    uid,
+                    avatar,
+                    discordName,
+                    baseline,
+                    equipped,
+                    arsenal96: rawBuild.arsenal96,
+                    innerWays: rawBuild.innerWays,
+                    updatedAt: rawBuild.updatedAt || '',
+                    totalT0,
+                    totalT1,
+                    totalT2,
+                    totalT3,
+                    godLinesCount,
+                    buildScore,
+                    tierRank,
+                    activeSets,
+                    attunementSummary: { okCount: attunementOk, trapCount: attunementTrap }
+                });
+            });
+        });
+
+        return result;
+    }, [wwmBuilds, danhLuc, statDict, isVi]);
+
+    // Available specs from data
+    const availableSpecs = useMemo(() => {
+        const set = new Set<string>();
+        allBuilds.forEach(b => set.add(b.spec));
+        if (wwmData?.VO_HOC_LIST && Array.isArray(wwmData.VO_HOC_LIST)) {
+            wwmData.VO_HOC_LIST.forEach((s: string) => set.add(s));
+        }
+        return Array.from(set).filter(Boolean);
+    }, [allBuilds, wwmData]);
+
+    // Overall Highlights / Hall of Fame Stats
+    const hallOfFame = useMemo<{
+        totalBuilds: number;
+        totalT0All: number;
+        maxCritBuild: BuildCardData | null;
+        maxMinPhysBuild: BuildCardData | null;
+    }>(() => {
+        let maxCritBuild: BuildCardData | null = null;
+        let maxMinPhysBuild: BuildCardData | null = null;
+        let totalT0All = 0;
+
+        allBuilds.forEach(b => {
+            totalT0All += b.totalT0;
+            if (!maxCritBuild || (b.baseline.critRate || 0) > (maxCritBuild.baseline.critRate || 0)) {
+                maxCritBuild = b;
+            }
+            if (!maxMinPhysBuild || (b.baseline.minPhysical || 0) > (maxMinPhysBuild.baseline.minPhysical || 0)) {
+                maxMinPhysBuild = b;
+            }
+        });
+
+        return {
+            totalBuilds: allBuilds.length,
+            totalT0All,
+            maxCritBuild,
+            maxMinPhysBuild
+        };
+    }, [allBuilds]);
+
+    // Filter and Sort Builds
+    const filteredBuilds = useMemo(() => {
+        return allBuilds.filter(b => {
+            // Spec filter
+            if (selectedSpecFilter !== 'ALL') {
+                if (selectedSpecFilter === 'SECT_SILKBIND' && !b.spec.includes('Khiên Ty') && !b.spec.includes('Kéo Tơ')) return false;
+                if (selectedSpecFilter === 'SECT_BELLSTRIKE' && !b.spec.includes('Minh Kim') && !b.spec.includes('Chuông')) return false;
+                if (selectedSpecFilter === 'SECT_STONESPLIT' && !b.spec.includes('Liệt Thạch') && !b.spec.includes('Xé Đá')) return false;
+                if (selectedSpecFilter === 'SECT_BAMBOOCUT' && !b.spec.includes('Phá Trúc') && !b.spec.includes('Phá Tre')) return false;
+                if (selectedSpecFilter === 'SECT_CUUKIEM' && !b.spec.includes('Cửu Kiếm')) return false;
+                if (!selectedSpecFilter.startsWith('SECT_') && b.spec !== selectedSpecFilter) return false;
+            }
+
+            // Quality filter
+            if (selectedTierFilter === 'T0_GE_5' && b.totalT0 < 5) return false;
+            if (selectedTierFilter === 'T0_GE_3' && b.totalT0 < 3) return false;
+            if (selectedTierFilter === 'T0_GE_1' && b.totalT0 < 1) return false;
+
+            // Search query
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const matchName = b.ingame.toLowerCase().includes(q);
+                const matchUid = b.uid.toLowerCase().includes(q);
+                const matchDiscord = b.discordName.toLowerCase().includes(q);
+                const matchSpec = b.spec.toLowerCase().includes(q);
+                const matchSet = b.activeSets.some(s => s.name.toLowerCase().includes(q) || s.key.toLowerCase().includes(q));
+                if (!matchName && !matchUid && !matchDiscord && !matchSpec && !matchSet) return false;
+            }
+
+            return true;
+        }).sort((a, b) => {
+            if (sortBy === 'SCORE_DESC') return b.buildScore - a.buildScore;
+            if (sortBy === 'CRIT_DESC') return (b.baseline.critRate || 0) - (a.baseline.critRate || 0);
+            if (sortBy === 'PHYS_DESC') return (b.baseline.minPhysical || 0) - (a.baseline.minPhysical || 0);
+            if (sortBy === 'PRECISION_DESC') return (b.baseline.precisionRate || 0) - (a.baseline.precisionRate || 0);
+            if (sortBy === 'AFFINITY_DESC') return (b.baseline.affinityRate || 0) - (a.baseline.affinityRate || 0);
+            if (sortBy === 'AGILITY_DESC') return (b.baseline.agility || 0) - (a.baseline.agility || 0);
+            if (sortBy === 'DATE_DESC') return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+            return 0;
+        });
+    }, [allBuilds, selectedSpecFilter, selectedTierFilter, searchQuery, sortBy]);
+
+    // Handle Transfer to Simulator in Thần Khí Các
+    const handleOpenInSimulator = (build: BuildCardData) => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('wwm_target_spec', build.spec);
+            sessionStorage.setItem('wwm_target_user', build.userId);
+        }
+        if (setActiveTab) {
+            setActiveTab('builds');
+        }
+    };
+
+    // Handle Copy Build Code
+    const handleCopyBuildData = (build: BuildCardData) => {
+        const exportObj = {
+            ingame: build.ingame,
+            spec: build.spec,
+            baseline: build.baseline,
+            equipped: build.equipped,
+            arsenal96: build.arsenal96,
+            innerWays: build.innerWays,
+            exportedAt: new Date().toISOString()
+        };
+        navigator.clipboard.writeText(JSON.stringify(exportObj, null, 2));
+        setCopiedBuildId(build.id);
+        setTimeout(() => setCopiedBuildId(null), 3000);
+    };
+
+    // Format relative time helper
+    const formatTimeAgo = (isoDate: string) => {
+        if (!isoDate) return isVi ? 'Chưa cập nhật' : 'No date';
+        const d = new Date(isoDate);
+        if (isNaN(d.getTime())) return isoDate;
+        const diffMs = Date.now() - d.getTime();
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffHours < 1) return isVi ? 'Vừa xong' : 'Just now';
+        if (diffHours < 24) return isVi ? `${diffHours} giờ trước` : `${diffHours}h ago`;
+        if (diffDays < 30) return isVi ? `${diffDays} ngày trước` : `${diffDays}d ago`;
+        return d.toLocaleDateString('vi-VN');
+    };
+
     return (
-        <section className="animate-in fade-in duration-300 space-y-6 pb-16">
-            <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-xl font-black text-cyan-400 flex items-center gap-2">
-                        🔮 Đài Soi Căn Cốt & Đại Kho Trang Bị
-                    </h2>
-                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                        Toàn bộ hồ sơ được đồng bộ tự động khi cao thủ dùng lệnh <b className="text-cyan-300 font-mono">/soi_acc</b> trên Discord.
-                        <br />Tên vật phẩm dịch chuẩn được in <b className="text-amber-300">Màu Vàng Hổ Phách</b>. Rê chuột vào để bấm <b className="text-zinc-300">✏️ Sửa</b> nếu cần đính chính!
-                    </p>
+        <div className="space-y-8 animate-fadeIn">
+            {/* 👑 HERO BANNER: ĐÀI CHIẾU YÊU · THẦN KHÍ VẠN TƯỢNG */}
+            <div className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/20 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    <div className="space-y-2 max-w-3xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                            <span>🪞</span>
+                            <span>{isVi ? 'Đài Chiếu Yêu · Khoe Build & Chỉ Số Thần Khí' : 'Spirit Mirror · Build & Stat Showcase'}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        </div>
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
+                            {isVi ? 'VẠN TƯỢNG THẦN KHÍ BẢNG' : 'PANTHEON OF LEGENDARY BUILDS'}
+                        </h2>
+                        <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
+                            {isVi
+                                ? 'Nơi quần hùng Thanh Long Sơn Trang phô diễn kỳ công tạo tác, khoe chỉ số đỉnh cao và chia sẻ bộ build thần khí (Đồng bộ thời gian thực với Thần Khí Các).'
+                                : 'Where Thanh Long disciples showcase their mastercrafted gear, god-tier stat thresholds, and optimized builds (Synchronized real-time with Thần Khí Các).'}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab && setActiveTab('builds')}
+                            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-zinc-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                            <span>🔨</span>
+                            <span>{isVi ? 'Vào Thần Khí Các Tạo/Chỉnh Build' : 'Open Thần Khí Các Simulator'}</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="relative w-full md:w-72 shrink-0">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-500 text-xs">🔍</span>
-                    <input
-                        type="text"
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        placeholder="Lọc Tên Ingame, UID..."
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/50 font-medium transition-colors"
-                    />
+                {/* 🌟 4 HERO STAT TILES */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-8 pt-6 border-t border-zinc-800/80">
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl shrink-0">
+                            ⚔️
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-400 font-semibold uppercase">{isVi ? 'Tổng Thần Khí' : 'Total Builds'}</div>
+                            <div className="text-xl sm:text-2xl font-black text-amber-400">{hallOfFame.totalBuilds}</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-2xl shrink-0">
+                            🌟
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-400 font-semibold uppercase">{isVi ? 'Dòng Thần T0 Toàn Bang' : 'Guild T0 God Lines'}</div>
+                            <div className="text-xl sm:text-2xl font-black text-yellow-300">{hallOfFame.totalT0All}</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-2xl shrink-0">
+                            🎯
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-400 font-semibold uppercase">{isVi ? 'Đỉnh Phong Chí Mạng' : 'Peak Crit Rate'}</div>
+                            <div className="text-xl sm:text-2xl font-black text-rose-400">
+                                {hallOfFame.maxCritBuild?.baseline?.critRate ? `${hallOfFame.maxCritBuild.baseline.critRate.toFixed(1)}%` : '--%'}
+                            </div>
+                            <div className="text-[10px] text-zinc-500 truncate max-w-[120px]">
+                                {hallOfFame.maxCritBuild ? `👑 ${hallOfFame.maxCritBuild.ingame}` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl shrink-0">
+                            🗡️
+                        </div>
+                        <div>
+                            <div className="text-[11px] text-zinc-400 font-semibold uppercase">{isVi ? 'Đỉnh Phong Ngoại Công' : 'Peak Min Phys'}</div>
+                            <div className="text-xl sm:text-2xl font-black text-cyan-400">
+                                {hallOfFame.maxMinPhysBuild?.baseline?.minPhysical ? Number(hallOfFame.maxMinPhysBuild.baseline.minPhysical).toFixed(0) : '--'}
+                            </div>
+                            <div className="text-[10px] text-zinc-500 truncate max-w-[120px]">
+                                {hallOfFame.maxMinPhysBuild ? `👑 ${hallOfFame.maxMinPhysBuild.ingame}` : ''}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-                {!profiles ? (
-                    <div className="col-span-full text-center py-10 text-zinc-500">🔮 Đang lột mật bùa Thiên Thư...</div>
-                ) : filteredProfiles.length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-2xl">
-                        {filterText ? "🍃 Không tìm thấy đại hiệp nào khớp với từ khóa lọc." : "🍃 Chưa có dữ liệu căn cốt nào trên mây. Hãy dùng lệnh /soi_acc trên Discord!"}
+            {/* 🔍 FILTER & SEARCH CONTROLS */}
+            <div className="space-y-4 bg-zinc-900/50 backdrop-blur-md border border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-lg">
+                {/* Sect Tabs */}
+                <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800/80 pb-3">
+                    <span className="text-xs text-zinc-400 font-bold mr-1 flex items-center gap-1">
+                        <span>🥋</span>
+                        <span>{isVi ? 'Môn Phái:' : 'Sect:'}</span>
+                    </span>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('ALL')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'ALL'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        {isVi ? 'Tất Cả Môn Phái' : 'All Sects'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('SECT_SILKBIND')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'SECT_SILKBIND'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        ☂️ {isVi ? 'Khiên Ty (Kéo Tơ)' : 'Silkbind'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('SECT_BELLSTRIKE')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'SECT_BELLSTRIKE'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        🔔 {isVi ? 'Minh Kim (Chuông)' : 'Bellstrike'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('SECT_STONESPLIT')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'SECT_STONESPLIT'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        🪨 {isVi ? 'Liệt Thạch (Xé Đá)' : 'Stonesplit'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('SECT_BAMBOOCUT')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'SECT_BAMBOOCUT'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        🎋 {isVi ? 'Phá Trúc (Phá Tre)' : 'Bamboocut'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecFilter('SECT_CUUKIEM')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedSpecFilter === 'SECT_CUUKIEM'
+                                ? 'bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                    >
+                        🗡️ {isVi ? 'Cửu Kiếm' : 'Nine Swords'}
+                    </button>
+
+                    {/* Specific Spec Dropdown */}
+                    <select
+                        value={selectedSpecFilter}
+                        onChange={(e) => setSelectedSpecFilter(e.target.value)}
+                        className="bg-zinc-950 text-zinc-300 text-xs border border-zinc-800 rounded-xl px-3 py-1.5 focus:border-amber-500 focus:outline-none"
+                    >
+                        <option value="ALL">🔍 {isVi ? '-- Chọn Nhánh Cụ Thể --' : '-- Specific Spec --'}</option>
+                        {availableSpecs.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Sub-Filters: Search, Tier, Sorting */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+                    <div className="relative w-full sm:w-80">
+                        <span className="absolute inset-y-0 left-3 flex items-center text-zinc-500 text-xs pointer-events-none">
+                            🔍
+                        </span>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={isVi ? 'Tìm tên đại hiệp, UID, bộ set...' : 'Search player, UID, gear set...'}
+                            className="w-full bg-zinc-950 text-xs text-zinc-200 rounded-xl pl-9 pr-4 py-2.5 border border-zinc-800 focus:border-amber-500/60 focus:outline-none transition-colors placeholder:text-zinc-600"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchQuery('')}
+                                className="absolute inset-y-0 right-3 flex items-center text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        )}
                     </div>
-                ) : (
-                    filteredProfiles.map(([uid, data]: any) => {
-                        let raw: any = {};
-                        try {
-                            raw = typeof data.full_raw_data === 'string' ? JSON.parse(data.full_raw_data) : data.full_raw_data;
-                        } catch (e) {
-                            console.error(e);
-                        }
 
-                        const baseInfo = safeParse((raw as any)?.base);
-                        const clubInfoTop = safeParse((raw as any)?.club);
+                    <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                        {/* Quality filter */}
+                        <select
+                            value={selectedTierFilter}
+                            onChange={(e) => setSelectedTierFilter(e.target.value)}
+                            className="bg-zinc-950 text-zinc-300 text-xs border border-zinc-800 rounded-xl px-3 py-2.5 focus:border-amber-500 focus:outline-none"
+                        >
+                            <option value="ALL">🌌 {isVi ? 'Tất Cả Phẩm Cấp' : 'All Tiers'}</option>
+                            <option value="T0_GE_5">🌌 {isVi ? 'Thần Khí (≥ 5 Dòng T0)' : 'Godly (≥ 5 T0)'}</option>
+                            <option value="T0_GE_3">👑 {isVi ? 'Tông Sư (≥ 3 Dòng T0)' : 'Master (≥ 3 T0)'}</option>
+                            <option value="T0_GE_1">⚔️ {isVi ? 'Xuất Thế (≥ 1 Dòng T0)' : 'Adept (≥ 1 T0)'}</option>
+                        </select>
 
-                        const capDo = baseInfo?.level || data.level || 0;
-                        
-                        const attrData = safeParse(raw.attr);
-                        const lucChienHienTai = attrData.XIUWEI_KUNGFU || 0;
-                        const lucChienToiDa = baseInfo?.max_xiuwei_kungfu || data.luc_chien || 0;
-                        const lucChienDisplay = lucChienHienTai > 0 ? lucChienHienTai : lucChienToiDa;
+                        {/* Sort by */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="bg-zinc-950 text-amber-300 font-bold text-xs border border-zinc-800 rounded-xl px-3 py-2.5 focus:border-amber-500 focus:outline-none"
+                        >
+                            <option value="SCORE_DESC">👑 {isVi ? 'Xếp: Điểm Thần Khí' : 'Sort: Build Score'}</option>
+                            <option value="CRIT_DESC">🎯 {isVi ? 'Xếp: Tỉ Lệ Chí Mạng' : 'Sort: Critical Rate'}</option>
+                            <option value="PHYS_DESC">🗡️ {isVi ? 'Xếp: Ngoại Công Min' : 'Sort: Min Physical'}</option>
+                            <option value="PRECISION_DESC">⚡ {isVi ? 'Xếp: Chính Xác' : 'Sort: Precision'}</option>
+                            <option value="AFFINITY_DESC">🔮 {isVi ? 'Xếp: Hiểu Ý' : 'Sort: Affinity'}</option>
+                            <option value="AGILITY_DESC">🌪️ {isVi ? 'Xếp: Nhanh Nhẹn' : 'Sort: Agility'}</option>
+                            <option value="DATE_DESC">🕒 {isVi ? 'Xếp: Mới Nhất' : 'Sort: Newest'}</option>
+                        </select>
 
-                        const tenNhanVat = data.playerName || baseInfo?.role_name || baseInfo?.name || data.name || 'Mật Danh';
+                        <div className="text-xs text-zinc-500 px-2 font-mono">
+                            {filteredBuilds.length} / {allBuilds.length} {isVi ? 'Bộ' : 'Builds'}
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                        const schoolId = baseInfo?.school || 100;
-                        const monPhai = wwmData?.SECT_MAP?.[schoolId]?.[lang] || wwmData?.SECT_MAP?.[String(schoolId)]?.[lang] || wwmData?.SECT_MAP?.[schoolId]?.vi || wwmData?.SECT_MAP?.[String(schoolId)]?.vi || `Ẩn Thế Phái (${schoolId})`;
-
-                        const clubInfo = safeParse(raw.club || baseInfo?.club || {});
-
-                        let bangHoi = clubInfoTop?.club_name ||
-                            clubInfo?.club_name ||
-                            data.bangHoi ||
-                            data.club_name ||
-                            baseInfo?.club_name ||
-                            "Không môn không phái";
-
-                        let chucVu = "Tự do";
-
-                        if (clubInfo.club_id || baseInfo?.club_name || clubInfoTop?.club_name || data.bangHoi) {
-                            if (bangHoi === "Không môn không phái") bangHoi = "Có Bang Hội";
-
-                            if (clubInfo.post && clubInfo.post.length > 0) {
-                                const postMap: Record<number, string> = { 1: "Bang Chủ 👑", 2: "Bang Phó 🎖️", 5: "Trưởng Lão 摸", 7: "Bông Hồng 🌸" };
-                                const gwPostMap: Record<number, string> = { 10000: "Chỉ Huy 🚩", 10002: "Tiên Phong ⚔️", 10004: "Nửa Bước 🛡️" };
-                                let mainRole = "Thành Viên", gwRoles = [];
-                                for (const id of clubInfo.post) {
-                                    if (id < 10000 && postMap[id]) mainRole = postMap[id];
-                                    else if (id >= 10000 && gwPostMap[id]) gwRoles.push(gwPostMap[id]);
-                                }
-                                chucVu = gwRoles.length > 0 ? `${mainRole} (${gwRoles.join(', ')})` : mainRole;
-                            } else if (clubInfo.member_info?.post_name || clubInfo.post_name) {
-                                chucVu = clubInfo.member_info?.post_name || clubInfo.post_name;
-                            } else { chucVu = "Thành Viên"; }
-                        }
-
-                        const gender = (baseInfo?.body_type ?? baseInfo?.gender) === 1 ? "Nam 🚹" : "Nữ 🚺";
-                        const thietBi = baseInfo?.device_name ? baseInfo.device_name.toUpperCase() : "Ẩn Dấu";
-                        const trangThai = baseInfo?.is_online === 1 ? `🟢 Đang chơi (${thietBi})` : `🔴 Ngoại tuyến (${thietBi})`;
-
-                        const kyLuat = safeParse(raw.school)?.rule?.jl ?? 100;
-                        const kyLuatText = kyLuat < 100 ? "Vi phạm môn quy" : "Nghiêm chỉnh";
-
-                        const thoiTrang = safeParse(raw.fashion)?.score || safeParse(raw.fashion)?.fashion_score || 0;
-                        const onlineTime = baseInfo?.online_time ? (baseInfo.online_time / 3600).toFixed(1) : "0";
-                        const daysInJianghu = baseInfo?.create_time ? Math.floor((Math.floor(Date.now() / 1000) - baseInfo.create_time) / 86400) : 0;
-                        const serverHost = baseInfo?.hostnum || baseInfo?.server_hostnum || "Bí ẩn";
-
-                        const str = attrData.STR || 0; const con = attrData.CON || 0; const agi = attrData.AGI || 0; const bas = attrData.BAS || 0; const cri = attrData.CRI || 0;
-
-                        const exploreData = safeParse(raw.common_score_data);
-                        const th = exploreData.scores?.["58"] || 0; 
-                        const kp = exploreData.scores?.["59"] || 0; 
-                        const ht = exploreData.scores?.["60"] || 0;
-                        const ktn = exploreData.scores?.["61"] || 0;
-
-                        const tuViKP = attrData.XIUWEI_EXPLORE || 0; 
-                        const tuViNghe = (attrData.XIUWEI_TRADE3 || 0) + (attrData.XIUWEI_TRADE4 || 0);
-
-                        const kongfu = safeParse(raw.kongfu);
-
-                        const lunjian = safeParse(raw.lunjian);
-                        const rankGrade = lunjian.grade || 0;
-                        
-                        const rankStars = lunjian.small_grade || 0;
-                        const wuwoScore = lunjian.max_wuwo_score || 0;
-
-                        const rankName = wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.[lang] || wwmData?.LUNJIAN_RANK_MAP?.[rankGrade]?.vi || wwmData?.LUNJIAN_RANK_MAP?.[String(rankGrade)]?.vi || `Bậc Thầy (${rankGrade})`;
-
-                        const gameplayTrail = safeParse(raw.gameplay_trail);
-                        const pvpData = gameplayTrail.played?.find((p: any) => p.gp_no === 6) || {};
-                        const winRate = pvpData.win_rate ? (pvpData.win_rate * 100).toFixed(1) + "%" : "0%";
-                        const matches = pvpData.total_num || 0;
-                        const streak = lunjian.max_winning_streak || pvpData.continue_win || 0;
-
-                        let cpChiTiet = safeParse(raw.combat_plan_chi_tiet);
-                        if (Object.keys(cpChiTiet).length === 0 && raw.combat_plan) cpChiTiet = raw;
-
-                        const cPlan = safeParse(cpChiTiet.combat_plan) || {};
-                        const xinfa = safeParse(cPlan.xinfa) || {};
-                        const tpArr = xinfa.passive_slots || [];
-                        const qsArr = Object.entries(safeParse(cPlan.battle_qs || {}));
+            {/* 📜 SHOWCASE CARDS GRID */}
+            {filteredBuilds.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredBuilds.map((build) => {
+                        const isOwn = session?.user && (build.userId === session.user.id || build.ingame === session.user.name);
 
                         return (
-                            <div key={uid} className="bg-zinc-900/90 border border-zinc-800 rounded-2xl overflow-hidden hover:border-cyan-500/30 transition-all duration-300 shadow-xl flex flex-col h-full">
-                                <div className="bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 p-5 border-b border-zinc-800 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl"></div>
-                                    <div className="relative z-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                                <h4 className="font-extrabold text-2xl text-cyan-400 tracking-wide">{tenNhanVat}</h4>
-                                                <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] font-mono rounded border border-zinc-700">Máy chủ: {serverHost} | UID: {uid}</span>
-                                                <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 font-medium text-zinc-400">{trangThai}</span>
-                                            </div>
-
-                                            <div className="text-xs text-zinc-400 flex flex-wrap items-center gap-3 mt-2">
-                                                <span>Cấp: <b className="text-zinc-200 font-mono">{capDo}</b></span>
-                                                <span>•</span>
-                                                <span>Phái: <b className="text-amber-400">{monPhai}</b></span>
-                                                <span>•</span>
-                                                <span>Giới: <b className="text-zinc-200">{gender}</b></span>
-                                            </div>
-
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className="px-2 py-0.5 bg-zinc-950 border border-zinc-900 rounded-md text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">
-                                                    Bang Hội
-                                                </span>
-                                                <span className="text-sm font-black text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
-                                                    {warmBangHoi(bangHoi)}
-                                                </span>
-                                                {chucVu !== "Tự do" && (
-                                                    <span className="px-2 py-0.5 bg-sky-900/30 border border-sky-800/50 rounded-md text-[10px] text-sky-300 font-medium">
-                                                        {chucVu}
+                            <div
+                                key={build.id}
+                                className={`group relative rounded-2xl border transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 ${
+                                    build.totalT0 >= 5
+                                        ? 'bg-gradient-to-b from-amber-950/30 via-zinc-950 to-zinc-950 border-amber-500/50 hover:border-amber-400'
+                                        : build.totalT0 >= 3
+                                        ? 'bg-gradient-to-b from-yellow-950/20 via-zinc-950 to-zinc-950 border-yellow-500/40 hover:border-yellow-400'
+                                        : 'bg-zinc-950/80 border-zinc-800 hover:border-amber-500/40'
+                                }`}
+                            >
+                                {/* Card Header */}
+                                <div className="p-5 pb-4 border-b border-zinc-800/80">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative">
+                                                {build.avatar ? (
+                                                    <img
+                                                        src={build.avatar}
+                                                        alt={build.ingame}
+                                                        className="w-12 h-12 rounded-xl object-cover border border-amber-500/40 shadow-md"
+                                                    />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xl text-amber-400 shadow-md">
+                                                        🐉
+                                                    </div>
+                                                )}
+                                                {isOwn && (
+                                                    <span className="absolute -bottom-1 -right-1 text-[9px] bg-emerald-500 text-zinc-950 font-black px-1.5 py-0.2 rounded-full border border-zinc-900">
+                                                        YOU
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
 
-                                        <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-center md:text-right shrink-0">
-                                            <div className="text-[10px] text-rose-400 uppercase tracking-wider font-bold">Lực Chiến Võ Học</div>
-                                            <div className="text-xl font-black text-rose-500 font-mono tracking-tight mt-0.5">⚔️ {lucChienDisplay.toLocaleString('vi-VN')}</div>
-                                            {lucChienHienTai > 0 && lucChienToiDa !== lucChienHienTai && (
-                                                <div className="text-[10px] text-rose-400/80 font-mono mt-0.5">Max: {lucChienToiDa.toLocaleString('vi-VN')}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-6 flex-1 bg-zinc-950/20 space-y-5">
-                                    <div>
-                                        <div className="flex justify-between items-end mb-2">
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold tracking-wider">🩸 Ngũ Hành Căn Cốt</div>
-                                            <div className="text-[10px] text-rose-500/80 font-bold">Kỷ luật: {kyLuat}/100 ({kyLuatText})</div>
-                                        </div>
-                                        <div className="grid grid-cols-5 gap-3">
-                                            {[[str, "Kình (STR)"], [con, "Thể (CON)"], [agi, "Ngự (AGI)"], [bas, "Thế (BAS)"], [cri, "Mẫn (CRI)"]].map(([val, label]: any, i) => (
-                                                <div key={i} className="bg-zinc-900/60 border border-zinc-800/60 p-2 rounded-xl text-center">
-                                                    <div className="text-[11px] text-zinc-400">{label.split(' ')[0]}</div>
-                                                    <div className="text-sm font-bold text-zinc-200 mt-0.5 font-mono">{val}</div>
+                                            <div>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <h3 className="font-black text-sm sm:text-base text-zinc-100 group-hover:text-amber-300 transition-colors">
+                                                        {build.ingame}
+                                                    </h3>
+                                                    {build.uid && (
+                                                        <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                                                            #{build.uid}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
 
-                                    <div className="border-t border-zinc-800/60 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">⚔️ Song Binh Khí</div>
-                                            <div className="text-xs text-zinc-300 space-y-1">
-                                                <div className="flex items-center gap-1">Chính: <span className="text-amber-200 font-medium">{renderTranslable(kongfu.kongfu_main, ['WEAPON_MAP'], 'Bí Pháp')}</span></div>
-                                                <div className="flex items-center gap-1">Phụ: <span className="text-amber-300/80 font-medium">{renderTranslable(kongfu.kongfu_sub, ['WEAPON_MAP'], 'Đoản Binh')}</span></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🏆 1v1 Luận Kiếm Đài</div>
-                                            <div className="text-xs text-zinc-300">
-                                                <div>Cảnh giới: <span className="text-indigo-400 font-bold">{rankName}</span> {rankStars > 0 && <span className="text-amber-400 font-bold text-[11px] ml-1">⭐ {rankStars} Sao</span>}</div>
-                                                <div className="text-zinc-400 mt-0.5 font-mono text-[11px]">
-                                                    Trận: <span className="text-zinc-200 font-bold">{matches}</span> | Thắng: <span className="text-emerald-400 font-bold">{winRate}</span> {streak > 1 && <span className="text-rose-400 font-bold bg-rose-950/40 px-1 rounded ml-1">🔥 Chuỗi {streak}</span>}
-                                                </div>
-                                                <div className="mt-2 pt-2 border-t border-zinc-800/50 flex items-center justify-between">
-                                                    <span className="text-zinc-400">Điểm Vô Ngã (Wuwo):</span>
-                                                    <span className="text-cyan-400 font-bold">
-                                                        {wuwoScore > 0 ? wuwoScore.toLocaleString('vi-VN') : (lang === 'vi' ? "Chưa tham ngộ" : "Not comprehended")}
+                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-400">
+                                                        🥋 {build.spec}
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-500 font-mono">
+                                                        {formatTimeAgo(build.updatedAt)}
                                                     </span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="border-t border-zinc-800/60 pt-4 space-y-3">
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🔮 Tuyệt Kỹ Kỳ Thuật Thiết Lập</div>
-                                            {qsArr.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {qsArr.map(([slot, id]: any, i: number) => {
-                                                        return <span key={i} className="px-2 py-1 bg-cyan-950/40 text-cyan-300 border border-cyan-800/30 rounded-lg text-[11px] font-medium flex items-center gap-1">✨ [{slot}] {renderTranslable(id, ['KY_THUAT_MAP'], 'Kỳ Thuật')}</span>
-                                                    })}
-                                                </div>
-                                            ) : <div className="text-xs text-zinc-600 italic pl-1">Chưa thiết lập bí kíp chủ động</div>}
-                                        </div>
-
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">📜 Trận Pháp Tâm Pháp Đang Khảm</div>
-                                            {tpArr.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {tpArr.map((id: any, i: number) => {
-                                                        return <span key={i} className="px-2 py-1 bg-indigo-950/50 text-indigo-300 border border-indigo-800/30 rounded-lg text-[11px] font-medium flex items-center gap-1">🧠 {renderTranslable(id, ['TAM_PHAP_MAP'], 'Tâm Pháp')}</span>
-                                                    })}
-                                                </div>
-                                            ) : <div className="text-xs text-zinc-600 italic pl-1">Chưa trang bị tâm pháp bị động</div>}
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-zinc-800/60 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🗺️ Khám Phá & Tu Vi Phụ</div>
-                                            <div className="text-xs text-zinc-400 space-y-0.5">
-                                                <div>TH: <span className="text-zinc-300 font-mono">{th.toLocaleString('vi-VN')}</span> | KP: <span className="text-zinc-300 font-mono">{kp.toLocaleString('vi-VN')}</span> | HT: <span className="text-zinc-300 font-mono">{ht.toLocaleString('vi-VN')}</span> | KTN: <span className="text-zinc-300 font-mono">{ktn.toLocaleString('vi-VN')}</span></div>
-                                                <div>KP Tu Vi: <span className="text-amber-300 font-mono">{tuViKP.toLocaleString('vi-VN')}</span> | Nghề: <span className="text-amber-300 font-mono">{tuViNghe.toLocaleString('vi-VN')}</span></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1.5 font-bold">🌞 Hành Tẩu Giang Hồ</div>
-                                            <div className="text-xs text-zinc-400 space-y-0.5">
-                                                <div>Thời trang: <span className="text-rose-300 font-mono font-bold">{thoiTrang.toLocaleString('vi-VN')}</span></div>
-                                                <div>Hành tẩu: <span className="text-emerald-300 font-mono">{daysInJianghu} ngày</span> | <span className="text-sky-300 font-mono">{onlineTime}h</span></div>
-                                            </div>
+                                        {/* Rank Ribbon */}
+                                        <div className={`text-[10px] font-black px-2.5 py-1 rounded-xl border bg-gradient-to-r shadow-sm shrink-0 flex items-center gap-1 ${build.tierRank.badgeClass}`}>
+                                            <span>{build.tierRank.icon}</span>
+                                            <span className="hidden xs:inline">{isVi ? build.tierRank.titleVi.replace(/^[^\s]+\s*/, '') : build.tierRank.titleEn.replace(/^[^\s]+\s*/, '')}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="p-3 border-t border-zinc-800/60 bg-zinc-950 flex gap-2 relative z-20">
-                                    <button onClick={() => toggleEquip(uid)} className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition-all border cursor-pointer ${expandedEquip[uid] ? 'bg-amber-500/10 text-amber-400 border-amber-500/40' : 'bg-zinc-900 text-cyan-400 border-zinc-800 hover:border-cyan-500/30'}`}>
-                                        {expandedEquip[uid] ? '🔼 Thu Gọn Hòm Đồ' : '👕 Khai Triển Kho Trang Bị Dòng Ẩn'}
+                                {/* Core Stat Showcase */}
+                                <div className="p-5 py-4 space-y-4">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">🎯 {isVi ? 'Chí Mạng' : 'Crit Rate'}</div>
+                                            <div className="text-sm font-black text-rose-400 mt-0.5">
+                                                {build.baseline.critRate ? `${Number(build.baseline.critRate).toFixed(1)}%` : '0%'}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">⚡ {isVi ? 'Chính Xác' : 'Precision'}</div>
+                                            <div className="text-sm font-black text-amber-400 mt-0.5">
+                                                {build.baseline.precisionRate ? `${Number(build.baseline.precisionRate).toFixed(1)}%` : '0%'}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">🔮 {isVi ? 'Hiểu Ý' : 'Affinity'}</div>
+                                            <div className="text-sm font-black text-indigo-400 mt-0.5">
+                                                {build.baseline.affinityRate ? `${Number(build.baseline.affinityRate).toFixed(1)}%` : '0%'}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">🌪️ {isVi ? 'Nhanh Nhẹn' : 'Agility'}</div>
+                                            <div className="text-sm font-black text-sky-400 mt-0.5">
+                                                {build.baseline.agility ? Number(build.baseline.agility).toFixed(0) : '0'}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">🗡️ {isVi ? 'Ngoại Min' : 'Min Phys'}</div>
+                                            <div className="text-sm font-black text-emerald-400 mt-0.5">
+                                                {build.baseline.minPhysical ? Number(build.baseline.minPhysical).toFixed(0) : '0'}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-2.5 text-center">
+                                            <div className="text-[10px] text-zinc-400 uppercase font-semibold">💫 {isVi ? 'Công Phái' : 'Spec Atk'}</div>
+                                            <div className="text-sm font-black text-yellow-300 mt-0.5">
+                                                {build.baseline.minSilkbind ? Number(build.baseline.minSilkbind).toFixed(0) : '--'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 8-Slot Equipment Mini Overview */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                                            <span className="font-semibold flex items-center gap-1">
+                                                <span>🛡️</span>
+                                                <span>{isVi ? 'Bát Đại Trang Bị' : '8 Equipped Pieces'}</span>
+                                            </span>
+                                            <span className="text-zinc-500 font-mono">
+                                                {Object.keys(build.equipped).length} / 8 {isVi ? 'món' : 'pcs'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 bg-zinc-900/40 p-2 rounded-xl border border-zinc-800/60">
+                                            {SLOTS_CONFIG.map(slot => {
+                                                const eq = build.equipped[slot.key];
+                                                const disp = getSlotDisplay(slot.key, eq);
+                                                const hasItem = !!eq;
+
+                                                return (
+                                                    <div
+                                                        key={slot.key}
+                                                        title={`${disp.title}: ${eq?.name || (hasItem ? 'Đã trang bị' : 'Trống')}`}
+                                                        className={`relative flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all ${
+                                                            hasItem
+                                                                ? 'bg-zinc-950 border-amber-500/30 text-amber-300'
+                                                                : 'bg-zinc-950/40 border-zinc-800 text-zinc-600 opacity-60'
+                                                        }`}
+                                                    >
+                                                        <span className="text-sm sm:text-base">{disp.icon}</span>
+                                                        <span className="text-[9px] font-mono mt-0.5 text-zinc-400">
+                                                            {eq?.tier ? `Lv.${eq.tier}` : slot.slotNumber}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Set Bonuses and God Lines summary chips */}
+                                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                        {/* God lines count */}
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-yellow-500/10 text-yellow-300 border border-yellow-500/30">
+                                            <span>🌟</span>
+                                            <span>{build.totalT0} {isVi ? 'Dòng T0' : 'T0 Lines'}</span>
+                                        </span>
+
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                                            <span>⚔️</span>
+                                            <span>{build.totalT1} {isVi ? 'Dòng T1' : 'T1 Lines'}</span>
+                                        </span>
+
+                                        {/* Active Set Badges */}
+                                        {build.activeSets.map(st => (
+                                            <span
+                                                key={st.key}
+                                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-zinc-900 text-zinc-300 border border-zinc-700"
+                                            >
+                                                <span>🪷</span>
+                                                <span>{st.count}x {st.name}</span>
+                                            </span>
+                                        ))}
+
+                                        {/* Trap Warning if any */}
+                                        {build.attunementSummary.trapCount > 0 && (
+                                            <span
+                                                title={isVi ? 'Có định âm bị bẫy' : 'Has trap attunements'}
+                                                className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                                            >
+                                                <span>⚠️</span>
+                                                <span>{build.attunementSummary.trapCount} {isVi ? 'Dòng Bẫy' : 'Traps'}</span>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Card Footer Actions */}
+                                <div className="p-4 bg-zinc-900/60 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setInspectingBuild(build)}
+                                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        <span>👁️</span>
+                                        <span>{isVi ? 'Khai Triển Thiên Nhãn' : 'Deep Inspect'}</span>
                                     </button>
-                                    <details className="flex-1 group relative">
-                                        <summary className="text-xs text-zinc-500 hover:text-amber-400 cursor-pointer list-none text-center font-bold py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl transition-colors select-none">💻 Payload Gốc JSON</summary>
-                                        <div className="absolute bottom-full mb-2 right-0 w-80 md:w-96 max-h-64 overflow-y-auto text-[10px] text-zinc-500 font-mono no-scrollbar bg-black/95 p-4 border border-zinc-700 rounded-xl shadow-2xl z-50">
-                                            <pre>{JSON.stringify(data, null, 2)}</pre>
-                                        </div>
-                                    </details>
-                                </div>
 
-                                {expandedEquip[uid] && (
-                                    <div className="p-4 bg-zinc-950 border-t border-zinc-800/80 animate-in slide-in-from-top-2 duration-300">
-                                        <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3 font-bold flex items-center gap-2 border-b border-zinc-900 pb-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                            Bảng Thống Kê Thuộc Tính Ẩn Khảm Trên Giáp Phục
-                                        </div>
-                                        {renderEquipment(raw)}
-                                    </div>
-                                )}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenInSimulator(build)}
+                                        title={isVi ? 'Thử nghiệm & Tối ưu hóa build này ở Thần Khí Các' : 'Load this build into Thần Khí Các Simulator'}
+                                        className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        <span>🚀</span>
+                                        <span className="hidden sm:inline">{isVi ? 'Thần Khí Các' : 'Simulator'}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopyBuildData(build)}
+                                        title={isVi ? 'Sao chép dữ liệu build dạng JSON' : 'Copy build JSON'}
+                                        className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 border border-zinc-800 text-xs transition-all cursor-pointer"
+                                    >
+                                        {copiedBuildId === build.id ? '✅' : '📋'}
+                                    </button>
+                                </div>
                             </div>
                         );
-                    })
-                )}
-            </div>
-
-            {editingDict && (
-                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
-                        <h3 className="text-lg font-bold text-amber-400 mb-2">✍️ Cập Nhật & Sửa Bản Dịch</h3>
-                        <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-                            Đại hiệp đang sửa bản dịch cho Mã ID <b className="text-cyan-400 font-mono text-sm bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.id}</b> thuộc nhóm <b className="text-zinc-200 font-mono bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">{editingDict.mapName}</b>.
-                        </p>
-                        <form onSubmit={handleInlineDictSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                                    Tên Tiếng Việt {lang === 'vi' ? '(*)' : '(Tùy chọn)'}
-                                </label>
-                                <input
-                                    autoFocus={lang === 'vi'}
-                                    type="text"
-                                    value={editingDict.valVi}
-                                    onChange={(e) => setEditingDict({ ...editingDict, valVi: e.target.value })}
-                                    placeholder="Ví dụ: Phá Trận Thập Phương"
-                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-amber-500 transition-colors"
-                                    required={lang === 'vi'}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-                                    Tên Tiếng Anh {lang === 'en' ? '(*)' : '(Tùy chọn)'}
-                                </label>
-                                <input
-                                    autoFocus={lang === 'en'}
-                                    type="text"
-                                    value={editingDict.valEn}
-                                    onChange={(e) => setEditingDict({ ...editingDict, valEn: e.target.value })}
-                                    placeholder="Ví dụ: Phalanxbane Blade"
-                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-100 focus:outline-none focus:border-amber-500 transition-colors"
-                                    required={lang === 'en'}
-                                />
-                                <p className="text-[10px] text-zinc-500 mt-1 italic">
-                                    Đính chính tên chuẩn để toàn thể huynh đệ cùng nhìn thấy dữ liệu chính xác!
-                                </p>
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setEditingDict(null)} className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-bold rounded-xl transition-colors cursor-pointer">Hủy Bỏ</button>
-                                <button type="submit" className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-bold rounded-xl transition-colors cursor-pointer">💾 Cập Nhật Bản Dịch</button>
-                            </div>
-                        </form>
+                    })}
+                </div>
+            ) : (
+                /* Empty state */
+                <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-3xl p-12 text-center space-y-4">
+                    <div className="text-6xl animate-bounce">🪞</div>
+                    <h3 className="text-xl font-bold text-amber-400">
+                        {isVi ? 'Chưa Tìm Thấy Bộ Thần Khí Nào Khớp Bộ Lọc' : 'No Builds Found Matching Filters'}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-zinc-500 max-w-md mx-auto leading-relaxed">
+                        {isVi
+                            ? 'Chư vị đại hiệp có thể bấm xóa bộ lọc hoặc là người đầu tiên khảm nạm thần khí của mình lên Đài Chiếu Yêu thông qua Thần Khí Các!'
+                            : 'You can reset the filters or be the first disciple to forge and showcase your build via Thần Khí Các!'}
+                    </p>
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedSpecFilter('ALL');
+                                setSelectedTierFilter('ALL');
+                                setSearchQuery('');
+                            }}
+                            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-all cursor-pointer"
+                        >
+                            {isVi ? '🔄 Đặt Lại Bộ Lọc' : 'Reset Filters'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab && setActiveTab('builds')}
+                            className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-zinc-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                        >
+                            🔨 {isVi ? 'Vào Thần Khí Các Tạo Ngay' : 'Create Build in Simulator'}
+                        </button>
                     </div>
                 </div>
             )}
-        </section>
+
+            {/* 👁️ DEEP INSPECTION MODAL: KHAI TRIỂN THIÊN NHÃN */}
+            {inspectingBuild && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-zinc-950/80 backdrop-blur-md animate-fadeIn">
+                    <div className="relative w-full max-w-5xl max-h-[90vh] bg-zinc-950 border border-amber-500/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+                        {/* Modal Header */}
+                        <div className="p-5 sm:p-6 bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950/30 border-b border-zinc-800 flex items-center justify-between gap-4 shrink-0">
+                            <div className="flex items-center gap-3.5">
+                                <div className="text-3xl">🪞</div>
+                                <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h2 className="text-lg sm:text-xl font-black text-amber-300">
+                                            {isVi ? 'KHAI TRIỂN THIÊN NHÃN · THẦN KHÍ CHI TIẾT' : 'DIVINE INSPECTION · GEAR DETAILS'}
+                                        </h2>
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border bg-gradient-to-r ${inspectingBuild.tierRank.badgeClass}`}>
+                                            {isVi ? inspectingBuild.tierRank.titleVi : inspectingBuild.tierRank.titleEn}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-400 mt-0.5">
+                                        {isVi ? 'Chủ nhân:' : 'Owner:'} <b className="text-zinc-200">{inspectingBuild.ingame}</b>
+                                        {inspectingBuild.uid && <span className="font-mono text-zinc-500 ml-1">({inspectingBuild.uid})</span>}
+                                        {' · '}
+                                        <span className="text-amber-400 font-bold">{inspectingBuild.spec}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenInSimulator(inspectingBuild)}
+                                    className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs transition-all shadow-md cursor-pointer"
+                                >
+                                    <span>🚀</span>
+                                    <span>{isVi ? 'Thử Nghiệm Ở Thần Khí Các' : 'Open in Simulator'}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setInspectingBuild(null)}
+                                    className="w-9 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center text-sm font-bold transition-all cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body: Scrollable */}
+                        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+                            {/* Summary Bar */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+                                <div className="text-center">
+                                    <div className="text-[11px] text-zinc-400 uppercase font-semibold">🎯 {isVi ? 'Tỉ Lệ Chí Mạng' : 'Critical Rate'}</div>
+                                    <div className="text-lg font-black text-rose-400 mt-0.5">
+                                        {inspectingBuild.baseline.critRate ? `${Number(inspectingBuild.baseline.critRate).toFixed(1)}%` : '0%'}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-[11px] text-zinc-400 uppercase font-semibold">⚡ {isVi ? 'Chính Xác' : 'Precision Rate'}</div>
+                                    <div className="text-lg font-black text-amber-400 mt-0.5">
+                                        {inspectingBuild.baseline.precisionRate ? `${Number(inspectingBuild.baseline.precisionRate).toFixed(1)}%` : '0%'}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-[11px] text-zinc-400 uppercase font-semibold">🗡️ {isVi ? 'Ngoại Công Min' : 'Min Physical Atk'}</div>
+                                    <div className="text-lg font-black text-emerald-400 mt-0.5">
+                                        {inspectingBuild.baseline.minPhysical ? Number(inspectingBuild.baseline.minPhysical).toFixed(0) : '0'}
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-[11px] text-zinc-400 uppercase font-semibold">🌟 {isVi ? 'Tổng Dòng T0' : 'Total T0 Lines'}</div>
+                                    <div className="text-lg font-black text-yellow-300 mt-0.5">
+                                        {inspectingBuild.totalT0} {isVi ? 'Dòng' : 'Lines'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dual Column Gear Display: Left (Weapons + Jewelry) & Right (Armor) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Side: 4 Binh Khí & Trang Sức */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 pb-2 border-b border-zinc-800 text-xs font-black text-amber-400 uppercase tracking-wider">
+                                        <span>⚔️</span>
+                                        <span>{isVi ? 'Binh Khí & Trang Sức (Tả Dực)' : 'Weapons & Jewelry (Left Side)'}</span>
+                                    </div>
+
+                                    {SLOTS_CONFIG.filter(s => s.side === 'left').map(slot => {
+                                        const item = inspectingBuild.equipped[slot.key];
+                                        const disp = getSlotDisplay(slot.key, item);
+                                        const setOpt = DEFAULT_GEAR_SETS.find(s => s.key === item?.gearSet);
+                                        const setName = setOpt ? (isVi ? setOpt.labelVi.split('(')[0].trim() : setOpt.labelEn) : (item?.gearSet || 'Mặc định');
+
+                                        return (
+                                            <div
+                                                key={slot.key}
+                                                className="bg-zinc-900/60 border border-zinc-800/90 hover:border-amber-500/40 rounded-2xl p-4 space-y-3 transition-all shadow-md"
+                                            >
+                                                {/* Slot Header */}
+                                                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-lg">{disp.icon}</span>
+                                                        <span className="font-black text-sm text-zinc-200">{disp.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                                                            {item?.tier ? `Bậc ${item.tier}` : 'Bậc 100'}
+                                                        </span>
+                                                        <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-md border border-zinc-700">
+                                                            {setName}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Attunement Line */}
+                                                {item?.attunementKey && (
+                                                    <div className="text-xs bg-indigo-950/20 border border-indigo-950/40 rounded-xl p-2.5 flex items-center justify-between">
+                                                        <span className="text-indigo-300 font-medium flex items-center gap-1.5">
+                                                            <span>✨</span>
+                                                            <span>{isVi ? 'Khai Khiếu:' : 'Attunement:'}</span>
+                                                            <b className="text-indigo-200">
+                                                                {DEFAULT_ATTUNEMENT_OPTIONS.find(a => a.key === item.attunementKey)?.labelVi.replace(/^(\[.*?\]|🚨|✅)\s*/g, '') || item.attunementKey}
+                                                            </b>
+                                                        </span>
+                                                        {item.attunementValue > 0 && (
+                                                            <span className="text-indigo-400 font-mono font-black">
+                                                                +{item.attunementValue}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* 4 Tuning Lines */}
+                                                <div className="space-y-1.5">
+                                                    <div className="text-[10px] text-zinc-500 uppercase font-semibold">
+                                                        {isVi ? 'Dòng Tẩy Luyện (Tuning Lines):' : 'Tuning Lines:'}
+                                                    </div>
+
+                                                    {Array.isArray(item?.tuningLines) && item.tuningLines.length > 0 ? (
+                                                        item.tuningLines.map((line, idx) => {
+                                                            const formatted = formatLineForSpec(line.statKey, inspectingBuild.spec);
+                                                            const isSlotGod = slot.godLineKey === line.statKey;
+
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                                                                        formatted.tier === 'T0'
+                                                                            ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300 font-bold'
+                                                                            : formatted.tier === 'T1'
+                                                                            ? 'bg-purple-500/10 border-purple-500/25 text-purple-300'
+                                                                            : formatted.tier === 'T2'
+                                                                            ? 'bg-sky-500/5 border-sky-500/20 text-sky-300'
+                                                                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-400'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-center gap-1.5 truncate">
+                                                                        <span className="shrink-0 font-mono text-[10px]">{formatted.badge}</span>
+                                                                        <span className="truncate">{formatted.label}</span>
+                                                                        {isSlotGod && (
+                                                                            <span className="text-[9px] bg-yellow-400 text-zinc-950 font-black px-1 rounded shrink-0">
+                                                                                GOD
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-mono font-bold shrink-0 ml-2">
+                                                                        +{line.value}{formatted.unit}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="text-xs text-zinc-600 italic py-1">
+                                                            {isVi ? 'Chưa khảm nạm dòng tẩy luyện' : 'No tuning lines'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Right Side: 4 Phòng Cụ (Mũ, Áo, Giáp Chân, Hộ Uyển) */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 pb-2 border-b border-zinc-800 text-xs font-black text-amber-400 uppercase tracking-wider">
+                                        <span>🛡️</span>
+                                        <span>{isVi ? 'Phòng Cụ & Giáp Trụ (Hữu Dực)' : 'Armor & Defense (Right Side)'}</span>
+                                    </div>
+
+                                    {SLOTS_CONFIG.filter(s => s.side === 'right').map(slot => {
+                                        const item = inspectingBuild.equipped[slot.key];
+                                        const disp = getSlotDisplay(slot.key, item);
+                                        const setOpt = DEFAULT_GEAR_SETS.find(s => s.key === item?.gearSet);
+                                        const setName = setOpt ? (isVi ? setOpt.labelVi.split('(')[0].trim() : setOpt.labelEn) : (item?.gearSet || 'Mặc định');
+
+                                        return (
+                                            <div
+                                                key={slot.key}
+                                                className="bg-zinc-900/60 border border-zinc-800/90 hover:border-amber-500/40 rounded-2xl p-4 space-y-3 transition-all shadow-md"
+                                            >
+                                                {/* Slot Header */}
+                                                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-lg">{disp.icon}</span>
+                                                        <span className="font-black text-sm text-zinc-200">{disp.title}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                                                            {item?.tier ? `Bậc ${item.tier}` : 'Bậc 100'}
+                                                        </span>
+                                                        <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-md border border-zinc-700">
+                                                            {setName}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Attunement Line */}
+                                                {item?.attunementKey && (
+                                                    <div className={`text-xs rounded-xl p-2.5 flex items-center justify-between border ${
+                                                        item.attunementKey.startsWith('TRAP_')
+                                                            ? 'bg-rose-950/20 border-rose-900/40 text-rose-300'
+                                                            : 'bg-indigo-950/20 border-indigo-950/40 text-indigo-300'
+                                                    }`}>
+                                                        <span className="font-medium flex items-center gap-1.5">
+                                                            <span>{item.attunementKey.startsWith('TRAP_') ? '🚨' : '✨'}</span>
+                                                            <span>{isVi ? 'Định Âm:' : 'Attunement:'}</span>
+                                                            <b className="text-zinc-200">
+                                                                {DEFAULT_ATTUNEMENT_OPTIONS.find(a => a.key === item.attunementKey)?.labelVi.replace(/^(\[.*?\]|🚨|✅)\s*/g, '') || item.attunementKey}
+                                                            </b>
+                                                        </span>
+                                                        {item.attunementValue > 0 && (
+                                                            <span className="font-mono font-black">
+                                                                +{item.attunementValue}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* 4 Tuning Lines */}
+                                                <div className="space-y-1.5">
+                                                    <div className="text-[10px] text-zinc-500 uppercase font-semibold">
+                                                        {isVi ? 'Dòng Tẩy Luyện (Tuning Lines):' : 'Tuning Lines:'}
+                                                    </div>
+
+                                                    {Array.isArray(item?.tuningLines) && item.tuningLines.length > 0 ? (
+                                                        item.tuningLines.map((line, idx) => {
+                                                            const formatted = formatLineForSpec(line.statKey, inspectingBuild.spec);
+                                                            const isSlotGod = slot.godLineKey === line.statKey;
+
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                                                                        formatted.tier === 'T0'
+                                                                            ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300 font-bold'
+                                                                            : formatted.tier === 'T1'
+                                                                            ? 'bg-purple-500/10 border-purple-500/25 text-purple-300'
+                                                                            : formatted.tier === 'T2'
+                                                                            ? 'bg-sky-500/5 border-sky-500/20 text-sky-300'
+                                                                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-400'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-center gap-1.5 truncate">
+                                                                        <span className="shrink-0 font-mono text-[10px]">{formatted.badge}</span>
+                                                                        <span className="truncate">{formatted.label}</span>
+                                                                        {isSlotGod && (
+                                                                            <span className="text-[9px] bg-yellow-400 text-zinc-950 font-black px-1 rounded shrink-0">
+                                                                                GOD
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-mono font-bold shrink-0 ml-2">
+                                                                        +{line.value}{formatted.unit}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="text-xs text-zinc-600 italic py-1">
+                                                            {isVi ? 'Chưa khảm nạm dòng tẩy luyện' : 'No tuning lines'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => handleCopyBuildData(inspectingBuild)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold border border-zinc-700 transition-all cursor-pointer"
+                            >
+                                <span>{copiedBuildId === inspectingBuild.id ? '✅' : '📋'}</span>
+                                <span>{copiedBuildId === inspectingBuild.id ? (isVi ? 'Đã Sao Chép Mã' : 'Copied!') : (isVi ? 'Sao Chép Mã Build (JSON)' : 'Copy Build JSON')}</span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenInSimulator(inspectingBuild)}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-zinc-950 font-black text-xs transition-all shadow-md cursor-pointer"
+                                >
+                                    <span>🚀</span>
+                                    <span>{isVi ? 'Thử Nghiệm Ở Thần Khí Các' : 'Load in Simulator'}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setInspectingBuild(null)}
+                                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                    {isVi ? 'Đóng Thiên Nhãn' : 'Close'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

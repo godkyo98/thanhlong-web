@@ -1,7 +1,7 @@
 // components/layout/Header.tsx
 import React from 'react';
 
-export type TabType = 'home' | 'danhluc' | 'tuvi' | 'soi_acc' | 'talent' | 'giftcode' | 'point' | 'sattuong' | 'hoatdong' | 'builds' | 'pvp' | 'admin';
+export type TabType = 'home' | 'danhluc' | 'tuvi' | 'soi_acc' | 'talent' | 'giftcode' | 'point' | 'sattuong' | 'builds' | 'pvp' | 'admin';
 
 interface HeaderProps {
     activeTab: TabType;

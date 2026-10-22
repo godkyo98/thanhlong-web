@@ -32,7 +32,7 @@ export interface WeaponTypeOption {
     icon: string;
 }
 
-const DEFAULT_WEAPON_TYPES: WeaponTypeOption[] = [
+export const DEFAULT_WEAPON_TYPES: WeaponTypeOption[] = [
     { key: 'UMBRELLA', labelVi: 'Dù (Tản)', labelEn: 'Umbrella', icon: '☂️' },
     { key: 'FAN', labelVi: 'Quạt (Phiến)', labelEn: 'Fan', icon: '🪭' },
     { key: 'SWORD', labelVi: 'Kiếm (Trường Kiếm)', labelEn: 'Sword', icon: '🗡️' },
@@ -53,7 +53,7 @@ export interface GearSetOption {
     warningText?: string;
 }
 
-const DEFAULT_GEAR_SETS: GearSetOption[] = [
+export const DEFAULT_GEAR_SETS: GearSetOption[] = [
     { key: 'Mistwillow', labelVi: 'Mistwillow (Bộ Liễu Khói Dày Đặc / Thời Vũ)', labelEn: 'Mistwillow Set', side: 'left' },
     { key: 'BeyondTheChill', labelVi: 'Beyond the Chill (Bộ Hàn Ngoại - 4 Giáp Phải)', labelEn: 'Beyond the Chill Set', side: 'right' },
     { key: 'Ivorybloom', labelVi: 'Ivorybloom (Bộ Tượng Hoa - Heal/Kéo Tơ)', labelEn: 'Ivorybloom Set', side: 'left' },
@@ -113,7 +113,7 @@ export interface TamPhapOption {
     display: string;
 }
 
-interface SlotMeta {
+export interface SlotMeta {
     key: SlotKey;
     slotNumber: number;
     labelVi: string;
@@ -129,7 +129,7 @@ interface SlotMeta {
     requiredAttunementName: string;
 }
 
-const SLOTS_CONFIG: SlotMeta[] = [
+export const SLOTS_CONFIG: SlotMeta[] = [
     {
         key: 'umbrella',
         slotNumber: 1,
@@ -251,7 +251,7 @@ export interface StatOption {
     crossSpecHint?: string;
 }
 
-const stripHardcodedTierPrefix = (rawLabel: string): string => {
+export const stripHardcodedTierPrefix = (rawLabel: string): string => {
     if (!rawLabel) return '';
     return rawLabel
         .replace(/^(🌟|⚔️|💪|🎯|💥|🔥|🌪️|🕸️|⚡|🌀|⚠️|❌|🗑️|🔔|🎋|🪨|🛡️)\s*/g, '')
@@ -260,14 +260,14 @@ const stripHardcodedTierPrefix = (rawLabel: string): string => {
         .trim();
 };
 
-const TIER_BADGE_PREFIX: Record<StatGroupTier, string> = {
+export const TIER_BADGE_PREFIX: Record<StatGroupTier, string> = {
     T0: '🌟 [T0]',
     T1: '⚔️ [T1]',
     T2: '🌪️ [T2]',
     T3: '❌ [T3]'
 };
 
-const DEFAULT_STAT_OPTIONS: StatOption[] = [
+export const DEFAULT_STAT_OPTIONS: StatOption[] = [
     { key: 'ART_UMBRELLA_BOOST', labelVi: 'Võ học Vũ khí chính tăng sát thương (Martial Art Boost)', labelEn: 'Martial Art Skill Boost', group: 'T0', defaultVal: 6.7, unit: '%' },
     { key: 'ALL_MARTIAL_ARTS_BOOST', labelVi: 'Tất cả võ học tăng sát thương (All Martial Arts Boost)', labelEn: 'All Martial Arts Boost', group: 'T0', defaultVal: 4.8, unit: '%' },
     { key: 'BOSS_DMG_BOOST', labelVi: 'Tăng sát thương lên Thủ lĩnh (Combat Boost vs Boss)', labelEn: 'Combat Boost Against Boss Units', group: 'T0', defaultVal: 5.2, unit: '%' },
@@ -290,7 +290,7 @@ const DEFAULT_STAT_OPTIONS: StatOption[] = [
 ];
 
 // 🟢 THUẬT TOÁN XÁC ĐỊNH BẬC T0/T1/T2/T3 ĐỘNG THEO TỪNG HỆ PHÁI (HỖ TRỢ CẢ DÒNG MỚI THÊM)
-const resolveStatGroupForSpec = (stat: StatOption, specName: string): StatGroupTier => {
+export const resolveStatGroupForSpec = (stat: StatOption, specName: string): StatGroupTier => {
     // 1. Ưu tiên cấu hình do người dùng gán riêng cho nhánh võ học này
     if (stat.specGroups && stat.specGroups[specName]) {
         return stat.specGroups[specName];
@@ -416,7 +416,7 @@ export interface AttunementOption {
     trapWarning?: string;
 }
 
-const DEFAULT_ATTUNEMENT_OPTIONS: AttunementOption[] = [
+export const DEFAULT_ATTUNEMENT_OPTIONS: AttunementOption[] = [
     {
         key: 'PHYS_PEN',
         labelVi: '✅ [Chuẩn Trái] Xuyên phá ngoại công (Physical Penetration)',
@@ -801,6 +801,19 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
 
     useEffect(() => {
         if (voHocList.length === 0) return;
+        if (typeof window !== 'undefined') {
+            try {
+                const targetSpec = sessionStorage.getItem('wwm_target_spec');
+                const targetUser = sessionStorage.getItem('wwm_target_user');
+                if (targetSpec && voHocList.includes(targetSpec)) {
+                    setSelectedSpec(targetSpec);
+                    if (targetUser) setViewingUserId(targetUser);
+                    sessionStorage.removeItem('wwm_target_spec');
+                    sessionStorage.removeItem('wwm_target_user');
+                    return;
+                }
+            } catch {}
+        }
         if (selectedSpec && voHocList.includes(selectedSpec)) return;
 
         const userClass = danhLuc?.[currentUserId]?.class;
@@ -812,6 +825,11 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     }, [danhLuc, currentUserId, voHocList, selectedSpec]);
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                if (sessionStorage.getItem('wwm_target_user')) return;
+            } catch {}
+        }
         setViewingUserId(currentUserId);
     }, [currentUserId]);
 
