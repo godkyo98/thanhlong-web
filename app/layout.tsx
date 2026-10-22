@@ -31,9 +31,10 @@ export const metadata: Metadata = {
         siteName: "Thanh Long Sơn Trang",
         images: [
             {
-                url: "/thanhlong_thumnail.png",
-                width: 399,
-                height: 199,
+                url: "https://thanhlong-web.vercel.app/thanhlong_thumnail.png",
+                width: 1200,
+                height: 600,
+                type: "image/png",
                 alt: "Thanh Long Sơn Trang - Where Winds Meet",
             },
         ],
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "Thanh Long Sơn Trang · Where Winds Meet",
         description: "Đại Điện Thanh Long Sơn Trang · Sổ Danh Lục Quân Số, Tháp Phong Thần, Đài Chiếu Yêu, Sát Tướng Đài, Thần Khí Các & Võ Lâm Tranh Bá.",
-        images: ["/thanhlong_thumnail.png"],
+        images: ["https://thanhlong-web.vercel.app/thanhlong_thumnail.png"],
     },
     icons: {
         icon: "/icon.png",
