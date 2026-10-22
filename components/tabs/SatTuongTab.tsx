@@ -11,8 +11,326 @@ import {
 } from '@/lib/satTuongUtils';
 import { normalizeVoHocName } from '@/components/tabs/DanhLucTab';
 
+export interface ParsedRecord {
+    name: string;
+    time: string;
+    seconds: number;
+    class?: string;
+}
+
+/**
+ * Chuyển đổi thời gian dạng số (giây hoặc mili-giây) hoặc chuỗi sang số giây (number) để sắp xếp
+ */
+function parseSeconds(val: any): number {
+    if (val === null || val === undefined || val === '') return 999999;
+    
+    // Nếu là số:
+    if (typeof val === 'number') {
+        if (isNaN(val) || val <= 0) return 999999;
+        // Nếu là mili-giây (ví dụ 59000ms = 59s)
+        if (val >= 10000 && val < 3600000) return Math.round(val / 1000);
+        return Math.round(val);
+    }
+
+    if (typeof val !== 'string') return 999999;
+    const str = val.trim();
+    if (!str || str === '—' || str === '-') return 999999;
+
+    // Định dạng "1m06s", "1m6s", "1m 6s", "1 phút 6 giây"
+    const mMatch = str.match(/(\d+)\s*(?:m|phút|p)\s*(\d+)?\s*(?:s|giây|g)?/i);
+    if (mMatch) {
+        const mins = parseInt(mMatch[1], 10) || 0;
+        const secs = parseInt(mMatch[2], 10) || 0;
+        return mins * 60 + secs;
+    }
+
+    // Định dạng "01:06" hoặc "1:06" hoặc "01:06.5"
+    if (str.includes(':')) {
+        const parts = str.split(':').map(p => parseFloat(p.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            return Math.round(parts[0] * 60 + parts[1]);
+        }
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]);
+        }
+    }
+
+    // Định dạng "59s", "59 giây", "59.5s"
+    const sMatch = str.match(/([\d.]+)\s*(?:s|giây|g)?/i);
+    if (sMatch) {
+        const num = parseFloat(sMatch[1]);
+        if (!isNaN(num)) return Math.round(num);
+    }
+
+    return 999999;
+}
+
+/**
+ * Định dạng số giây thành chuỗi thời gian hiển thị: "59s", "1m06s", "2m15s"
+ */
+function formatSeconds(sec: number, originalStr?: string): string {
+    if (sec <= 0 || sec >= 999999) {
+        if (originalStr && originalStr.trim() && originalStr !== '—' && originalStr !== '-') {
+            return originalStr.trim();
+        }
+        return '—';
+    }
+    if (sec < 60) {
+        return `${sec}s`;
+    }
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins}m${secs < 10 ? '0' : ''}${secs}s`;
+}
+
+/**
+ * Tìm thông tin thành viên chuẩn nhất từ danhLuc theo Tên Ingame, Discord Name hoặc UID
+ */
+function findMemberInDanhLuc(nameOrId: string, danhLuc: Record<string, any>) {
+    if (!nameOrId || !danhLuc) return null;
+    const clean = nameOrId.trim().toLowerCase();
+
+    // 1. Khớp trực tiếp key (Discord ID)
+    if (danhLuc[nameOrId]) return danhLuc[nameOrId];
+
+    // 2. Quét các thành viên trong danhLuc
+    const cleanNoSpecial = clean.replace(/[》《\[\]\(\)\s_]/g, '');
+
+    for (const [dId, member] of Object.entries(danhLuc)) {
+        if (!member || typeof member !== 'object') continue;
+        const ingame = (member.ingame || '').trim().toLowerCase();
+        const discordName = (member.discordName || '').trim().toLowerCase();
+        const username = (member.username || '').trim().toLowerCase();
+        const uid = (member.uid || '').trim().toLowerCase();
+
+        if (ingame === clean || discordName === clean || username === clean || uid === clean || dId === clean) {
+            return member;
+        }
+
+        const ingameNoSpecial = ingame.replace(/[》《\[\]\(\)\s_]/g, '');
+        const discordNoSpecial = discordName.replace(/[》《\[\]\(\)\s_]/g, '');
+        if (cleanNoSpecial && (ingameNoSpecial === cleanNoSpecial || discordNoSpecial === cleanNoSpecial)) {
+            return member;
+        }
+    }
+    return null;
+}
+
+/**
+ * Trích xuất số tuần từ tiêu đề Boss (ví dụ "Rết Thiết Tâm Tuần 2" -> 2)
+ */
+function extractWeekNumber(bossTitle: string): number {
+    const match = bossTitle.match(/tuần\s*(\d+)/i);
+    return match ? parseInt(match[1], 10) : 0;
+}
+
+/**
+ * Tìm tên nhân vật Ingame chuẩn nhất từ danhLuc hoặc đối tượng hoặc key
+ */
+function resolvePlayerName(key: string, val: any, danhLuc: Record<string, any>): string {
+    // 1. Nếu val là object và có chứa trường tên
+    if (val && typeof val === 'object') {
+        const directName = val.ingame || val.name || val.playerName || val.player || val.displayName || val.username || val.sheetName || val.user;
+        if (directName && typeof directName === 'string' && directName.trim() && directName !== 'Hiệp Khách') {
+            const member = findMemberInDanhLuc(directName, danhLuc);
+            if (member?.ingame) return member.ingame;
+            return directName.trim();
+        }
+        const possibleId = String(val.id || val.uid || val.discordId || val.userId || '').trim();
+        if (possibleId) {
+            const member = findMemberInDanhLuc(possibleId, danhLuc);
+            if (member?.ingame) return member.ingame;
+        }
+    }
+
+    // 2. Tra theo key trong danhLuc
+    if (key) {
+        const member = findMemberInDanhLuc(key, danhLuc);
+        if (member?.ingame) return member.ingame;
+        if (member?.discordName) return member.discordName;
+
+        const cleanKey = key.trim();
+        const isSnowflake = /^\d{16,21}$/.test(cleanKey);
+        if (!isSnowflake && !['record', 'records', 'time', 'data', 'battle', 'boss'].includes(cleanKey.toLowerCase())) {
+            return cleanKey;
+        }
+
+        if (isSnowflake) {
+            return `Hiệp Khách #${cleanKey.slice(-4)}`;
+        }
+    }
+
+    return 'Hiệp Khách';
+}
+
+function parseBossRecords(bossData: any, danhLuc: Record<string, any>): ParsedRecord[] {
+    if (!bossData) return [];
+
+    const list: ParsedRecord[] = [];
+
+    // Trường hợp 1: bossData là Array (Danh sách chiến báo hoặc danh sách Discord ID)
+    if (Array.isArray(bossData)) {
+        let hasAnyRealTime = false;
+
+        bossData.forEach((item, idx) => {
+            if (typeof item === 'object' && item !== null) {
+                const rawName = String(item.name || item.ingame || item.sheetName || item.playerName || item.username || item.id || item.uid || '').trim();
+                const member = findMemberInDanhLuc(rawName, danhLuc) || (item.id ? danhLuc[item.id] : null);
+                
+                const officialName = member?.ingame || member?.name || rawName || `Hiệp Khách #${idx + 1}`;
+                const playerClass = member?.class 
+                    ? normalizeVoHocName(member.class) 
+                    : (item.class ? normalizeVoHocName(item.class) : undefined);
+
+                // Ưu tiên timeStr (vd "59s", "1m05s"), rồi đến sec (59), time, record
+                const rawTime = item.timeStr ?? item.time ?? item.sec ?? item.seconds ?? item.record ?? item.duration;
+                
+                let timeStr = '—';
+                let sec = idx;
+
+                if (rawTime !== undefined && rawTime !== null && rawTime !== '') {
+                    const isSnowflake = /^\d{16,21}$/.test(String(rawTime));
+                    if (!isSnowflake) {
+                        sec = typeof item.sec === 'number' ? item.sec : parseSeconds(rawTime);
+                        timeStr = typeof item.timeStr === 'string' && item.timeStr.trim() 
+                            ? item.timeStr.trim() 
+                            : formatSeconds(sec, String(rawTime));
+                        hasAnyRealTime = true;
+                    } else {
+                        timeStr = '✅ Đã Hạ Gục';
+                    }
+                } else {
+                    timeStr = '✅ Đã Hạ Gục';
+                }
+
+                list.push({
+                    name: officialName,
+                    time: timeStr,
+                    seconds: sec,
+                    class: playerClass
+                });
+            } else if (typeof item === 'string' || typeof item === 'number') {
+                const strItem = String(item).trim();
+                const isSnowflake = /^\d{16,21}$/.test(strItem);
+
+                if (isSnowflake) {
+                    const member = findMemberInDanhLuc(strItem, danhLuc);
+                    const name = member?.ingame || member?.name || member?.discordName || `Hiệp Khách #${strItem.slice(-4)}`;
+                    const memberClass = member?.class ? normalizeVoHocName(member.class) : undefined;
+                    list.push({
+                        name,
+                        time: '✅ Đã Hạ Gục',
+                        seconds: idx,
+                        class: memberClass
+                    });
+                } else {
+                    const parsed = parseSeconds(strItem);
+                    if (parsed < 999999) {
+                        hasAnyRealTime = true;
+                        list.push({
+                            name: `Hiệp Khách #${idx + 1}`,
+                            time: formatSeconds(parsed, strItem),
+                            seconds: parsed
+                        });
+                    } else {
+                        const member = findMemberInDanhLuc(strItem, danhLuc);
+                        list.push({
+                            name: member?.ingame || strItem,
+                            time: '✅ Đã Hạ Gục',
+                            seconds: idx,
+                            class: member?.class ? normalizeVoHocName(member.class) : undefined
+                        });
+                    }
+                }
+            }
+        });
+
+        // Chỉ sắp xếp lại theo thời gian nếu thực sự có thông số giây speedrun
+        if (hasAnyRealTime) {
+            return list.sort((a, b) => a.seconds - b.seconds);
+        }
+        return list; // Giữ nguyên thứ tự thảo phạt
+    }
+
+    // Trường hợp 2: bossData là một object
+    if (typeof bossData === 'object' && bossData !== null) {
+        const nestedList = bossData.records || bossData.list || bossData.top || bossData.ranking || bossData.history || bossData.players || bossData.battles;
+        if (nestedList && (Array.isArray(nestedList) || typeof nestedList === 'object')) {
+            return parseBossRecords(nestedList, danhLuc);
+        }
+
+        // Kiểm tra xem bossData có phải là chính MỘT kỷ lục đơn lẻ không
+        const hasDirectTime = bossData.timeStr !== undefined || bossData.sec !== undefined || bossData.time !== undefined || bossData.record !== undefined;
+        const hasDirectName = bossData.name !== undefined || bossData.ingame !== undefined || bossData.player !== undefined;
+        
+        if (hasDirectTime && hasDirectName) {
+            const rawName = String(bossData.name || bossData.ingame || '').trim();
+            const member = findMemberInDanhLuc(rawName, danhLuc);
+            const rawTime = bossData.timeStr ?? bossData.time ?? bossData.sec;
+            const sec = typeof bossData.sec === 'number' ? bossData.sec : parseSeconds(rawTime);
+            return [{
+                name: member?.ingame || rawName,
+                time: typeof bossData.timeStr === 'string' ? bossData.timeStr : formatSeconds(sec, String(rawTime || '')),
+                seconds: sec,
+                class: member?.class ? normalizeVoHocName(member.class) : undefined
+            }];
+        }
+
+        // Dictionary { [idOrName]: val }
+        let hasAnyRealTime = false;
+        Object.entries(bossData).forEach(([key, val]: [string, any], entryIdx: number) => {
+            if (['boss', 'title', 'date', 'updatedat', 'timestamp', 'week', 'season'].includes(key.toLowerCase())) {
+                return;
+            }
+
+            const cleanKey = key.trim();
+            const member = findMemberInDanhLuc(cleanKey, danhLuc);
+            const name = member?.ingame || cleanKey;
+            let playerClass = member?.class ? normalizeVoHocName(member.class) : undefined;
+            let timeStr = '✅ Đã Hạ Gục';
+            let sec = entryIdx;
+
+            if (val && typeof val === 'object') {
+                const rawTime = val.timeStr ?? val.time ?? val.sec ?? val.record ?? val.seconds;
+                if (rawTime !== undefined && !/^\d{16,21}$/.test(String(rawTime))) {
+                    sec = typeof val.sec === 'number' ? val.sec : parseSeconds(rawTime);
+                    timeStr = typeof val.timeStr === 'string' ? val.timeStr : formatSeconds(sec, String(rawTime));
+                    hasAnyRealTime = true;
+                }
+                if (val.class) playerClass = normalizeVoHocName(val.class);
+            } else if (typeof val === 'string' || typeof val === 'number') {
+                const strVal = String(val).trim();
+                const isValSnowflake = /^\d{16,21}$/.test(strVal);
+                if (!isValSnowflake) {
+                    const parsed = parseSeconds(val);
+                    if (parsed < 999999) {
+                        sec = parsed;
+                        timeStr = formatSeconds(sec, strVal);
+                        hasAnyRealTime = true;
+                    }
+                }
+            }
+
+            list.push({
+                name,
+                time: timeStr,
+                seconds: sec,
+                class: playerClass
+            });
+        });
+
+        if (hasAnyRealTime) {
+            return list.sort((a, b) => a.seconds - b.seconds);
+        }
+        return list;
+    }
+
+    return [];
+}
+
 interface Props {
     data: any;             // sat_tuong_data từ Firebase
+    metadata?: any;        // sattuong_metadata từ Firebase
     bossRotation?: any;    // boss_rotation từ Firebase
     pointData?: any;       // points_data
     danhLuc: Record<string, any>;
@@ -22,12 +340,14 @@ interface Props {
 
 export default function SatTuongTab({
     data,
+    metadata,
     bossRotation,
     danhLuc = {},
     isMaster = false,
 }: Props) {
     const [activeSubTab, setActiveSubTab] = useState<'season' | 'monthly' | 'history'>('season');
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedWeekFilter, setSelectedWeekFilter] = useState<number | 'ALL'>('ALL');
 
     // State sửa điểm Master
     const [editingUid, setEditingUid] = useState<string | null>(null);
@@ -158,24 +478,86 @@ export default function SatTuongTab({
         return list.sort((a, b) => b.points - a.points);
     }, [data, danhLuc]);
 
-    // 4. ⚔️ NHẬT KÝ THẢO PHẠT TỐC ĐỘ (Time-Attack History)
+    // 4. ⚔️ NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS
     const battleHistory = useMemo(() => {
-        const rawHistory = data?.battles || data?.history || data?.records || data?.bossHistory || null;
-        if (rawHistory && typeof rawHistory === 'object') {
-            return Object.entries(rawHistory).map(([bossTitle, records]: [string, any]) => {
-                const recordList = Array.isArray(records) ? records : Object.values(records || {});
-                return {
-                    bossTitle,
-                    records: recordList.map((r: any) => ({
-                        name: r?.name || r?.ingame || danhLuc[r?.id]?.ingame || 'Hiệp Khách',
-                        time: r?.time || r?.record || '—',
-                        rank: r?.rank || 1
-                    }))
+        const historyObj = (data?.history && typeof data.history === 'object') ? data.history : {};
+        const battlesObj = (data?.battles && typeof data.battles === 'object') ? data.battles : {};
+        const metaObj = (metadata?.battles && typeof metadata.battles === 'object') ? metadata.battles : {};
+        // Gộp toàn bộ, ưu tiên battlesObj vì chứa sec và timeStr
+        const merged: Record<string, any> = { ...historyObj, ...metaObj, ...battlesObj };
+
+        return Object.entries(merged).map(([bossTitle, recordsData]: [string, any]) => {
+            const parsedRecords = parseBossRecords(recordsData, danhLuc);
+            const week = extractWeekNumber(bossTitle);
+            return {
+                bossTitle,
+                week,
+                records: parsedRecords
+            };
+        });
+    }, [data, metadata, danhLuc]);
+
+    // Gom nhóm theo Tuần và sắp xếp từ Tuần mới nhất (4 -> 3 -> 2 -> 1)
+    const bossWeekGroups = useMemo(() => {
+        const groupsMap: Record<number, {
+            week: number;
+            weekLabel: string;
+            bosses: Array<{
+                bossTitle: string;
+                week: number;
+                records: ParsedRecord[];
+            }>;
+        }> = {};
+
+        battleHistory.forEach((item) => {
+            const w = item.week;
+            if (!groupsMap[w]) {
+                groupsMap[w] = {
+                    week: w,
+                    weekLabel: w > 0 ? `Chiến Báo Tuần ${w}` : 'Chiến Báo Khác',
+                    bosses: []
                 };
-            });
-        }
-        return [];
-    }, [data, danhLuc]);
+            }
+            groupsMap[w].bosses.push(item);
+        });
+
+        return Object.values(groupsMap).sort((a, b) => b.week - a.week);
+    }, [battleHistory]);
+
+    // Danh sách các tuần có dữ liệu để làm nút bấm lọc
+    const availableWeeks = useMemo(() => {
+        return bossWeekGroups.map(g => g.week).filter(w => w > 0).sort((a, b) => b - a);
+    }, [bossWeekGroups]);
+
+    // Lọc theo Tuần và theo Thanh Tìm Kiếm
+    const filteredWeekGroups = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
+
+        return bossWeekGroups
+            .filter(group => {
+                if (selectedWeekFilter !== 'ALL' && group.week !== selectedWeekFilter) {
+                    return false;
+                }
+                return true;
+            })
+            .map(group => {
+                const filteredBosses = group.bosses.filter(boss => {
+                    if (!q) return true;
+                    return (
+                        boss.bossTitle.toLowerCase().includes(q) ||
+                        boss.records.some(r =>
+                            r.name.toLowerCase().includes(q) ||
+                            (r.class && r.class.toLowerCase().includes(q))
+                        )
+                    );
+                });
+                return {
+                    ...group,
+                    bosses: filteredBosses
+                };
+            })
+            .filter(group => group.bosses.length > 0);
+    }, [bossWeekGroups, selectedWeekFilter, searchQuery]);
 
     // Xử lý lưu điểm Master
     const handleSavePts = async (uid: string) => {
@@ -305,7 +687,7 @@ export default function SatTuongTab({
                             }`}
                         >
                             <span>⚔️</span>
-                            <span>Nhật Ký Tốc Độ Boss ({battleHistory.length})</span>
+                            <span>Chiến Báo & Tốc Độ Boss ({battleHistory.length})</span>
                         </button>
                     )}
                 </div>
@@ -591,34 +973,148 @@ export default function SatTuongTab({
                 </div>
             )}
 
-            {/* 🔴 3C. BẢNG 3: NHẬT KÝ THỜI GIAN THẢO PHẠT TỪNG TRẬN (TIME-ATTACK RECORD) */}
+            {/* 🔴 3C. BẢNG 3: NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS THEO TUẦN */}
             {activeSubTab === 'history' && battleHistory.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {battleHistory.map((item, idx) => (
-                        <div
-                            key={idx}
-                            className="bg-[#0b0404]/90 border border-zinc-800 rounded-2xl p-4 shadow-xl space-y-3"
-                        >
-                            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                                <span className="font-black text-sm text-amber-300">⚔️ {item.bossTitle}</span>
-                                <span className="text-[10px] font-mono text-zinc-500">Record #{idx + 1}</span>
-                            </div>
-                            <div className="space-y-1.5">
-                                {item.records.map((rec: any, rIdx: number) => (
-                                    <div
-                                        key={rIdx}
-                                        className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800/80"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span>{rIdx === 0 ? '🥇' : rIdx === 1 ? '🥈' : '🥉'}</span>
-                                            <span className="font-bold text-zinc-200">{rec.name}</span>
-                                        </div>
-                                        <span className="font-mono font-bold text-amber-400">⏱️ {rec.time}</span>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="space-y-6">
+                    {/* THANH ĐIỀU HƯỚNG LỌC THEO TUẦN */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-3 px-4 shadow-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1.5 mr-1">
+                                <span>📅</span>
+                                <span>Lọc Theo Tuần:</span>
+                            </span>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedWeekFilter('ALL')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    selectedWeekFilter === 'ALL'
+                                        ? 'bg-amber-500 text-zinc-950 font-black shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                }`}
+                            >
+                                Tất Cả ({availableWeeks.length} Tuần)
+                            </button>
+
+                            {availableWeeks.map(w => (
+                                <button
+                                    key={w}
+                                    type="button"
+                                    onClick={() => setSelectedWeekFilter(w)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        selectedWeekFilter === w
+                                            ? 'bg-amber-500 text-zinc-950 font-black shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                                            : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                    }`}
+                                >
+                                    Tuần {w}
+                                </button>
+                            ))}
                         </div>
-                    ))}
+
+                        <div className="text-xs font-mono text-zinc-400">
+                            Hiển thị: <b className="text-amber-400">{filteredWeekGroups.reduce((acc, g) => acc + g.bosses.length, 0)}</b> Boss
+                        </div>
+                    </div>
+
+                    {filteredWeekGroups.length === 0 ? (
+                        <div className="bg-[#0b0404]/90 border border-zinc-800 rounded-3xl p-12 text-center text-zinc-500">
+                            {searchQuery ? 'Không tìm thấy nhật ký boss khớp với từ khóa tìm kiếm.' : 'Chưa có nhật ký thảo phạt boss nào trong tuần này.'}
+                        </div>
+                    ) : (
+                        filteredWeekGroups.map(group => {
+                            const totalKillsInWeek = group.bosses.reduce((acc, b) => acc + b.records.length, 0);
+
+                            return (
+                                <div
+                                    key={group.week}
+                                    className="rounded-3xl bg-gradient-to-b from-[#140606] to-[#090202] border border-rose-950/60 p-4 sm:p-5 shadow-xl space-y-4"
+                                >
+                                    {/* TIÊU ĐỀ TUẦN */}
+                                    <div className="flex items-center justify-between border-b border-rose-900/30 pb-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-rose-500/20 border border-amber-500/40 text-amber-300 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>📅</span>
+                                                <span>{group.weekLabel.toUpperCase()}</span>
+                                            </span>
+                                            <span className="text-xs text-zinc-400 font-bold hidden sm:inline">
+                                                • Cặp Đôi Mục Tiêu Sát Tướng
+                                            </span>
+                                        </div>
+                                        <span className="text-xs font-mono text-amber-400/90 font-bold bg-black/40 px-3 py-1 rounded-xl border border-zinc-800">
+                                            {totalKillsInWeek} Kỷ Lục
+                                        </span>
+                                    </div>
+
+                                    {/* DANH SÁCH BOSS CỦA TUẦN (MỖI TUẦN 2 CỘT CÂN ĐỐI NẰM CẠNH NHAU TRÊN 1 DÒNG) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {group.bosses.map((boss, bIdx) => (
+                                            <div
+                                                key={bIdx}
+                                                className="bg-black/60 border border-zinc-800/80 rounded-2xl p-4 shadow-lg flex flex-col justify-between space-y-3"
+                                            >
+                                                <div>
+                                                    {/* HEADER BOSS */}
+                                                    <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5 mb-2.5">
+                                                        <span className="font-black text-sm text-amber-300 truncate pr-2">
+                                                            ⚔️ {boss.bossTitle}
+                                                        </span>
+                                                        <span className="text-[10px] font-mono text-zinc-400 shrink-0 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
+                                                            {boss.records.length} Kỷ Lục
+                                                        </span>
+                                                    </div>
+
+                                                    {/* DANH SÁCH NGƯỜI CHƠI & THỜI GIAN */}
+                                                    <div className="space-y-1.5 max-h-[460px] overflow-y-auto pr-1">
+                                                        {boss.records.length === 0 ? (
+                                                            <div className="text-[11px] text-zinc-500 italic py-4 text-center">
+                                                                Chưa có dữ liệu chiến báo...
+                                                            </div>
+                                                        ) : (
+                                                            boss.records.map((rec, rIdx) => (
+                                                                <div
+                                                                    key={rIdx}
+                                                                    className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/70 hover:border-zinc-700/80 transition-all"
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <span className="text-sm shrink-0">
+                                                                            {rIdx === 0 ? '🥇' : rIdx === 1 ? '🥈' : rIdx === 2 ? '🥉' : (
+                                                                                <span className="font-mono text-zinc-500 font-bold text-xs">#{rIdx + 1}</span>
+                                                                            )}
+                                                                        </span>
+                                                                        <span className="font-bold text-zinc-200 truncate">
+                                                                            {rec.name}
+                                                                        </span>
+                                                                        {rec.class && rec.class !== 'Chưa rõ' && (
+                                                                            <span className="px-1.5 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 font-medium shrink-0">
+                                                                                {rec.class}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* THỜI GIAN HOÀN THÀNH */}
+                                                                    {rec.time && rec.time !== '—' && rec.time !== '✅ Đã Hạ Gục' ? (
+                                                                        <span className="font-mono font-bold text-amber-300 text-xs shrink-0 ml-2 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/25">
+                                                                            ⏱️ {rec.time.replace(/^⏱️\s*/, '')}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-[11px] font-bold text-emerald-400 shrink-0 ml-2 inline-flex items-center gap-1 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-800/40">
+                                                                            <span>✅</span>
+                                                                            <span>Đã Hạ Gục</span>
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             )}
         </section>

@@ -154,6 +154,7 @@ export default function Home() {
                 {activeTab === 'sattuong' && (
                     <SatTuongTab
                         data={satTuongData}
+                        metadata={satTuongMeta}
                         bossRotation={bossRotation}
                         pointData={pointData}
                         danhLuc={danhLuc}
