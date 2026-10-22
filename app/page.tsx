@@ -28,7 +28,7 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
     danhluc: { icon: '📜', title: 'Sổ Danh Lục Quân Số' },
     tuvi: { icon: '🏆', title: 'Bảng Phong Thần Tu Vi' },
-    talent: { icon: '👹', title: 'Bảng Cáo Thị Săn Boss' },
+    talent: { icon: '👹', title: 'Bảng Cáo Thị Thiên Phú Boss' },
     soi_acc: { icon: '🪞', title: 'Đài Chiếu Yêu · Khoe Build & Chỉ Số Quần Hùng' },
     giftcode: { icon: '🎁', title: 'Tàng Bảo Các (Giftcode)' },
     point: { icon: '💰', title: 'Bảng Vàng Công Trạng' },

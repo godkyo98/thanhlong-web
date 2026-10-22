@@ -117,8 +117,8 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                     <div onClick={() => setActiveTab('talent')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
                         <div>
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">👹</div>
-                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-amber-400 transition-colors">Săn Boss</h4>
-                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Bảng cáo thị ghi danh lập tổ đội báo danh lộ trình chinh phạt Boss ẩn.</p>
+                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-amber-400 transition-colors">Thiên Phú Boss</h4>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Bảng cáo thị ghi danh lập tổ đội báo danh lộ trình chinh phạt Thiên Phú Boss.</p>
                         </div>
                     </div>
 
