@@ -18,8 +18,38 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Thanh Long Sơn Trang",
-    description: "Đại Điện Thanh Long Sơn Trang - Where Winds Meet",
+    metadataBase: new URL(
+        process.env.NEXT_PUBLIC_SITE_URL || 
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'https://thanhlong-web.vercel.app')
+    ),
+    title: "Thanh Long Sơn Trang · Where Winds Meet",
+    description: "Đại Điện Thanh Long Sơn Trang · Trung tâm dữ liệu Bang hội: Sổ Danh Lục Quân Số, Tháp Phong Thần, Đài Chiếu Yêu, Sát Tướng Đài, Thần Khí Các & Võ Lâm Tranh Bá.",
+    openGraph: {
+        title: "Thanh Long Sơn Trang · Where Winds Meet",
+        description: "Đại Điện Thanh Long Sơn Trang · Sổ Danh Lục Quân Số, Tháp Phong Thần, Đài Chiếu Yêu, Sát Tướng Đài, Thần Khí Các & Võ Lâm Tranh Bá.",
+        url: "https://thanhlong-web.vercel.app",
+        siteName: "Thanh Long Sơn Trang",
+        images: [
+            {
+                url: "/og-image.jpg",
+                width: 1200,
+                height: 675,
+                alt: "Thanh Long Sơn Trang - Where Winds Meet",
+            },
+        ],
+        locale: "vi_VN",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Thanh Long Sơn Trang · Where Winds Meet",
+        description: "Đại Điện Thanh Long Sơn Trang · Sổ Danh Lục Quân Số, Tháp Phong Thần, Đài Chiếu Yêu, Sát Tướng Đài, Thần Khí Các & Võ Lâm Tranh Bá.",
+        images: ["/og-image.jpg"],
+    },
+    icons: {
+        icon: "/icon.png",
+        apple: "/icon.png",
+    },
 };
 
 export default function RootLayout({
@@ -30,6 +60,7 @@ export default function RootLayout({
     return (
         <html lang="vi" className="dark">
             <head>
+                <meta name="theme-color" content="#f59e0b" />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link
