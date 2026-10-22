@@ -16,24 +16,24 @@ import AdminTab from "@/components/tabs/AdminTab";
 import GiftcodeTab from "@/components/tabs/GiftcodeTab";
 import PointTab from "@/components/tabs/PointTab";
 import SatTuongTab from "@/components/tabs/SatTuongTab";
-import HoatDongTab from "@/components/tabs/HoatDongTab";
+
 import WwmBuildsTab from "@/components/tabs/WwmBuildsTab";
 import PvpTournamentTab from "@/components/tabs/PvpTournamentTab";
 
-export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'hoatdong' | 'builds' | 'pvp';
+export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'builds' | 'pvp';
 
-const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'hoatdong', 'builds', 'pvp'];
+const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'builds', 'pvp'];
 
 const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
     danhluc: { icon: '📜', title: 'Sổ Danh Lục Quân Số' },
     tuvi: { icon: '🏆', title: 'Bảng Phong Thần Tu Vi' },
     talent: { icon: '👹', title: 'Bảng Cáo Thị Săn Boss' },
-    soi_acc: { icon: '🔮', title: 'Đài Chiếu Yêu (Soi Căn Cốt)' },
+    soi_acc: { icon: '🪞', title: 'Đài Chiếu Yêu · Khoe Build & Chỉ Số Quần Hùng' },
     giftcode: { icon: '🎁', title: 'Tàng Bảo Các (Giftcode)' },
     point: { icon: '💰', title: 'Bảng Vàng Công Trạng' },
     sattuong: { icon: '👹', title: 'Bảng Chiến Thần Sát Tướng' },
-    hoatdong: { icon: '🔥', title: 'Sổ Điệp Hoạt Động Bang' },
+
     builds: { icon: '⚔️', title: 'Thần Khí Các · Giám Định & Tối Ưu Trang Bị' },
     pvp: { icon: '🏆', title: 'Võ Lâm Tranh Bá · Sơ Đồ Giải Đấu PvP' },
     admin: { icon: '⚙️', title: 'Mật Thất Quản Trị Tông Môn' },
@@ -46,7 +46,7 @@ export default function Home() {
 
     const { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, bangHoatDong, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, wwmBuilds 
     } = useFirebaseData();
 
     useEffect(() => {
@@ -119,10 +119,6 @@ export default function Home() {
                                 <span>{TAB_LABELS[activeTab]?.title}</span>
                             </span>
                         </div>
-
-                        <div className="text-[11px] text-zinc-500 font-mono hidden sm:block">
-                            🔗 Đường dẫn trực tiếp: <span className="text-zinc-400">?tab={activeTab}</span>
-                        </div>
                     </div>
                 )}
 
@@ -138,7 +134,16 @@ export default function Home() {
                     />
                 )}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
-                {activeTab === 'soi_acc' && <SoiAccTab profiles={playerProfiles} wwmData={wwmData} lang={displayLang} />}
+                {activeTab === 'soi_acc' && (
+                    <SoiAccTab 
+                        wwmBuilds={wwmBuilds}
+                        danhLuc={danhLuc}
+                        wwmData={wwmData}
+                        session={session}
+                        lang={displayLang}
+                        setActiveTab={setActiveTab}
+                    />
+                )}
                 {activeTab === 'talent' && <TalentTab data={talent} danhLuc={danhLuc} />}
                 {activeTab === 'admin' && isMaster && <AdminTab wwmData={wwmData} />}
                 {activeTab === 'giftcode' && (
@@ -162,7 +167,7 @@ export default function Home() {
                         isMaster={isMaster}
                     />
                 )}
-                {activeTab === 'hoatdong' && <HoatDongTab data={bangHoatDong} danhLuc={danhLuc} />}
+
                 {activeTab === 'builds' && (
                     <WwmBuildsTab
                         wwmBuilds={wwmBuilds}

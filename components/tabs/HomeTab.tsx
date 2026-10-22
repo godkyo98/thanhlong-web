@@ -122,11 +122,11 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    <div onClick={() => setActiveTab('soi_acc')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-cyan-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(6,182,212,0.05)] flex flex-col justify-between">
+                    <div onClick={() => setActiveTab('soi_acc')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.05)] flex flex-col justify-between">
                         <div>
-                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🔮</div>
-                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors">Đài Chiếu Yêu</h4>
-                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Khai triển thiên nhãn soi ngũ hành căn cốt, dòng ẩn trang bị của quần hùng.</p>
+                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🪞</div>
+                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-amber-400 transition-colors">Đài Chiếu Yêu</h4>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Khoe build & giám định chỉ số thần khí, ngũ hành tẩy luyện của chư vị huynh đệ.</p>
                         </div>
                     </div>
 
@@ -154,11 +154,11 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                         </div>
                     </div>
 
-                    <div onClick={() => setActiveTab('hoatdong')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-orange-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(249,115,22,0.05)] flex flex-col justify-between">
+                    <div onClick={() => setActiveTab('pvp')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-rose-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(244,63,94,0.05)] flex flex-col justify-between">
                         <div>
-                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🔥</div>
-                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-orange-400 transition-colors">Hoạt Động Bang</h4>
-                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Sổ điệp tuần kiểm độ năng động tuần, tháng của bang chúng đồng bộ từ Discord Bot.</p>
+                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🏆</div>
+                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-rose-400 transition-colors">Võ Lâm Tranh Bá</h4>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Sơ đồ thi đấu PvP Nhánh Thắng - Nhánh Thua, tùy chỉnh thể thức BO trực quan.</p>
                         </div>
                     </div>
                     
@@ -193,33 +193,6 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
 
                     <div className="shrink-0 px-4 py-2 rounded-xl bg-emerald-500/15 group-hover:bg-amber-500 text-emerald-300 group-hover:text-zinc-950 font-black text-xs transition-all">
                         Tiến Vào Thần Khí Các ➔
-                    </div>
-                </div>
-
-                <div
-                    onClick={() => setActiveTab('pvp')}
-                    className="group relative overflow-hidden bg-gradient-to-r from-rose-950/40 via-zinc-900/70 to-zinc-950 border border-rose-500/30 hover:border-amber-400/60 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-4"
-                >
-                    <div className="flex items-start sm:items-center gap-4">
-                        <div className="text-4xl p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 group-hover:scale-110 transition-transform">
-                            🏆
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-lg font-black text-rose-400 group-hover:text-amber-300 transition-colors">
-                                    Võ Lâm Tranh Bá · Sơ Đồ Giải Đấu PvP (Nhánh Thắng / Thua)
-                                </h4>
-                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                                    DOUBLE ELIMINATION • BO
-                                </span>
-                            </div>
-                            <p className="text-xs text-zinc-400 leading-relaxed">
-                                Sơ đồ thi đấu Nhánh Thắng - Nhánh Thua trực tiếp, tùy chỉnh BO1/BO3/BO5/BO7/BO9, tự động đôn nhánh và đồng bộ danh sách báo danh với Discord.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="shrink-0 px-4 py-2 rounded-xl bg-rose-500/15 group-hover:bg-amber-500 text-rose-300 group-hover:text-zinc-950 font-black text-xs transition-all">
-                        Mở Sơ Đồ Giải Đấu ➔
                     </div>
                 </div>
             </div>
