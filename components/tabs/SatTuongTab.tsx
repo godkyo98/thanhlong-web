@@ -355,7 +355,7 @@ export default function SatTuongTab({
     const [editType, setEditType] = useState<'monthly' | 'season'>('monthly');
     const [isSaving, setIsSaving] = useState(false);
 
-    // 1. 🎯 BỐC THĂM CẶP ĐÔI BOSS SÁT PHẠT TUẦN NÀY (ĐỌC TỪ boss_rotation)
+    // 1. 🎯 BỐC THĂM CẶP ĐÔI BOSS SÁT PHẠT TUẦN NÀY (ĐỌC TỪ boss_rotation & sat_tuong_data)
     const { targetBoss1, targetBoss2, totalUsed, totalPool } = useMemo(() => {
         const used = Array.isArray(bossRotation?.used) ? bossRotation.used : [];
         const pool = Array.isArray(bossRotation?.pool) ? bossRotation.pool : [];
@@ -363,9 +363,17 @@ export default function SatTuongTab({
         let b1 = '';
         let b2 = '';
 
-        if (bossRotation?.current && Array.isArray(bossRotation.current)) {
-            b1 = bossRotation.current[0] || '';
-            b2 = bossRotation.current[1] || '';
+        const picked = Array.isArray(bossRotation?.pickedBosses)
+            ? bossRotation.pickedBosses
+            : (Array.isArray(bossRotation?.current)
+                ? bossRotation.current
+                : (Array.isArray(data?.targetBosses) ? data.targetBosses : []));
+
+        if (picked.length >= 2) {
+            b1 = picked[0] || '';
+            b2 = picked[1] || '';
+        } else if (picked.length === 1) {
+            b1 = picked[0] || '';
         } else if (used.length >= 2) {
             b1 = used[used.length - 2];
             b2 = used[used.length - 1];
@@ -379,7 +387,7 @@ export default function SatTuongTab({
             totalUsed: used.length,
             totalPool: pool.length
         };
-    }, [bossRotation]);
+    }, [bossRotation, data]);
 
     // 2. 🌟 BẢNG VÀNG CHIẾN THẦN PVE (TÍCH LŨY MÙA)
     const seasonList = useMemo(() => {
@@ -521,10 +529,11 @@ export default function SatTuongTab({
     // 4. ⚔️ NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS
     const battleHistory = useMemo(() => {
         const historyObj = (data?.history && typeof data.history === 'object') ? data.history : {};
+        const recordsObj = (data?.bossRecords && typeof data.bossRecords === 'object') ? data.bossRecords : {};
         const battlesObj = (data?.battles && typeof data.battles === 'object') ? data.battles : {};
         const metaObj = (metadata?.battles && typeof metadata.battles === 'object') ? metadata.battles : {};
-        // Gộp toàn bộ, ưu tiên battlesObj vì chứa sec và timeStr
-        const merged: Record<string, any> = { ...historyObj, ...metaObj, ...battlesObj };
+        // Gộp toàn bộ, ưu tiên recordsObj / battlesObj vì chứa sec và timeStr speedrun
+        const merged: Record<string, any> = { ...historyObj, ...metaObj, ...recordsObj, ...battlesObj };
 
         return Object.entries(merged).map(([bossTitle, recordsData]: [string, any]) => {
             const parsedRecords = parseBossRecords(recordsData, danhLuc);
@@ -713,7 +722,7 @@ export default function SatTuongTab({
                         }`}
                     >
                         <span>🏆</span>
-                        <span>Bảng Phong Thần Tháng ({monthlyList.length})</span>
+                        <span>Bảng Phong Thần {data?.thang || data?.month || 'Tháng'} ({monthlyList.length})</span>
                     </button>
 
                     {battleHistory.length > 0 && (
@@ -881,7 +890,7 @@ export default function SatTuongTab({
                     <div className="bg-zinc-950/80 px-6 py-4 border-b border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                             <h3 className="text-lg font-black text-rose-400 flex items-center gap-2">
-                                <span>🏆 Bảng Phong Thần (Tổng Điểm Tháng)</span>
+                                <span>🏆 Bảng Phong Thần ({data?.thang || data?.month || 'Tổng Điểm Tháng'})</span>
                             </h3>
                             <p className="text-xs text-zinc-400 mt-0.5">
                                 Mỗi Boss: <b>Top 1 = 3đ</b> | <b>Top 2 = 2đ</b> | <b>Top 3 = 1đ</b> • Xếp hạng Dense Rank tự động từ Discord Bot.
@@ -900,7 +909,7 @@ export default function SatTuongTab({
                                     <th className="py-3.5 px-4">👤 Hiệp Khách In-game & UID</th>
                                     <th className="py-3.5 px-4">⚔️ Môn Phái</th>
                                     <th className="py-3.5 px-4">🎖️ Danh Hiệu Mùa Hiện Tại</th>
-                                    <th className="py-3.5 px-4 text-center font-mono">🏆 Điểm Phong Thần Tháng</th>
+                                    <th className="py-3.5 px-4 text-center font-mono">🏆 Điểm Phong Thần {data?.thang || data?.month || 'Tháng'}</th>
                                     {isMaster && <th className="py-3.5 px-4 text-right">⚙️ Quản Trị</th>}
                                 </tr>
                             </thead>
@@ -908,7 +917,7 @@ export default function SatTuongTab({
                                 {monthlyList.length === 0 ? (
                                     <tr>
                                         <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-zinc-500 italic">
-                                            Chưa có dữ liệu điểm phong thần tháng này.
+                                            Chưa có dữ liệu điểm phong thần {data?.thang || data?.month || 'tháng này'}.
                                         </td>
                                     </tr>
                                 ) : (

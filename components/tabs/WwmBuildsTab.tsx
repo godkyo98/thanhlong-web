@@ -58,7 +58,7 @@ export const DEFAULT_GEAR_SETS: GearSetOption[] = [
     { key: 'BeyondTheChill', labelVi: 'Beyond the Chill (Bộ Hàn Ngoại - 4 Giáp Phải)', labelEn: 'Beyond the Chill Set', side: 'right' },
     { key: 'Ivorybloom', labelVi: 'Ivorybloom (Bộ Tượng Hoa - Heal/Kéo Tơ)', labelEn: 'Ivorybloom Set', side: 'left' },
     { key: 'Rainwhisper', labelVi: 'Rainwhisper (Bộ Vũ Ngữ - Giáp Phải)', labelEn: 'Rainwhisper Set', side: 'right' },
-    { key: 'Jadeware', labelVi: 'Jadeware (Bộ Ngọc Khí - Hệ Minh Kim)', labelEn: 'Jadeware Set', side: 'left' },
+    { key: 'Jadeware', labelVi: 'Jadeware (Bộ Ngọc Khí - Hệ Minh Kim · 12s Uptime 100% v2.4)', labelEn: 'Jadeware Set', side: 'left' },
     { key: 'Formbend', labelVi: 'Formbend (Bộ Định Hình - Giáp Phải)', labelEn: 'Formbend Set', side: 'right' },
     { key: 'SwallowCall', labelVi: 'Swallow Call (Bộ Yến Minh - Phá Trúc)', labelEn: 'Swallow Call Set', side: 'left' },
     { key: 'Ironclad', labelVi: 'Ironclad (Bộ Thiết Giáp - Liệt Thạch / Tank)', labelEn: 'Ironclad Set', side: 'right' },
@@ -525,22 +525,31 @@ const getDefaultSpecTalentsTemplate = (specName: string): SpecTalentsTemplate =>
     }
 
     if (specName.includes('Xé Đá') || specName.includes('Liệt Thạch')) {
+        const isStonesplitDame = specName.includes('Dame');
         return {
             t1: {
-                badgeText: 'THIÊN PHÚ 1 · KIÊN ĐỊNH & GIẢM THƯƠNG / BẠO KÍCH',
-                statTitle: 'Thể Phách / Phòng Ngự (Body / CON)',
+                badgeText: isStonesplitDame
+                    ? 'THIÊN PHÚ 1 · BASE ATTRIBUTE BOOST (DAME v2.4)'
+                    : 'THIÊN PHÚ 1 · KIÊN ĐỊNH & BASE ATTRIBUTE BOOST (TANK v2.4)',
+                statTitle: isStonesplitDame ? 'Thể Phách / Căn Cơ (Lấy mốc Đủ)' : 'Thể Phách / Phòng Ngự (Body / CON)',
                 linkedStatKey: 'DEFENSE_HP_BODY',
-                recommendedLines: 3,
+                recommendedLines: isStonesplitDame ? 2 : 4,
                 reqLabel: 'Mốc yêu cầu:',
-                noteTemplate: 'Hệ Liệt Thạch chuyển hóa Thể phách / Phòng ngự thành hiệu ứng Thiên phú 1.'
+                noteTemplate: isStonesplitDame
+                    ? 'Patch 2.4 [Base Attribute Boost]: Khi Power >= Constitution (Thể Phách), Đao Liệt Thạch / Thương chuyển sang cộng Max/Min Ngoại Công (Dame).'
+                    : 'Patch 2.4 [Base Attribute Boost]: Khi Constitution (Thể Phách) > Power, chuyển sang cộng Phòng Ngự Ngoại Công & Max HP (Tank).'
             },
             t2: {
-                badgeText: 'THIÊN PHÚ 2 · UY LỰC TRỌNG BINH',
+                badgeText: isStonesplitDame
+                    ? 'THIÊN PHÚ 2 · UY LỰC TRỌNG BINH (POWER >= CON)'
+                    : 'THIÊN PHÚ 2 · UY LỰC TRỌNG BINH',
                 statTitle: 'Lực / Ngoại Công (Power / Phys)',
                 linkedStatKey: 'POWER',
-                recommendedLines: 5,
+                recommendedLines: isStonesplitDame ? 6 : 4,
                 reqLabel: 'Đỉnh mùa:',
-                noteTemplate: 'Đảm bảo đủ mốc Lực / Ngoại công để kích hoạt tối đa sát thương trọng kích.'
+                noteTemplate: isStonesplitDame
+                    ? 'Giữ chỉ số Power >= Constitution để giữ hiệu ứng tăng Max/Min Ngoại Công của Patch 2.4 và kích hoạt tối đa sát thương trọng kích.'
+                    : 'Cân bằng Power vừa đủ mốc yêu cầu trong khi ưu tiên Constitution cao hơn Power để kích hoạt nhánh Tank (Phòng ngự / HP).'
             },
             t3: {
                 badgeText: 'THIÊN PHÚ 3 · XUYÊN THẤU LIỆT THẠCH (STONESPLIT)',
@@ -856,9 +865,16 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             { id: 'MORALE_CHANT', vi: 'Dịch Thủy Ca', en: 'Morale Chant' },
             { id: 'BLOSSOM_BARRAGE', vi: 'Hoa Vũ Mãn Thiên', en: 'Blossom Barrage' },
             { id: 'STAR_REACHER', vi: 'Vượt đất hái sao / Trích Tinh', en: 'Star Reacher' },
-            { id: 'THUNDEROUS_BLOOM', vi: 'Chương sấm xuân / Xuân Lôi Nhất Nộ', en: 'Thunderous Bloom' },
+            { id: 'THUNDEROUS_BLOOM', vi: 'Chương sấm xuân / Xuân Lôi Nhất Nộ (v2.4: +Xuyên Phá)', en: 'Thunderous Bloom' },
             { id: 'FIVEFOLD_BLEED', vi: 'Ngũ Trùng Xuất Huyết', en: 'Fivefold Bleed' },
             { id: 'BREAKING_POINT', vi: 'Phá Cực', en: 'Breaking Point' },
+            { id: 'MOUNTAINS_MIGHT', vi: "Mountain's Might (v2.4: 12s Endless Gale)", en: "Mountain's Might" },
+            { id: 'SWORD_MORPH', vi: 'Kiếm Ảnh / Sword Morph', en: 'Sword Morph' },
+            { id: 'FROST_CLAD_NIGHT', vi: 'Frost-Clad Night', en: 'Frost-Clad Night' },
+            { id: 'ECHOES_OF_OBLIVION', vi: 'Echoes of Oblivion', en: 'Echoes of Oblivion' },
+            { id: 'PHANTOM_RALLY', vi: 'Phantom Rally', en: 'Phantom Rally' },
+            { id: 'SOARING_HIGH', vi: 'Soaring High', en: 'Soaring High' },
+            { id: 'SEASONAL_EDGE', vi: 'Seasonal Edge', en: 'Seasonal Edge' },
         ];
         defaults.forEach(d => {
             const exists = list.some(
@@ -1804,7 +1820,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         const lockedRetuneEval = hasAlreadyRetunedOneLine ? middleEvals[item.retunedLineIndex!] : null;
 
         // 🟢 NẾU ĐÃ KHÓA DÒNG CHUYỂN ÂM (#2-#5) NHƯNG DÒNG ĐÓ VẪN ĐANG LÀ DÒNG XẤU (badPt > 0):
-        // Mỗi tuần vẫn được Chuyển âm lại đúng dòng đó 1 lần! Nên tiềm năng sau khi tẩy trúng T1 sẽ trừ đi badPt của chính dòng đã khóa đó!
+        // Theo Patch 2.4, Reset Tuning & Chuyển âm (Retuning Correction) hồi lại mỗi 3 ngày! Nên tiềm năng sau khi tẩy trúng T1 sẽ trừ đi badPt của chính dòng đã khóa đó!
         const reduciblePt = hasAlreadyRetunedOneLine
             ? (lockedRetuneEval ? lockedRetuneEval.badPt : 0)
             : maxReducibleBadPt;
@@ -1835,6 +1851,8 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                 isGoodTarget
             };
         });
+        const availablePoolCount = retunePoolPreview.filter(p => !p.isGreyedOut).length;
+        const equalChancePercent = availablePoolCount > 0 ? +(100 / availablePoolCount).toFixed(1) : 0;
 
         const availableGoodTargets = retunePoolPreview
             .filter(p => !p.isGreyedOut && p.isGoodTarget)
@@ -1874,24 +1892,24 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         } else if (badPointsAfterOneRetune <= 0.5) {
             if (targetRetuneEval) {
                 verdictTitle = hasAlreadyRetunedOneLine
-                    ? `🔄 DÒNG #${targetRetuneEval.lineNumber} ĐANG RA DÒNG PHỤ — TUẦN SAU CHUYỂN ÂM TIẾP SẼ VỀ ${badPointsAfterOneRetune.toFixed(1)} XẤU (BiS!)`
+                    ? `🔄 DÒNG #${targetRetuneEval.lineNumber} ĐANG RA DÒNG PHỤ — HỒI 3 NGÀY CHUYỂN ÂM TIẾP SẼ VỀ ${badPointsAfterOneRetune.toFixed(1)} XẤU (BiS!)`
                     : `💎 PHÔI CỰC PHẨM! CHUYỂN ÂM DÒNG #${targetRetuneEval.lineNumber} LÀ THÀNH BiS (${badPointsAfterOneRetune.toFixed(1)} XẤU)`;
                 verdictColor = 'emerald';
                 verdictAction = hasAlreadyRetunedOneLine
-                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang dừng ở [${targetRetuneEval.labelVi}] (+${targetRetuneEval.badPt} xấu). Mỗi tuần được Chuyển âm lại 1 lần: Hãy tẩy tiếp dòng #${targetRetuneEval.lineNumber} để lấy [${suggestedTargetsText}] ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
-                    : `Hiện tại ${rawBadPoints.toFixed(1)} điểm xấu. Hãy khóa Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] và tìm [${suggestedTargetsText}] trong bể 6 dòng ➔ Điểm xấu giảm còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
+                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang dừng ở [${targetRetuneEval.labelVi}] (+${targetRetuneEval.badPt} xấu). Từ Patch 2.4 mỗi 3 ngày được Chuyển âm lại 1 lần (tỉ lệ ra các dòng còn lại ngang nhau ${equalChancePercent}%): Hãy tẩy tiếp dòng #${targetRetuneEval.lineNumber} để lấy [${suggestedTargetsText}] ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
+                    : `Hiện tại ${rawBadPoints.toFixed(1)} điểm xấu. Hãy khóa Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] và tìm [${suggestedTargetsText}] trong bể 6 dòng (mỗi 3 ngày/lần • ${equalChancePercent}%/dòng) ➔ Điểm xấu giảm còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
             } else {
                 verdictTitle = "💎 CỰC PHẨM HOÀN MỸ (GOD ROLL / BiS) - ĐÃ CHỐT HẠ!";
                 verdictColor = 'emerald';
-                verdictAction = `Hoàn mỹ (${rawBadPoints.toFixed(1)} điểm xấu)! Dòng Chuyển âm đã đạt chuẩn tối ưu, không cần tốn lượt Chuyển âm hàng tuần vào món này nữa.`;
+                verdictAction = `Hoàn mỹ (${rawBadPoints.toFixed(1)} điểm xấu)! Dòng Chuyển âm đã đạt chuẩn tối ưu, không cần tốn lượt Chuyển âm (mỗi 3 ngày) vào món này nữa.`;
             }
         } else if (badPointsAfterOneRetune <= 2.0) {
-            verdictTitle = "✨ DÙNG TỐT - TẬN DỤNG LƯỢT CHUYỂN ÂM MỖI TUẦN (BỂ 6 DÒNG)";
+            verdictTitle = "✨ DÙNG TỐT - TẬN DỤNG LƯỢT CHUYỂN ÂM MỖI 3 NGÀY (BỂ 6 DÒNG)";
             verdictColor = 'amber';
             if (targetRetuneEval) {
                 verdictAction = hasAlreadyRetunedOneLine
-                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang bị +${targetRetuneEval.badPt} điểm xấu ([${targetRetuneEval.labelVi}]). Mỗi tuần 1 lần, hãy Chuyển âm lại Dòng #${targetRetuneEval.lineNumber} lấy [${suggestedTargetsText}] ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
-                    : `Điểm xấu hiện tại: ${rawBadPoints.toFixed(1)}/2.0. Hãy dùng quyền Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] để tìm [${suggestedTargetsText}] ➔ Điểm xấu sau tẩy còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
+                    ? `Dòng #${targetRetuneEval.lineNumber} đã khóa Chuyển âm nhưng đang bị +${targetRetuneEval.badPt} điểm xấu ([${targetRetuneEval.labelVi}]). Mỗi 3 ngày 1 lần (v2.4), hãy Chuyển âm lại Dòng #${targetRetuneEval.lineNumber} lấy [${suggestedTargetsText}] (${equalChancePercent}%/dòng) ➔ Điểm xấu sẽ giảm từ ${rawBadPoints.toFixed(1)} xuống ${badPointsAfterOneRetune.toFixed(1)}/2.0!`
+                    : `Điểm xấu hiện tại: ${rawBadPoints.toFixed(1)}/2.0. Hãy dùng quyền Chuyển âm vào Dòng #${targetRetuneEval.lineNumber} [${targetRetuneEval.labelVi}] để tìm [${suggestedTargetsText}] (${equalChancePercent}%/dòng) ➔ Điểm xấu sau tẩy còn ${badPointsAfterOneRetune.toFixed(1)}/2.0!`;
             } else {
                 verdictAction = `Món đồ đã tối ưu hết mức của dòng Chuyển âm (#${(item.retunedLineIndex ?? 0) + 2}), tổng điểm xấu chốt hạ: ${rawBadPoints.toFixed(1)}/2.0 (Dùng tốt).`;
             }
@@ -1904,7 +1922,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             } else if (slot1Eval && slot1Eval.badPt === 0) {
                 verdictTitle = `🔄 GIỮ PHÔI GỐC #1 NGON & DÙNG [GEAR TUNING RESET] (ĐỒ BẬC ${item.tier})`;
                 verdictColor = 'amber';
-                verdictAction = `Dòng #1 gốc [${slot1Eval.labelVi}] rất đẹp (0 xấu), nhưng các dòng giữa có quá nhiều dòng xấu (${rawBadPoints.toFixed(1)} xấu, dù Chuyển âm 1 dòng vẫn còn ${badPointsAfterOneRetune.toFixed(1)} > 2.0). Hãy dùng [Gear Tuning Reset] để mở lại 4 dòng giữa!`;
+                verdictAction = `Dòng #1 gốc [${slot1Eval.labelVi}] rất đẹp (0 xấu), nhưng các dòng giữa có quá nhiều dòng xấu (${rawBadPoints.toFixed(1)} xấu, dù Chuyển âm 1 dòng vẫn còn ${badPointsAfterOneRetune.toFixed(1)} > 2.0). Hãy dùng [Gear Tuning Reset] (hồi 3 ngày từ v2.4) để mở lại 4 dòng giữa!`;
             } else {
                 verdictTitle = "🗑️ PHÔI NHIỀU DÒNG XẤU (>2.0 ĐIỂM XẤU KỂ CẢ SAU KHI CHUYỂN ÂM)";
                 verdictColor = 'rose';
@@ -1919,6 +1937,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             slot1Eval,
             bestTargetLineToRetune: targetRetuneEval,
             retunePoolPreview,
+            equalChancePercent,
             availableGoodTargets,
             hasValidGodLine,
             missingRequiredGodLine,
@@ -3328,6 +3347,12 @@ ${statKeysCatalog}`;
                                         <option key={s.key} value={s.key}>{s.labelVi}</option>
                                     ))}
                                 </select>
+                                <p className="text-[10px] text-zinc-400 mt-1.5 leading-snug">
+                                    ✨ <b className="text-emerald-300">Patch 2.4:</b> Chuyển đổi qua lại các Set đã mở khóa trên cùng món đồ hoàn toàn <b className="text-zinc-200">miễn phí</b>.
+                                    {activeEditingGear.gearSet === 'Jadeware' && (
+                                        <span className="text-amber-300"> · Set Jadeware (12s) đồng bộ 100% với Mountain&apos;s Might (12s).</span>
+                                    )}
+                                </p>
                             </div>
                         </div>
 
@@ -3373,6 +3398,9 @@ ${statKeysCatalog}`;
                                         className="w-24 bg-zinc-950 border border-amber-500/40 rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 text-center"
                                     />
                                 </div>
+                                <p className="text-[10px] text-zinc-400 mt-1.5 leading-snug">
+                                    📌 <b className="text-amber-300">Phôi Bậc 100 (v2.4):</b> Vũ khí đã bỏ dòng gốc <span className="text-zinc-200">Min Formless Attack</span> (ưu tiên Ngoại Công); Giáp Chân/Tay bỏ <span className="text-zinc-200">Thể Phách</span> tăng tỷ lệ <span className="text-zinc-200">Lực (Power)</span> &amp; sát thương hệ.
+                                </p>
                             </div>
 
                             {/* CÁC DÒNG MỞ TUNING (#2, #3, #4, #5...) — CHO PHÉP THÊM / BỚT DÒNG & KHÓA 1 QUYỀN RETUNE */}
@@ -3582,14 +3610,14 @@ ${statKeysCatalog}`;
                                 {activeGearEval.verdictAction}
                             </p>
 
-                            {/* 🟢 BẢNG XEM TRƯỚC KẾT QUẢ CHUYỂN ÂM (BỂ 6 DÒNG CỐ ĐỊNH — MỖI TUẦN 1 LẦN, KHÔNG CÓ T0) */}
+                            {/* 🟢 BẢNG XEM TRƯỚC KẾT QUẢ CHUYỂN ÂM (BỂ 6 DÒNG CỐ ĐỊNH — MỖI 3 NGÀY 1 LẦN v2.4, TỈ LỆ NGANG NHAU) */}
                             <div className="bg-zinc-950/90 border border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
                                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2">
                                     <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
-                                        🎲 Xem Trước Bể 6 Dòng Chuyển Âm — Nhánh [{selectedSpec}] (1 Lần/Tuần • Không Có T0)
+                                        🎲 Xem Trước Bể 6 Dòng Chuyển Âm — Nhánh [{selectedSpec}] (3 Ngày/Lần • Tỉ Lệ Ngang Nhau {activeGearEval.equalChancePercent}%/dòng · v2.4)
                                     </span>
                                     <span className="text-[10px] text-zinc-400">
-                                        Các dòng đã có trên đồ sẽ tự động bị làm mờ (Loại trừ trùng lặp)
+                                        Các dòng đã có trên đồ được loại trừ — các dòng còn lại có tỉ lệ ra bằng nhau
                                     </span>
                                 </div>
 
@@ -3618,7 +3646,7 @@ ${statKeysCatalog}`;
                                             <div className="flex items-center justify-between mt-1">
                                                 <span className="text-[10px] font-mono text-zinc-400">{pItem.rangeText}</span>
                                                 <span className="text-[9px] font-black">
-                                                    {pItem.isGreyedOut ? '🔒 Đã có trên đồ' : pItem.isGoodTarget ? '🌟 Cửa Sáng Nên Lấy' : '⚠️ Tránh'}
+                                                    {pItem.isGreyedOut ? '🔒 Đã có trên đồ' : pItem.isGoodTarget ? `🌟 Cửa Sáng (${activeGearEval.equalChancePercent}%)` : `⚠️ Tránh (${activeGearEval.equalChancePercent}%)`}
                                                 </span>
                                             </div>
                                         </div>
@@ -3697,6 +3725,12 @@ ${statKeysCatalog}`;
                                 <p className="text-[11px] text-zinc-400">
                                     Chọn trực tiếp từ kho <b className="text-emerald-400">{tamPhapList.length} Tâm Pháp</b> trên mây, hoặc bấm <b>+ Thêm / Sửa Tâm Pháp</b> để bổ sung Tâm Pháp mới.
                                 </p>
+                                <div className="mt-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200/90 space-y-1">
+                                    <div className="font-black text-amber-300 uppercase tracking-wider text-[10px]">📢 Lưu ý Cân Bằng Tâm Pháp &amp; Võ Học Patch 2.4 (13/11):</div>
+                                    <div>• <b>Thunderous Bloom (Khiên Ty):</b> Đổi từ +15% HP DMG thành <b>+10 Xuyên Phá Ngoại Công &amp; +10 Xuyên Phá Khiên Ty</b> (Tầng 4 lên +20 mỗi loại; Tầng 6 hồi tầng khi đánh <code>[Qi Anomaly]</code>).</div>
+                                    <div>• <b>Inkwell Fan [Moonlit Startle]:</b> Đổi +30% Crit Rate thành <b>+15% Crit DMG</b> + <code>[Empty Peak]</code> (giảm overcap Crit Rate khi build đồ).</div>
+                                    <div>• <b>Jadeware + Mountain&apos;s Might:</b> Đồng bộ thời gian hiệu lực <b>12 giây</b> (100% uptime).</div>
+                                </div>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 shrink-0">
