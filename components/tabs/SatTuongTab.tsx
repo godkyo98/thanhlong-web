@@ -381,11 +381,15 @@ export default function SatTuongTab({
             b1 = used[0];
         }
 
+        const remainingCount = pool.length > 0
+            ? pool.filter((b: string) => !used.includes(b)).length
+            : Math.max(0, 10 - used.length);
+
         return {
             targetBoss1: b1,
             targetBoss2: b2,
             totalUsed: used.length,
-            totalPool: pool.length
+            totalPool: remainingCount
         };
     }, [bossRotation, data]);
 
