@@ -8,13 +8,12 @@ import useFirebaseData from "@/hooks/useFirebaseData";
 
 import Header from "@/components/layout/Header";
 import HomeTab from "@/components/tabs/HomeTab";
-import DanhLucTab from "@/components/tabs/DanhLucTab";
+import DanhLucTab, { DanhLucSubTab } from "@/components/tabs/DanhLucTab";
 import TuViTab from "@/components/tabs/TuViTab";
 import SoiAccTab from "@/components/tabs/SoiAccTab";
 import TalentTab from "@/components/tabs/TalentTab";
-import AdminTab from "@/components/tabs/AdminTab";
+import AdminTab, { AdminSection } from "@/components/tabs/AdminTab";
 import GiftcodeTab from "@/components/tabs/GiftcodeTab";
-import PointTab from "@/components/tabs/PointTab";
 import SatTuongTab from "@/components/tabs/SatTuongTab";
 
 import WwmBuildsTab from "@/components/tabs/WwmBuildsTab";
@@ -27,7 +26,7 @@ const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc'
 
 const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
-    danhluc: { icon: '📜', title: 'Sổ Danh Lục Quân Số' },
+    danhluc: { icon: '📜', title: 'Sổ Danh Lục & Công Trạng' },
     tuvi: { icon: '🏆', title: 'Bảng Phong Thần Tu Vi' },
     talent: { icon: '👹', title: 'Bảng Cáo Thị Thiên Phú Boss' },
     soi_acc: { icon: '🪞', title: 'Đài Chiếu Yêu · Khoe Build & Chỉ Số Quần Hùng' },
@@ -44,6 +43,8 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
 export default function Home() {
     const { data: session, status } = useSession();
     const [activeTab, setActiveTabState] = useState<TabKey>('home');
+    const [danhLucSubTab, setDanhLucSubTab] = useState<DanhLucSubTab>('members');
+    const [adminSection, setAdminSection] = useState<AdminSection>('treasury');
     const [displayLang, setDisplayLang] = useState<'vi' | 'en'>('vi');
 
     const { 
@@ -90,8 +91,15 @@ export default function Home() {
         const syncFromUrl = () => {
             const params = new URLSearchParams(window.location.search);
             const tabParam = params.get('tab') as TabKey | null;
-            if (tabParam && VALID_TABS.includes(tabParam)) {
+            const subParam = params.get('sub');
+            if (tabParam === 'point') {
+                setActiveTabState('danhluc');
+                setDanhLucSubTab('merit');
+            } else if (tabParam && VALID_TABS.includes(tabParam)) {
                 setActiveTabState(tabParam);
+                if (tabParam === 'danhluc') {
+                    setDanhLucSubTab(subParam === 'merit' ? 'merit' : 'members');
+                }
             } else {
                 setActiveTabState('home');
             }
@@ -102,12 +110,40 @@ export default function Home() {
         return () => window.removeEventListener('popstate', syncFromUrl);
     }, []);
 
-    const setActiveTab = useCallback((nextTab: TabKey) => {
+    const setActiveTab = useCallback((nextTab: TabKey, sub?: DanhLucSubTab) => {
+        if (nextTab === 'point') {
+            setActiveTabState('danhluc');
+            setDanhLucSubTab('merit');
+            if (typeof window !== 'undefined') {
+                const url = `${window.location.pathname}?tab=danhluc&sub=merit`;
+                window.history.pushState({ tab: 'danhluc', sub: 'merit' }, '', url);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            return;
+        }
+
         setActiveTabState(nextTab);
+        if (nextTab === 'danhluc') {
+            setDanhLucSubTab(sub || 'members');
+        }
         if (typeof window !== 'undefined') {
-            const url = nextTab === 'home' ? window.location.pathname : `${window.location.pathname}?tab=${nextTab}`;
-            window.history.pushState({ tab: nextTab }, '', url);
+            const url = nextTab === 'home'
+                ? window.location.pathname
+                : nextTab === 'danhluc' && sub === 'merit'
+                    ? `${window.location.pathname}?tab=danhluc&sub=merit`
+                    : `${window.location.pathname}?tab=${nextTab}`;
+            window.history.pushState({ tab: nextTab, sub }, '', url);
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, []);
+
+    const handleDanhLucSubTabChange = useCallback((nextSub: DanhLucSubTab) => {
+        setDanhLucSubTab(nextSub);
+        if (typeof window !== 'undefined') {
+            const url = nextSub === 'merit'
+                ? `${window.location.pathname}?tab=danhluc&sub=merit`
+                : `${window.location.pathname}?tab=danhluc`;
+            window.history.replaceState({ tab: 'danhluc', sub: nextSub }, '', url);
         }
     }, []);
 
@@ -164,9 +200,21 @@ export default function Home() {
                         danhLuc={danhLuc}
                         talentData={talent}
                         tuViData={tuViData}
+                        pointData={pointData}
+                        notificationsData={webNotifications}
                         isMaster={isMaster}
                         wwmData={wwmData}
                         satTuongData={satTuongData}
+                        subTab={danhLucSubTab}
+                        onSubTabChange={handleDanhLucSubTabChange}
+                        onOpenAdminSection={
+                            isMaster
+                                ? (sec) => {
+                                      setAdminSection(sec);
+                                      setActiveTab('admin');
+                                  }
+                                : undefined
+                        }
                     />
                 )}
                 {activeTab === 'tuvi' && <TuViTab data={tuViData} danhLuc={danhLuc} />}
@@ -181,7 +229,19 @@ export default function Home() {
                     />
                 )}
                 {activeTab === 'talent' && <TalentTab data={talent} danhLuc={danhLuc} />}
-                {activeTab === 'admin' && isMaster && <AdminTab wwmData={wwmData} />}
+                {activeTab === 'admin' && isMaster && (
+                    <AdminTab
+                        wwmData={wwmData}
+                        danhLuc={danhLuc}
+                        pointData={pointData}
+                        tuViData={tuViData}
+                        notificationsData={webNotifications}
+                        session={session}
+                        section={adminSection}
+                        onSectionChange={setAdminSection}
+                        onOpenPublicMerit={() => setActiveTab('danhluc', 'merit')}
+                    />
+                )}
                 {activeTab === 'giftcode' && (
                     <GiftcodeTab 
                         giftcodeData={giftcodeData} 
@@ -189,15 +249,6 @@ export default function Home() {
                         danhLuc={danhLuc}
                         session={session}
                         isMaster={isMaster}
-                    />
-                )}
-                {activeTab === 'point' && (
-                    <PointTab
-                        data={pointData}
-                        danhLuc={danhLuc}
-                        session={session}
-                        isMaster={isMaster}
-                        notificationsData={webNotifications}
                     />
                 )}
                 {activeTab === 'thongbao' && (

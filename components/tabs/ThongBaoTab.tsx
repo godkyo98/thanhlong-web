@@ -68,7 +68,7 @@ const TYPE_BADGE: Record<WebNotificationType, { icon: string; label: string; cls
 };
 
 const TAB_LINK_LABELS: Partial<Record<WebTabKey, string>> = {
-    point: '💰 Xem Bảng Công Trạng',
+    point: '💰 Xem Bảng Công Trạng (Sổ Danh Lục)',
     danhluc: '📜 Mở Sổ Danh Lục',
     sattuong: '👹 Xem Sát Tướng Đài',
     pvp: '🏆 Xem Sơ Đồ PvP',
@@ -443,7 +443,7 @@ export default function ThongBaoTab({
                                 className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500/50 cursor-pointer"
                             >
                                 <option value="">🔗 Không gắn link chuyển tab</option>
-                                <option value="point">💰 Trỏ tới Bảng Công Trạng</option>
+                                <option value="point">💰 Trỏ tới Bảng Công Trạng (Sổ Danh Lục)</option>
                                 <option value="danhluc">📜 Trỏ tới Sổ Danh Lục</option>
                                 <option value="sattuong">👹 Trỏ tới Sát Tướng</option>
                                 <option value="pvp">🏆 Trỏ tới Võ Lâm Tranh Bá</option>
