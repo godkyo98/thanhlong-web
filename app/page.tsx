@@ -2,7 +2,7 @@
 // app/page.tsx
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import useFirebaseData from "@/hooks/useFirebaseData";
 
@@ -19,10 +19,11 @@ import SatTuongTab from "@/components/tabs/SatTuongTab";
 
 import WwmBuildsTab from "@/components/tabs/WwmBuildsTab";
 import PvpTournamentTab from "@/components/tabs/PvpTournamentTab";
+import ThongBaoTab from "@/components/tabs/ThongBaoTab";
 
-export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'builds' | 'pvp';
+export type TabKey = 'home' | 'danhluc' | 'talent' | 'sattuong' | 'soi_acc' | 'admin' | 'tuvi' | 'giftcode' | 'point' | 'builds' | 'pvp' | 'thongbao';
 
-const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'builds', 'pvp'];
+const VALID_TABS: TabKey[] = ['home', 'danhluc', 'talent', 'sattuong', 'soi_acc', 'admin', 'tuvi', 'giftcode', 'point', 'builds', 'pvp', 'thongbao'];
 
 const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
     home: { icon: '⛩️', title: 'Chính Điện Thanh Long' },
@@ -36,6 +37,7 @@ const TAB_LABELS: Record<TabKey, { icon: string; title: string }> = {
 
     builds: { icon: '⚔️', title: 'Thần Khí Các · Giám Định & Tối Ưu Trang Bị' },
     pvp: { icon: '🏆', title: 'Võ Lâm Tranh Bá · Sơ Đồ Giải Đấu PvP' },
+    thongbao: { icon: '📢', title: 'Đài Truyền Âm · Cáo Thị & Thông Báo Tông Môn' },
     admin: { icon: '⚙️', title: 'Mật Thất Quản Trị Tông Môn' },
 };
 
@@ -46,8 +48,41 @@ export default function Home() {
 
     const { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, webNotifications, wwmBuilds 
     } = useFirebaseData();
+
+    const [lastSeenNotifAt, setLastSeenNotifAt] = useState<number>(0);
+
+    const markAllNotifRead = useCallback(() => {
+        const now = Date.now();
+        setLastSeenNotifAt(now);
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('thanhlong_last_seen_notif', String(now));
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const timer = window.setTimeout(() => {
+            const saved = Number(window.localStorage.getItem('thanhlong_last_seen_notif') || '0');
+            if (!isNaN(saved) && saved > 0) setLastSeenNotifAt(saved);
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (activeTab !== 'thongbao') return;
+        const timer = window.setTimeout(() => {
+            markAllNotifRead();
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [activeTab, markAllNotifRead]);
+
+    const unreadNotifCount = useMemo(() => {
+        if (activeTab === 'thongbao') return 0;
+        const items = Array.isArray(webNotifications?.items) ? webNotifications.items : [];
+        return items.filter((it: any) => (it?.createdAt || 0) > lastSeenNotifAt).length;
+    }, [webNotifications, lastSeenNotifAt, activeTab]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -98,7 +133,8 @@ export default function Home() {
                 setActiveTab={setActiveTab as any} 
                 displayLang={displayLang} 
                 setDisplayLang={setDisplayLang} 
-                isMaster={isMaster} 
+                isMaster={isMaster}
+                unreadNotifCount={unreadNotifCount}
                 signOut={signOut} 
             />
 
@@ -122,7 +158,7 @@ export default function Home() {
                     </div>
                 )}
 
-                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} setActiveTab={setActiveTab} />}
+                {activeTab === 'home' && <HomeTab session={session} danhLuc={danhLuc} tuViData={tuViData} webNotifications={webNotifications} setActiveTab={setActiveTab} />}
                 {activeTab === 'danhluc' && (
                     <DanhLucTab
                         danhLuc={danhLuc}
@@ -155,7 +191,25 @@ export default function Home() {
                         isMaster={isMaster}
                     />
                 )}
-                {activeTab === 'point' && <PointTab data={pointData} danhLuc={danhLuc} />}
+                {activeTab === 'point' && (
+                    <PointTab
+                        data={pointData}
+                        danhLuc={danhLuc}
+                        session={session}
+                        isMaster={isMaster}
+                        notificationsData={webNotifications}
+                    />
+                )}
+                {activeTab === 'thongbao' && (
+                    <ThongBaoTab
+                        data={webNotifications}
+                        danhLuc={danhLuc}
+                        session={session}
+                        isMaster={isMaster}
+                        setActiveTab={setActiveTab}
+                        onMarkAllRead={markAllNotifRead}
+                    />
+                )}
                 {activeTab === 'sattuong' && (
                     <SatTuongTab
                         data={satTuongData}

@@ -1,7 +1,7 @@
 // components/layout/Header.tsx
 import React from 'react';
 
-export type TabType = 'home' | 'danhluc' | 'tuvi' | 'soi_acc' | 'talent' | 'giftcode' | 'point' | 'sattuong' | 'builds' | 'pvp' | 'admin';
+export type TabType = 'home' | 'danhluc' | 'tuvi' | 'soi_acc' | 'talent' | 'giftcode' | 'point' | 'sattuong' | 'builds' | 'pvp' | 'thongbao' | 'admin';
 
 interface HeaderProps {
     activeTab: TabType;
@@ -9,6 +9,7 @@ interface HeaderProps {
     displayLang: 'vi' | 'en';
     setDisplayLang: (lang: 'vi' | 'en') => void;
     isMaster: boolean;
+    unreadNotifCount?: number;
     signOut: () => void;
 }
 
@@ -18,6 +19,7 @@ export default function Header({
     displayLang,
     setDisplayLang,
     isMaster,
+    unreadNotifCount = 0,
     signOut
 }: HeaderProps) {
     return (
@@ -35,6 +37,24 @@ export default function Header({
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('thongbao')}
+                        className={`relative px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                            activeTab === 'thongbao'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : 'bg-zinc-900/80 text-zinc-300 border-zinc-800 hover:text-amber-300 hover:border-amber-500/30'
+                        }`}
+                    >
+                        <span>🔔</span>
+                        <span className="hidden sm:inline">Thông Báo</span>
+                        {unreadNotifCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white leading-none animate-pulse">
+                                {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                            </span>
+                        )}
+                    </button>
+
                     {isMaster && (
                         <button
                             type="button"

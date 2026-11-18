@@ -16,6 +16,7 @@ export default function useFirebaseData() {
     const [satTuongData, setSatTuongData] = useState<any>(null);
     const [satTuongMeta, setSatTuongMeta] = useState<any>(null);
     const [bossRotation, setBossRotation] = useState<any>(null);
+    const [webNotifications, setWebNotifications] = useState<any>(null);
     
     // 🟢 HỨNG DỮ LIỆU TỔNG ĐỒ BUILD (wwm_builds -> Võ học -> ID)
     const [wwmBuilds, setWwmBuilds] = useState<Record<string, any>>({});
@@ -45,6 +46,11 @@ export default function useFirebaseData() {
         const unsub9d = onSnapshot(doc(db, 'thanhlong_config', 'boss_rotation'), (snap) => {
             setBossRotation(snap.exists() ? snap.data() : null);
         });
+
+        // 🟢 BẢNG THÔNG BÁO & LỊCH SỰ WEB (web_notifications)
+        const unsub10 = onSnapshot(doc(db, 'thanhlong_config', 'web_notifications'), (snap) => {
+            setWebNotifications(snap.exists() ? snap.data() : { items: [] });
+        });
         
         // 🟢 ĐƯỜNG TRUYỀN TỔNG ĐỒ BUILD (wwm_builds)
         const unsub11 = onSnapshot(
@@ -63,12 +69,12 @@ export default function useFirebaseData() {
 
         return () => { 
             unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
-            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub11(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub10(); unsub11(); 
         };
     }, []);
 
     return { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, webNotifications, wwmBuilds 
     };
 }

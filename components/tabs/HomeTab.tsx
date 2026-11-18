@@ -1,7 +1,26 @@
 // components/tabs/HomeTab.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
+import { WebNotificationItem, formatRelativeVi } from '@/lib/notifications';
 
-export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { session: any, danhLuc: any, tuViData: any, setActiveTab: (tab: any) => void }) {
+export default function HomeTab({
+    session,
+    danhLuc,
+    tuViData,
+    webNotifications,
+    setActiveTab,
+}: {
+    session: any;
+    danhLuc: any;
+    tuViData: any;
+    webNotifications?: any;
+    setActiveTab: (tab: any) => void;
+}) {
+    const featuredNotification: WebNotificationItem | null = useMemo(() => {
+        const items: WebNotificationItem[] = Array.isArray(webNotifications?.items) ? webNotifications.items : [];
+        if (items.length === 0) return null;
+        const sorted = [...items].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return sorted.find((it) => it.pinned) || sorted[0] || null;
+    }, [webNotifications]);
     
     const userName = (() => {
         const discordName = session?.user?.name;
@@ -93,7 +112,37 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                 </div>
             </div>
 
-            {/* 8 THẺ MẬT THẤT GỐC */}
+            {/* 📢 DẢI THÔNG BÁO MỚI NHẤT / CÁO THỊ GHIM */}
+            {featuredNotification && (
+                <div
+                    onClick={() => setActiveTab('thongbao')}
+                    className="group cursor-pointer rounded-2xl border border-amber-500/35 bg-gradient-to-r from-amber-950/35 via-zinc-900/75 to-rose-950/25 px-5 py-4 shadow-lg hover:border-amber-400/60 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                    <div className="flex items-start sm:items-center gap-3 min-w-0">
+                        <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-black shrink-0">
+                            {featuredNotification.pinned ? '📌 CÁO THỊ GHIM' : '📢 THÔNG BÁO MỚI'}
+                        </span>
+                        <div className="min-w-0">
+                            <div className="text-sm font-black text-zinc-100 group-hover:text-amber-300 transition-colors truncate">
+                                {featuredNotification.title}
+                            </div>
+                            {featuredNotification.message && (
+                                <div className="text-xs text-zinc-400 truncate mt-0.5">
+                                    {featuredNotification.message.split('\n')[0]}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 text-xs font-bold text-amber-300">
+                        <span className="text-[11px] text-zinc-500 font-mono">
+                            {formatRelativeVi(featuredNotification.createdAt)}
+                        </span>
+                        <span>Xem thông báo ➔</span>
+                    </div>
+                </div>
+            )}
+
+            {/* CÁC THẺ MẬT THẤT */}
             <div>
                 <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-4 pl-1">🏰 Các Cửa Vào Mật Thất</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -159,6 +208,14 @@ export default function HomeTab({ session, danhLuc, tuViData, setActiveTab }: { 
                             <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">🏆</div>
                             <h4 className="text-base font-bold text-zinc-200 group-hover:text-rose-400 transition-colors">Võ Lâm Tranh Bá</h4>
                             <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Sơ đồ thi đấu PvP Nhánh Thắng - Nhánh Thua, tùy chỉnh thể thức BO trực quan.</p>
+                        </div>
+                    </div>
+
+                    <div onClick={() => setActiveTab('thongbao')} className="group bg-zinc-900/40 border border-zinc-800/80 hover:border-amber-500/35 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-md hover:shadow-[0_10px_20px_rgba(245,158,11,0.08)] flex flex-col justify-between">
+                        <div>
+                            <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">📢</div>
+                            <h4 className="text-base font-bold text-zinc-200 group-hover:text-amber-300 transition-colors">Thông Báo & Nhật Ký</h4>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5">Cáo thị Bang Hội, biến động Ngân khố Công Đức, lịch sự kiện và tin tức mới nhất.</p>
                         </div>
                     </div>
                     
