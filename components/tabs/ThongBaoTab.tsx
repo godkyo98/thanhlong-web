@@ -313,13 +313,13 @@ export default function ThongBaoTab({
             <div className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-zinc-950 via-zinc-900 to-rose-950/20 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                    <div className="space-y-2 max-w-2xl">
+                    <div className="space-y-2 max-w-3xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
                             <span>📢</span>
                             <span>Đài Truyền Âm · Thông Báo & Nhật Ký Web</span>
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                         </div>
-                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-300 to-amber-400">
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide leading-snug py-1 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-300 to-amber-400">
                             CÁO THỊ & THÔNG BÁO TÔNG MÔN
                         </h2>
                         <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">

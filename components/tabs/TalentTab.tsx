@@ -129,7 +129,7 @@ export default function TalentTab({ data, danhLuc }: Props) {
                             <span>Cáo Thị Tông Môn · Thiên Phú Boss</span>
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
                         </div>
-                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-rose-300 to-amber-400">
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide leading-snug py-1 text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-rose-300 to-amber-400">
                             BẢNG CÁO THỊ THIÊN PHÚ BOSS
                         </h2>
                         <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">

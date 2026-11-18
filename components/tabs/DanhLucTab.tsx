@@ -359,7 +359,7 @@ export default function DanhLucTab({ danhLuc, talentData = {}, tuViData = {}, is
                             <span>•</span>
                             <span>ĐỒNG BỘ REAL-TIME VỚI DISCORD</span>
                         </div>
-                        <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
+                        <h2 className="text-2xl sm:text-3xl font-black leading-snug py-0.5 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
                             📜 Sổ Danh Lục Bang Chúng
                         </h2>
                     </div>

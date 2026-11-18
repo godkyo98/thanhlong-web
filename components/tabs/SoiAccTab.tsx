@@ -445,7 +445,7 @@ export default function SoiAccTab({
                             <span>{isVi ? 'Đài Chiếu Yêu · Khoe Build & Chỉ Số Thần Khí' : 'Spirit Mirror · Build & Stat Showcase'}</span>
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         </div>
-                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide leading-snug py-1 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
                             {isVi ? 'VẠN TƯỢNG THẦN KHÍ BẢNG' : 'PANTHEON OF LEGENDARY BUILDS'}
                         </h2>
                         <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">

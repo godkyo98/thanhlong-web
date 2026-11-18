@@ -83,7 +83,7 @@ export default function HomeTab({
                         <div className="inline-block px-3 py-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold tracking-widest mb-4">
                             ⛩️ ĐỆ NHẤT SƠN TRANG
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 mb-2 drop-shadow-sm">
+                        <h2 className="text-3xl md:text-5xl font-black leading-snug py-1 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 mb-2 drop-shadow-sm">
                             Hoan nghênh, {userName}!
                         </h2>
                         <p className="text-slate-300 max-w-xl leading-relaxed text-sm">

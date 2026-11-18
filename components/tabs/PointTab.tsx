@@ -432,7 +432,7 @@ export default function PointTab({
                             <span>Bảng Vàng · Công Trạng & Ngân Khố Độc Quyền Web</span>
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         </div>
-                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-300 to-emerald-400">
+                        <h2 className="text-2xl sm:text-4xl font-black tracking-wide leading-snug py-1 text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-300 to-emerald-400">
                             BẢNG VÀNG CÔNG TRẠNG
                         </h2>
                         <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">

@@ -2227,7 +2227,7 @@ ${statKeysCatalog}`;
             <div className="bg-[#090d16] border border-emerald-500/30 rounded-3xl p-5 shadow-2xl space-y-4">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
                     <div>
-                        <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-300 to-amber-500">
+                        <h2 className="text-2xl sm:text-3xl font-black leading-snug py-0.5 text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-300 to-amber-500">
                             ⚔️ Thần Khí Các · Giám Định & Tối Ưu Đồ Võ Học
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">

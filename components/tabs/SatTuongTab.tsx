@@ -646,7 +646,7 @@ export default function SatTuongTab({
                             <span>•</span>
                             <span className="text-amber-400">2 MỤC TIÊU SÁT TƯỚNG</span>
                         </div>
-                        <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
+                        <h2 className="text-2xl sm:text-3xl font-black leading-snug py-0.5 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500">
                             🎲 Bốc Thăm Boss Sát Tướng Tuần Này
                         </h2>
                         <p className="text-xs text-zinc-400">
