@@ -656,6 +656,7 @@ export interface CharacterBaseline {
     affinityRate: number;
     directCritRate?: number;
     directAffinityRate?: number;
+    abrasionConversionRate?: number;
     simulate23: boolean;
     agiThreshold23: number;
     silkThreshold23: number;
@@ -702,6 +703,58 @@ const normalizeBaselinePrecision = (b: CharacterBaseline): CharacterBaseline => 
     };
 };
 
+const calcCombatJudgmentRates = (b: CharacterBaseline) => {
+    const resRate = Number(b.resistanceRate ?? 85);
+    const div = calcResistanceDivisor(resRate);
+
+    const yellowPrecPct =
+        b.rawPrecisionRate !== undefined && b.rawPrecisionRate !== null
+            ? (Number(b.rawPrecisionRate) <= PRECISION_BASE_FLOOR
+                ? Number(b.rawPrecisionRate)
+                : PRECISION_BASE_FLOOR + (Number(b.rawPrecisionRate) - PRECISION_BASE_FLOOR) / div)
+            : Number(b.precisionRate) || 0;
+    const precProb = Math.min(1, Math.max(0, yellowPrecPct / 100));
+
+    const baseCritYellow =
+        b.rawCritRate !== undefined && b.rawCritRate !== null
+            ? Number(b.rawCritRate) / div
+            : Number(b.critRate) || 0;
+    const baseAffYellow =
+        b.rawAffinityRate !== undefined && b.rawAffinityRate !== null
+            ? Number(b.rawAffinityRate) / div
+            : Number(b.affinityRate) || 0;
+
+    const totalCritPct = +(baseCritYellow + (Number(b.directCritRate) || 0)).toFixed(1);
+    const totalAffPct = +(baseAffYellow + (Number(b.directAffinityRate) || 0)).toFixed(1);
+
+    const cappedCritProb = Math.min(0.8, Math.max(0, (baseCritYellow + (Number(b.directCritRate) || 0)) / 100));
+    const cappedAffProb = Math.min(0.4, Math.max(0, (baseAffYellow + (Number(b.directAffinityRate) || 0)) / 100));
+
+    // Nếu tổng Crit + Affinity > 100%, Hiểu ý ưu tiên và đè bớt phần Crit hiệu dụng
+    const roundTableCombinedPct = +((cappedCritProb + cappedAffProb) * 100).toFixed(1);
+    const effectiveCritPool = cappedCritProb + cappedAffProb > 1
+        ? Math.max(0, 1 - cappedAffProb)
+        : cappedCritProb;
+
+    const finalCritPct = precProb * effectiveCritPool * 100;
+    const finalAffPct = cappedAffProb * 100;
+    const abrasionConvProb = Math.min(1, Math.max(0, (Number(b.abrasionConversionRate) || 0) / 100));
+    const finalAbrasionPct = (1 - precProb) * (1 - cappedAffProb) * (1 - abrasionConvProb) * 100;
+    const finalNormalPct = Math.max(0, 100 - finalCritPct - finalAffPct - finalAbrasionPct);
+    const finalCritAffinityRate = +(finalCritPct + finalAffPct).toFixed(1);
+
+    return {
+        totalCritPct,
+        totalAffPct,
+        roundTableCombinedPct,
+        finalCritPct: +finalCritPct.toFixed(2),
+        finalAffPct: +finalAffPct.toFixed(2),
+        finalAbrasionPct: +finalAbrasionPct.toFixed(2),
+        finalNormalPct: +finalNormalPct.toFixed(2),
+        finalCritAffinityRate,
+    };
+};
+
 const DEFAULT_BASELINE: CharacterBaseline = {
     agility: 381,
     reqAgility: 300,
@@ -718,6 +771,7 @@ const DEFAULT_BASELINE: CharacterBaseline = {
     affinityRate: 20.3,      // 37.6 / 1.85 = 20.3%
     directCritRate: 9.2,
     directAffinityRate: 0.0,
+    abrasionConversionRate: 0.0,
     simulate23: false,
     agiThreshold23: 365,
     silkThreshold23: 440,
@@ -1744,13 +1798,11 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     const calcRawPrecision = (yVal: number) => calcRawPrecisionFromYellow(yVal, activeResistanceRate);
 
     const precisionOvercap = +(baseline.precisionRate - 100).toFixed(1);
-    const totalEffectiveCrit = +((Number(baseline.critRate) || 0) + (Number(baseline.directCritRate) || 0)).toFixed(1);
-    const finalCritAffinityRate = +(
-        (Number(baseline.critRate) || 0) +
-        (Number(baseline.affinityRate) || 0) +
-        (Number(baseline.directCritRate) || 0) +
-        (Number(baseline.directAffinityRate) || 0)
-    ).toFixed(1);
+    const judgmentRates = calcCombatJudgmentRates(baseline);
+    const totalEffectiveCrit = judgmentRates.totalCritPct;
+    const totalEffectiveAffinity = judgmentRates.totalAffPct;
+    const roundTableCombinedPct = judgmentRates.roundTableCombinedPct;
+    const finalCritAffinityRate = judgmentRates.finalCritAffinityRate;
 
     const evaluateGear = (rawItem: GearItem) => {
         const item = normalizeGearItemLines(rawItem);
@@ -1796,14 +1848,16 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
                 if (line.statKey === 'PRECISION_RATE' && baseline.precisionRate > 103.5) {
                     pt = 0.5;
                     note = `⚠️ Dư thừa Chính xác (${baseline.precisionRate}% > 100%, thừa +${precisionOvercap}%)`;
-                } else if (line.statKey === 'CRIT_RATE' && (totalEffectiveCrit > 80.5 || finalCritAffinityRate > 100.5)) {
+                } else if (line.statKey === 'CRIT_RATE' && (totalEffectiveCrit > 80.5 || roundTableCombinedPct > 100.5)) {
                     pt = 0.5;
-                    note = finalCritAffinityRate > 100.5
-                        ? `⚠️ Tràn Bảng Phán Định Cuối (${finalCritAffinityRate}% > 100%)`
+                    note = roundTableCombinedPct > 100.5
+                        ? `⚠️ Tràn Bảng Phán Định (${roundTableCombinedPct}% > 100%, Hiểu ý đè Crit)`
                         : `⚠️ Overcap >80% Crit thực tế (${totalEffectiveCrit}%)`;
-                } else if (line.statKey === 'AFFINITY_RATE' && finalCritAffinityRate > 100.5) {
+                } else if (line.statKey === 'AFFINITY_RATE' && (totalEffectiveAffinity > 40.5 || roundTableCombinedPct > 100.5)) {
                     pt = 0.5;
-                    note = `⚠️ Tràn Bảng Phán Định Cuối (${finalCritAffinityRate}% > 100%)`;
+                    note = totalEffectiveAffinity > 40.5
+                        ? `⚠️ Overcap >40% Hiểu ý thực tế (${totalEffectiveAffinity}%)`
+                        : `⚠️ Tràn Bảng Phán Định (${roundTableCombinedPct}% > 100%)`;
                 } else {
                     pt = 0;
                     note = `✅ Chỉ số T1 Chuẩn của [${selectedSpec}]`;
@@ -2006,17 +2060,23 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         const deltaSilk = sumStat(targetGear, t3Key) - sumStat(currentSlotEquipped, t3Key);
         const deltaMaxPhys = sumStat(targetGear, 'MAX_PHYS_ATK') - sumStat(currentSlotEquipped, 'MAX_PHYS_ATK');
         const deltaPower = sumStat(targetGear, 'POWER') - sumStat(currentSlotEquipped, 'POWER');
+        const resRate = Number(baseline.resistanceRate ?? 85);
+        const resDiv = calcResistanceDivisor(resRate);
         const deltaRawPrec = sumStat(targetGear, 'PRECISION_RATE') - sumStat(currentSlotEquipped, 'PRECISION_RATE');
-        const deltaCrit = sumStat(targetGear, 'CRIT_RATE') - sumStat(currentSlotEquipped, 'CRIT_RATE');
+        const deltaRawCrit = sumStat(targetGear, 'CRIT_RATE') - sumStat(currentSlotEquipped, 'CRIT_RATE');
 
-        const currentRawPrec = baseline.rawPrecisionRate ?? calcRawPrecisionFromYellow(baseline.precisionRate, Number(baseline.resistanceRate ?? 85));
+        const currentRawPrec = baseline.rawPrecisionRate ?? calcRawPrecisionFromYellow(baseline.precisionRate, resRate);
         const newRawPrec = +(currentRawPrec + deltaRawPrec).toFixed(1);
-        const newTotalPrec = calcYellowPrecisionFromRaw(newRawPrec, Number(baseline.resistanceRate ?? 85));
+        const newTotalPrec = calcYellowPrecisionFromRaw(newRawPrec, resRate);
         const deltaPrec = +(newTotalPrec - baseline.precisionRate).toFixed(1);
+
+        const currentRawCrit = baseline.rawCritRate ?? +(baseline.critRate * resDiv).toFixed(1);
+        const newRawCrit = +(currentRawCrit + deltaRawCrit).toFixed(1);
+        const newTotalCrit = +(newRawCrit / resDiv).toFixed(1);
+        const deltaCrit = +(newTotalCrit - baseline.critRate).toFixed(1);
 
         const newTotalAgi = +(baseline.agility + deltaAgi).toFixed(1);
         const newTotalSilk = +(baseline.minSilkbind + deltaSilk).toFixed(1);
-        const newTotalCrit = +(baseline.critRate + deltaCrit).toFixed(2);
 
         const breaksTalent1 = newTotalAgi < reqAgi;
         const breaksTalent3 = newTotalSilk < reqSilk;
@@ -2024,7 +2084,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
 
         return {
             deltaAgi, deltaSilk, deltaMaxPhys, deltaPower, deltaPrec, deltaCrit,
-            newTotalAgi, newTotalSilk, newRawPrec, newTotalPrec, newTotalCrit,
+            newTotalAgi, newTotalSilk, newRawPrec, newTotalPrec, newRawCrit, newTotalCrit,
             reqAgi, reqSilk, breaksTalent1, breaksTalent3, dropsPrecision
         };
     }, [candidateGear, currentSlotEquipped, baseline, editorMode, reqAgi, reqSilk, activeTalentsMeta]);
@@ -2183,6 +2243,7 @@ ${statKeysCatalog}`;
             minSilkbind: comparisonDelta.newTotalSilk,
             rawPrecisionRate: comparisonDelta.newRawPrec,
             precisionRate: comparisonDelta.newTotalPrec,
+            rawCritRate: comparisonDelta.newRawCrit,
             critRate: comparisonDelta.newTotalCrit
         };
 
@@ -2952,17 +3013,18 @@ ${statKeysCatalog}`;
                                         />
                                     </div>
                                 </div>
-                                <div className="text-[10px] text-emerald-400 mt-1.5">
-                                    Phẩm cấp tại [{selectedSpec}]: <b>{resolveStatGroupForSpec(statOptions.find(s => s.key === 'AFFINITY_RATE') || DEFAULT_STAT_OPTIONS[8], selectedSpec)}</b>
+                                <div className="text-[10px] text-zinc-400 mt-1.5 flex items-center justify-between gap-2">
+                                    <span>Kèm Hiểu ý TT: <b className={totalEffectiveAffinity > 40.5 ? "text-rose-400" : "text-cyan-300"}>{totalEffectiveAffinity}% / 40%</b></span>
+                                    <span className="text-emerald-400 font-bold">[{resolveStatGroupForSpec(statOptions.find(s => s.key === 'AFFINITY_RATE') || DEFAULT_STAT_OPTIONS[8], selectedSpec)}]</span>
                                 </div>
                             </div>
 
-                            {/* 4. TỶ LỆ TRỰC TIẾP */}
-                            <div className="p-3 rounded-xl border bg-zinc-900/70 border-zinc-800">
-                                <div className="text-[10px] font-bold text-amber-300 uppercase">⚡ 4. Tỷ Lệ Trực Tiếp</div>
-                                <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                            {/* 4. TỶ LỆ TRỰC TIẾP & CHUYỂN ĐỔI TRẦY XƯỚC */}
+                            <div className="p-3 rounded-xl border bg-zinc-900/70 border-zinc-800 space-y-1.5">
+                                <div className="text-[10px] font-bold text-amber-300 uppercase">⚡ 4. Trực Tiếp &amp; Trầy Xước</div>
+                                <div className="grid grid-cols-2 gap-1.5">
                                     <div>
-                                        <span className="text-[9px] text-amber-400 block">Crit Trực Tiếp</span>
+                                        <span className="text-[9px] text-amber-400 block">Chí mạng trực tiếp</span>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -2972,7 +3034,7 @@ ${statKeysCatalog}`;
                                         />
                                     </div>
                                     <div>
-                                        <span className="text-[9px] text-cyan-400 block">Hiểu Ý Trực Tiếp</span>
+                                        <span className="text-[9px] text-cyan-400 block">Hiểu ý trực tiếp</span>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -2982,38 +3044,65 @@ ${statKeysCatalog}`;
                                         />
                                     </div>
                                 </div>
-                                <div className="text-[10px] text-zinc-400 mt-1.5">
-                                    Không bị trừ bởi {baseline.resistanceRate ?? 85}% Kháng
+                                <div className="flex items-center justify-between gap-2 pt-0.5">
+                                    <span className="text-[9px] text-zinc-300 leading-tight">Chuyển đổi Trầy xước (%)</span>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={baseline.abrasionConversionRate ?? 0.0}
+                                        onChange={(e) => updateBaselineField({ abrasionConversionRate: Number(e.target.value) })}
+                                        className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-xs font-mono font-bold text-zinc-100 text-right"
+                                    />
                                 </div>
                             </div>
 
-                            {/* 5. TỶ LỆ CHÍ MẠNG HIỂU Ý CUỐI CÙNG (CỘT MỐC 100%) */}
+                            {/* 5. TỶ LỆ CHÍ MẠNG HIỂU Ý CUỐI CÙNG (THEO ĐÚNG GAME) */}
                             <div className={`p-3 rounded-xl border-2 flex flex-col justify-between ${
-                                finalCritAffinityRate > 100.5
+                                roundTableCombinedPct > 100.5
                                     ? 'bg-rose-950/40 border-rose-500'
-                                    : finalCritAffinityRate >= 90
+                                    : finalCritAffinityRate >= 78
                                         ? 'bg-emerald-950/30 border-emerald-500/60'
                                         : 'bg-zinc-900/80 border-amber-500/40'
                             }`}>
                                 <div>
-                                    <div className="text-[10px] font-black text-emerald-400 uppercase">🔥 5. Chí Mạng Hiểu Ý Cuối</div>
-                                    <div className="text-xl font-black font-mono text-amber-300 mt-1">
-                                        {finalCritAffinityRate}% <span className="text-xs text-zinc-400 font-normal">/ 100%</span>
+                                    <div className="flex items-center justify-between gap-1">
+                                        <div className="text-[10px] font-black text-emerald-400 uppercase">🔥 5. Chí Mạng Hiểu Ý Cuối</div>
+                                        <span className="text-lg font-black font-mono text-amber-300">
+                                            {finalCritAffinityRate}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 my-1.5">
+                                        <div
+                                            className={`h-full ${roundTableCombinedPct > 100.5 ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-emerald-400'}`}
+                                            style={{ width: `${Math.min(100, finalCritAffinityRate)}%` }}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] font-mono">
+                                        <div className="text-amber-300 flex justify-between">
+                                            <span className="text-zinc-400">Chí mạng:</span>
+                                            <b>{judgmentRates.finalCritPct.toFixed(2)}%</b>
+                                        </div>
+                                        <div className="text-orange-300 flex justify-between">
+                                            <span className="text-zinc-400">Hiểu ý:</span>
+                                            <b>{judgmentRates.finalAffPct.toFixed(2)}%</b>
+                                        </div>
+                                        <div className="text-rose-300 flex justify-between">
+                                            <span className="text-zinc-400">Vết xước:</span>
+                                            <b>{judgmentRates.finalAbrasionPct.toFixed(2)}%</b>
+                                        </div>
+                                        <div className="text-zinc-200 flex justify-between">
+                                            <span className="text-zinc-400">Phổ thông:</span>
+                                            <b>{judgmentRates.finalNormalPct.toFixed(2)}%</b>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="w-full h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 my-1">
-                                    <div
-                                        className={`h-full ${finalCritAffinityRate > 100.5 ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-emerald-400'}`}
-                                        style={{ width: `${Math.min(100, finalCritAffinityRate)}%` }}
-                                    />
-                                </div>
-                                <div className="text-[10px] font-bold">
-                                    {finalCritAffinityRate > 100.5 ? (
-                                        <span className="text-rose-400">⚠️ Tràn bàn tròn &gt;100% (Thừa +{(finalCritAffinityRate - 100).toFixed(1)}%)!</span>
-                                    ) : finalCritAffinityRate >= 95 ? (
-                                        <span className="text-emerald-300">💎 Chuẩn Build Tối Thượng (Sát 100%)!</span>
+                                <div className="text-[10px] font-bold mt-1.5">
+                                    {roundTableCombinedPct > 100.5 ? (
+                                        <span className="text-rose-400">⚠️ Tràn bàn tròn {roundTableCombinedPct}% (&gt;100%, Hiểu ý đè Crit)!</span>
+                                    ) : finalCritAffinityRate >= 85 ? (
+                                        <span className="text-emerald-300">💎 Build Tối Thượng (còn trống {(100 - roundTableCombinedPct).toFixed(1)}% bể gốc)</span>
                                     ) : (
-                                        <span className="text-amber-300">✨ Còn trống {(100 - finalCritAffinityRate).toFixed(1)}% tới trần 100%</span>
+                                        <span className="text-amber-300">✨ Còn trống {(100 - roundTableCombinedPct).toFixed(1)}% tới trần bể 100%</span>
                                     )}
                                 </div>
                             </div>
