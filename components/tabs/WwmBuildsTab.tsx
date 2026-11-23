@@ -667,6 +667,41 @@ export interface CharacterBaseline {
     };
 }
 
+const PRECISION_BASE_FLOOR = 65;
+
+const calcResistanceDivisor = (resistancePct = 85) =>
+    +(1 + (Number(resistancePct) || 0) / 100).toFixed(4);
+
+const calcYellowPrecisionFromRaw = (rawVal: number, resistancePct = 85) => {
+    if (rawVal <= PRECISION_BASE_FLOOR) return +rawVal.toFixed(1);
+    const div = calcResistanceDivisor(resistancePct);
+    return +(PRECISION_BASE_FLOOR + (rawVal - PRECISION_BASE_FLOOR) / div).toFixed(1);
+};
+
+const calcRawPrecisionFromYellow = (yellowVal: number, resistancePct = 85) => {
+    if (yellowVal <= PRECISION_BASE_FLOOR) return +yellowVal.toFixed(1);
+    const div = calcResistanceDivisor(resistancePct);
+    return +(PRECISION_BASE_FLOOR + (yellowVal - PRECISION_BASE_FLOOR) * div).toFixed(1);
+};
+
+const normalizeBaselinePrecision = (b: CharacterBaseline): CharacterBaseline => {
+    const resRate = Number(b.resistanceRate ?? 85);
+    if (b.rawPrecisionRate !== undefined && b.rawPrecisionRate !== null && !isNaN(Number(b.rawPrecisionRate))) {
+        const rawVal = Number(b.rawPrecisionRate);
+        return {
+            ...b,
+            rawPrecisionRate: rawVal,
+            precisionRate: calcYellowPrecisionFromRaw(rawVal, resRate),
+        };
+    }
+    const yVal = Number(b.precisionRate) || 0;
+    return {
+        ...b,
+        rawPrecisionRate: calcRawPrecisionFromYellow(yVal, resRate),
+        precisionRate: yVal,
+    };
+};
+
 const DEFAULT_BASELINE: CharacterBaseline = {
     agility: 381,
     reqAgility: 300,
@@ -676,7 +711,7 @@ const DEFAULT_BASELINE: CharacterBaseline = {
     reqMinSilkbind: 352,
     resistanceRate: 85,      // Chuẩn Lv. 18/19 (Lv. 100): 85% Resistance
     rawPrecisionRate: 134.5,
-    precisionRate: 100.4,    // 134.5 / 1.34 = 100.4% (Thừa 0.4%)
+    precisionRate: 102.6,    // 65 + (134.5 - 65) / 1.85 = 102.6% (Thừa 2.6%)
     rawCritRate: 117.6,
     critRate: 63.6,          // 117.6 / 1.85 = 63.6%
     rawAffinityRate: 37.6,
@@ -1196,7 +1231,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         };
 
         if (userRecord) {
-            if (userRecord.baseline) setBaseline({ ...specDefaultBaseline, ...userRecord.baseline });
+            if (userRecord.baseline) setBaseline(normalizeBaselinePrecision({ ...specDefaultBaseline, ...userRecord.baseline }));
             else setBaseline(specDefaultBaseline);
             if (userRecord.equipped) setEquipped(prev => normalizeEquippedMap({ ...prev, ...userRecord.equipped }));
             if (Array.isArray(userRecord.arsenal96)) setArsenal96(userRecord.arsenal96);
@@ -1209,7 +1244,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             if (localRaw) {
                 try {
                     const parsed = JSON.parse(localRaw);
-                    if (parsed.baseline) setBaseline({ ...specDefaultBaseline, ...parsed.baseline });
+                    if (parsed.baseline) setBaseline(normalizeBaselinePrecision({ ...specDefaultBaseline, ...parsed.baseline }));
                     if (parsed.equipped) setEquipped(prev => normalizeEquippedMap({ ...prev, ...parsed.equipped }));
                     if (Array.isArray(parsed.arsenal96)) setArsenal96(parsed.arsenal96);
                     if (parsed.innerWays) setInnerWays({ ...specDefaultInnerWays, ...parsed.innerWays });
@@ -1699,13 +1734,14 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
     const reqSilk = baseline.simulate23 ? baseline.silkThreshold23 : (baseline.reqMinSilkbind || 352);
 
     // 🟢 HỆ SỐ KHÁNG THUỘC TÍNH THEO CẤP ĐỘ (RESISTANCE BRACKET: 15% | 30% | 45% | 65% | 85%)
-    const activeResistance = (Number(baseline.resistanceRate) || 85) / 100; // Mặc định 0.85 (85%)
-    const critAffDivisor = +(1 + activeResistance).toFixed(4);              // Lv.100 (85%): 1.85 (x0.54054)
-    const precisionDivisor = +(1 + activeResistance * 0.4).toFixed(4);      // Lv.100 (85%): 1.34 (Cần 134% Trắng = 100% Vàng)
+    const activeResistanceRate = Number(baseline.resistanceRate ?? 85);
+    const critAffDivisor = calcResistanceDivisor(activeResistanceRate); // Lv.100 (85%): 1.85 (x0.54054)
+    const requiredWhitePrecision = calcRawPrecisionFromYellow(100, activeResistanceRate); // Lv.100 (85%): 129.75% Trắng = 100% Vàng
 
     const calcYellowCritOrAff = (rawVal: number) => +(rawVal / critAffDivisor).toFixed(1);
-    // KHÔNG dùng Math.min(100) để hiển thị chính xác số % Chính xác bị thừa (Overcap)!
-    const calcYellowPrecision = (rawVal: number) => +(rawVal / precisionDivisor).toFixed(1);
+    // Chính xác: Nền 65% miễn giảm Kháng; phần cộng thêm (Trắng - 65%) chia cho (1 + Kháng). Không khóa trần 100% để soi overcap!
+    const calcYellowPrecision = (rawVal: number) => calcYellowPrecisionFromRaw(rawVal, activeResistanceRate);
+    const calcRawPrecision = (yVal: number) => calcRawPrecisionFromYellow(yVal, activeResistanceRate);
 
     const precisionOvercap = +(baseline.precisionRate - 100).toFixed(1);
     const totalEffectiveCrit = +((Number(baseline.critRate) || 0) + (Number(baseline.directCritRate) || 0)).toFixed(1);
@@ -1970,12 +2006,16 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         const deltaSilk = sumStat(targetGear, t3Key) - sumStat(currentSlotEquipped, t3Key);
         const deltaMaxPhys = sumStat(targetGear, 'MAX_PHYS_ATK') - sumStat(currentSlotEquipped, 'MAX_PHYS_ATK');
         const deltaPower = sumStat(targetGear, 'POWER') - sumStat(currentSlotEquipped, 'POWER');
-        const deltaPrec = sumStat(targetGear, 'PRECISION_RATE') - sumStat(currentSlotEquipped, 'PRECISION_RATE');
+        const deltaRawPrec = sumStat(targetGear, 'PRECISION_RATE') - sumStat(currentSlotEquipped, 'PRECISION_RATE');
         const deltaCrit = sumStat(targetGear, 'CRIT_RATE') - sumStat(currentSlotEquipped, 'CRIT_RATE');
+
+        const currentRawPrec = baseline.rawPrecisionRate ?? calcRawPrecisionFromYellow(baseline.precisionRate, Number(baseline.resistanceRate ?? 85));
+        const newRawPrec = +(currentRawPrec + deltaRawPrec).toFixed(1);
+        const newTotalPrec = calcYellowPrecisionFromRaw(newRawPrec, Number(baseline.resistanceRate ?? 85));
+        const deltaPrec = +(newTotalPrec - baseline.precisionRate).toFixed(1);
 
         const newTotalAgi = +(baseline.agility + deltaAgi).toFixed(1);
         const newTotalSilk = +(baseline.minSilkbind + deltaSilk).toFixed(1);
-        const newTotalPrec = +(baseline.precisionRate + deltaPrec).toFixed(2);
         const newTotalCrit = +(baseline.critRate + deltaCrit).toFixed(2);
 
         const breaksTalent1 = newTotalAgi < reqAgi;
@@ -1984,7 +2024,7 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
 
         return {
             deltaAgi, deltaSilk, deltaMaxPhys, deltaPower, deltaPrec, deltaCrit,
-            newTotalAgi, newTotalSilk, newTotalPrec, newTotalCrit,
+            newTotalAgi, newTotalSilk, newRawPrec, newTotalPrec, newTotalCrit,
             reqAgi, reqSilk, breaksTalent1, breaksTalent3, dropsPrecision
         };
     }, [candidateGear, currentSlotEquipped, baseline, editorMode, reqAgi, reqSilk, activeTalentsMeta]);
@@ -2141,6 +2181,7 @@ ${statKeysCatalog}`;
             ...baseline,
             agility: comparisonDelta.newTotalAgi,
             minSilkbind: comparisonDelta.newTotalSilk,
+            rawPrecisionRate: comparisonDelta.newRawPrec,
             precisionRate: comparisonDelta.newTotalPrec,
             critRate: comparisonDelta.newTotalCrit
         };
@@ -2684,7 +2725,7 @@ ${statKeysCatalog}`;
                                     <span>⚖️ Bảng Thuộc Tính Phán Định (Không Khóa Trần 100% Để Soi Phần Trăm Bị Thừa)</span>
                                 </div>
                                 <p className="text-[11px] text-zinc-400 mt-0.5">
-                                    Công thức Kháng <b className="text-rose-400">{baseline.resistanceRate ?? 85}%</b>: Chí mạng & Hiểu ý chia cho <b className="text-emerald-400">{critAffDivisor}</b> (×{(1 / critAffDivisor).toFixed(4)}) • Chính xác chia cho <b className="text-emerald-400">{precisionDivisor}</b> (Cần <b>{(100 * precisionDivisor).toFixed(1)}%</b> Trắng = <b>100%</b> Vàng).
+                                    Công thức Kháng <b className="text-rose-400">{baseline.resistanceRate ?? 85}%</b>: Chí mạng &amp; Hiểu ý chia cho <b className="text-emerald-400">{critAffDivisor}</b> (×{(1 / critAffDivisor).toFixed(4)}) • Chính xác = <b>65% + (Trắng - 65%) ÷ {critAffDivisor}</b> (Cần <b className="text-emerald-400">{requiredWhitePrecision.toFixed(1)}%</b> Trắng = <b>100%</b> Vàng).
                                 </p>
                             </div>
 
@@ -2696,11 +2737,10 @@ ${statKeysCatalog}`;
                                     onChange={(e) => {
                                         if (e.target.value === "custom") return;
                                         const resVal = Number(e.target.value);
-                                        const cDiv = 1 + resVal / 100;
-                                        const pDiv = 1 + (resVal / 100) * 0.4;
+                                        const cDiv = calcResistanceDivisor(resVal);
                                         updateBaselineField({
                                             resistanceRate: resVal,
-                                            precisionRate: +((baseline.rawPrecisionRate ?? 134.5) / pDiv).toFixed(1),
+                                            precisionRate: calcYellowPrecisionFromRaw(baseline.rawPrecisionRate ?? 134.5, resVal),
                                             critRate: +((baseline.rawCritRate ?? 117.6) / cDiv).toFixed(1),
                                             affinityRate: +((baseline.rawAffinityRate ?? 37.6) / cDiv).toFixed(1),
                                         });
@@ -2723,11 +2763,10 @@ ${statKeysCatalog}`;
                                         value={baseline.resistanceRate ?? 85}
                                         onChange={(e) => {
                                             const resVal = Math.max(0, Number(e.target.value));
-                                            const cDiv = 1 + resVal / 100;
-                                            const pDiv = 1 + (resVal / 100) * 0.4;
+                                            const cDiv = calcResistanceDivisor(resVal);
                                             updateBaselineField({
                                                 resistanceRate: resVal,
-                                                precisionRate: +((baseline.rawPrecisionRate ?? 134.5) / pDiv).toFixed(1),
+                                                precisionRate: calcYellowPrecisionFromRaw(baseline.rawPrecisionRate ?? 134.5, resVal),
                                                 critRate: +((baseline.rawCritRate ?? 117.6) / cDiv).toFixed(1),
                                                 affinityRate: +((baseline.rawAffinityRate ?? 37.6) / cDiv).toFixed(1),
                                             });
@@ -2803,7 +2842,7 @@ ${statKeysCatalog}`;
                                                 const yVal = Number(e.target.value);
                                                 updateBaselineField({
                                                     precisionRate: yVal,
-                                                    rawPrecisionRate: +(yVal * precisionDivisor).toFixed(1)
+                                                    rawPrecisionRate: calcRawPrecision(yVal)
                                                 });
                                             }}
                                             className="w-full bg-zinc-950 border border-amber-500/50 rounded px-2 py-1 text-xs font-mono font-black text-amber-300"
@@ -2814,7 +2853,7 @@ ${statKeysCatalog}`;
                                     {baseline.precisionRate > 100.0 ? (
                                         <span className={baseline.precisionRate > 103.5 ? "text-amber-300 font-bold" : "text-emerald-300"}>
                                             {baseline.precisionRate > 103.5 ? '⚠️ ' : '✅ '}
-                                            Đạt 100% (Đang thừa <b>+{precisionOvercap}%</b> Vàng ≈ <b>+{((baseline.rawPrecisionRate ?? 134.5) - 100 * precisionDivisor).toFixed(1)}%</b> Trắng)
+                                            Đạt 100% (Đang thừa <b>+{precisionOvercap}%</b> Vàng ≈ <b>+{((baseline.rawPrecisionRate ?? requiredWhitePrecision) - requiredWhitePrecision).toFixed(1)}%</b> Trắng)
                                         </span>
                                     ) : baseline.precisionRate >= 98.0 ? (
                                         <span className="text-emerald-300">
@@ -3717,20 +3756,14 @@ ${statKeysCatalog}`;
 
                     {/* KHU VỰC 4: TÂM PHÁP */}
                     <div className="bg-[#090d16] border border-zinc-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-                            <div>
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+                            <div className="min-w-0 space-y-0.5">
                                 <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">
                                     📜 Bộ 4 Tâm Pháp Đang Trang Bị (Inner Ways — Hệ [{selectedSpec}])
                                 </h3>
                                 <p className="text-[11px] text-zinc-400">
                                     Chọn trực tiếp từ kho <b className="text-emerald-400">{tamPhapList.length} Tâm Pháp</b> trên mây, hoặc bấm <b>+ Thêm / Sửa Tâm Pháp</b> để bổ sung Tâm Pháp mới.
                                 </p>
-                                <div className="mt-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200/90 space-y-1">
-                                    <div className="font-black text-amber-300 uppercase tracking-wider text-[10px]">📢 Lưu ý Cân Bằng Tâm Pháp &amp; Võ Học Patch 2.4 (13/11):</div>
-                                    <div>• <b>Thunderous Bloom (Khiên Ty):</b> Đổi từ +15% HP DMG thành <b>+10 Xuyên Phá Ngoại Công &amp; +10 Xuyên Phá Khiên Ty</b> (Tầng 4 lên +20 mỗi loại; Tầng 6 hồi tầng khi đánh <code>[Qi Anomaly]</code>).</div>
-                                    <div>• <b>Inkwell Fan [Moonlit Startle]:</b> Đổi +30% Crit Rate thành <b>+15% Crit DMG</b> + <code>[Empty Peak]</code> (giảm overcap Crit Rate khi build đồ).</div>
-                                    <div>• <b>Jadeware + Mountain&apos;s Might:</b> Đồng bộ thời gian hiệu lực <b>12 giây</b> (100% uptime).</div>
-                                </div>
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -3740,20 +3773,33 @@ ${statKeysCatalog}`;
                                         setDictTab('tamphap');
                                         setShowStatDictModal(true);
                                     }}
-                                    className="px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-bold cursor-pointer"
+                                    className="px-3 py-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-bold cursor-pointer whitespace-nowrap"
                                 >
                                     ✍️ Quản Lý / +Thêm Tâm Pháp Mới
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSaveSpecInnerWaysTemplate}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer whitespace-nowrap"
                                     title="Lưu 4 Tâm Pháp đang chọn làm mẫu mặc định cho hệ phái này"
                                 >
                                     💾 Đặt Làm Mẫu Cho Hệ [{selectedSpec}]
                                 </button>
                             </div>
                         </div>
+
+                        <details open className="group rounded-xl bg-amber-500/10 border border-amber-500/25 px-3.5 py-2.5 text-[11px] text-amber-200/90">
+                            <summary className="font-black text-amber-300 uppercase tracking-wider text-[10px] cursor-pointer select-none flex items-center justify-between list-none">
+                                <span>📢 Lưu ý Cân Bằng Tâm Pháp &amp; Võ Học Patch 2.4 (13/11)</span>
+                                <span className="text-[10px] text-amber-400/80 font-bold normal-case group-open:hidden">Xem chi tiết ▾</span>
+                                <span className="text-[10px] text-amber-400/80 font-bold normal-case hidden group-open:inline">Thu gọn ▴</span>
+                            </summary>
+                            <div className="mt-2 space-y-1 leading-relaxed">
+                                <div>• <b>Thunderous Bloom (Khiên Ty):</b> Đổi từ +15% HP DMG thành <b>+10 Xuyên Phá Ngoại Công &amp; +10 Xuyên Phá Khiên Ty</b> (Tầng 4 lên +20 mỗi loại; Tầng 6 hồi tầng khi đánh <code>[Qi Anomaly]</code>).</div>
+                                <div>• <b>Inkwell Fan [Moonlit Startle]:</b> Đổi +30% Crit Rate thành <b>+15% Crit DMG</b> + <code>[Empty Peak]</code> (giảm overcap Crit Rate khi build đồ).</div>
+                                <div>• <b>Jadeware + Mountain&apos;s Might:</b> Đồng bộ thời gian hiệu lực <b>12 giây</b> (100% uptime).</div>
+                            </div>
+                        </details>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {(['slot1', 'slot2', 'slot3', 'slot4'] as const).map((sKey, idx) => (

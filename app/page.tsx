@@ -267,6 +267,7 @@ export default function Home() {
                         metadata={satTuongMeta}
                         bossRotation={bossRotation}
                         pointData={pointData}
+                        tuViData={tuViData}
                         danhLuc={danhLuc}
                         session={session}
                         isMaster={isMaster}

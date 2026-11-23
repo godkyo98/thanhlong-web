@@ -328,11 +328,25 @@ function parseBossRecords(bossData: any, danhLuc: Record<string, any>): ParsedRe
     return [];
 }
 
+interface SeasonPlayerItem {
+    id: string;
+    ingame: string;
+    discordName: string;
+    uid: string;
+    class: string;
+    seasonPts: number;
+    titleInfo: SatTuongTitleInfo | null;
+    isManualHidden: boolean;
+    isOutsideDanhLuc: boolean;
+    isHidden: boolean;
+}
+
 interface Props {
     data: any;             // sat_tuong_data từ Firebase
     metadata?: any;        // sattuong_metadata từ Firebase
     bossRotation?: any;    // boss_rotation từ Firebase
     pointData?: any;       // points_data
+    tuViData?: Record<string, Record<string, unknown>>; // chat_rank_data (chứa anBangVang live từ Discord Bot)
     danhLuc: Record<string, any>;
     isMaster?: boolean;
     session?: any;
@@ -342,18 +356,21 @@ export default function SatTuongTab({
     data,
     metadata,
     bossRotation,
+    tuViData = {},
     danhLuc = {},
     isMaster = false,
 }: Props) {
     const [activeSubTab, setActiveSubTab] = useState<'season' | 'monthly' | 'history'>('season');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedWeekFilter, setSelectedWeekFilter] = useState<number | 'ALL'>('ALL');
+    const [showHiddenSeason, setShowHiddenSeason] = useState(false);
 
-    // State sửa điểm Master
+    // State sửa điểm & ẩn/hiện Master
     const [editingUid, setEditingUid] = useState<string | null>(null);
     const [editPts, setEditPts] = useState<number>(0);
     const [editType, setEditType] = useState<'monthly' | 'season'>('monthly');
     const [isSaving, setIsSaving] = useState(false);
+    const [togglingHideId, setTogglingHideId] = useState<string | null>(null);
 
     // 1. 🎯 BỐC THĂM CẶP ĐÔI BOSS SÁT PHẠT TUẦN NÀY (ĐỌC TỪ boss_rotation & sat_tuong_data)
     const { targetBoss1, targetBoss2, totalUsed, totalPool } = useMemo(() => {
@@ -394,34 +411,49 @@ export default function SatTuongTab({
     }, [bossRotation, data]);
 
     // 2. 🌟 BẢNG VÀNG CHIẾN THẦN PVE (TÍCH LŨY MÙA)
-    const seasonList = useMemo(() => {
+    const { seasonList, hiddenSeasonList, visibleRankMap } = useMemo(() => {
         const seasonObj = data?.seasonRanking || data?.season_ranking || data?.seasons || {};
-        const list: Array<{
-            id: string;
-            ingame: string;
-            discordName: string;
-            uid: string;
-            class: string;
-            seasonPts: number;
-            titleInfo: SatTuongTitleInfo | null;
-        }> = [];
+        const hasDanhLuc = Boolean(danhLuc && Object.keys(danhLuc).length > 0);
+        const list: SeasonPlayerItem[] = [];
+
+        const resolveManualHidden = (id: string, seasonEntry: unknown, danhLucEntry: unknown) => {
+            const rankEntry = tuViData?.[id];
+            if (rankEntry && typeof rankEntry === 'object' && rankEntry.anBangVang !== undefined) {
+                return Boolean(rankEntry.anBangVang);
+            }
+            if (seasonEntry && typeof seasonEntry === 'object') {
+                const entry = seasonEntry as Record<string, unknown>;
+                if (entry.anBangVang !== undefined) return Boolean(entry.anBangVang);
+                if (entry.hidden !== undefined) return Boolean(entry.hidden);
+            }
+            if (danhLucEntry && typeof danhLucEntry === 'object') {
+                const entry = danhLucEntry as Record<string, unknown>;
+                if (entry.anBangVang !== undefined) return Boolean(entry.anBangVang);
+            }
+            return false;
+        };
 
         Object.entries(seasonObj).forEach(([id, d]: [string, any]) => {
             const pts = Number(typeof d === 'object' ? (d?.satTuongSeasonPts ?? d?.seasonPts ?? d?.points ?? 0) : d) || 0;
             if (pts <= 0) return;
 
-            const member = danhLuc[id] || {};
+            const member = danhLuc?.[id];
+            const isOutsideDanhLuc = hasDanhLuc && !member;
+            const isManualHidden = resolveManualHidden(id, d, member);
             const rawTitle = typeof d === 'object' && d?.title ? d.title : pts;
             const titleInfo = resolveSatTuongTitle(rawTitle);
 
             list.push({
                 id,
-                ingame: member.ingame || (typeof d === 'object' && d?.name) || `Đại Hiệp #${id.slice(-4)}`,
-                discordName: member.discordName || (typeof d === 'object' && d?.username) || '',
-                uid: member.uid || '—',
-                class: normalizeVoHocName(member.class || 'Lãng Khách'),
+                ingame: member?.ingame || (typeof d === 'object' && d?.name) || `Đại Hiệp #${id.slice(-4)}`,
+                discordName: member?.discordName || (typeof d === 'object' && d?.username) || '',
+                uid: member?.uid || '—',
+                class: normalizeVoHocName(member?.class || 'Lãng Khách'),
                 seasonPts: pts,
-                titleInfo
+                titleInfo,
+                isManualHidden,
+                isOutsideDanhLuc,
+                isHidden: isManualHidden || isOutsideDanhLuc
             });
         });
 
@@ -433,6 +465,7 @@ export default function SatTuongTab({
             const titleInfo = resolveSatTuongTitle(userTitle || (pts > 0 ? pts : null));
 
             if (titleInfo && !list.some(item => item.id === id)) {
+                const isManualHidden = resolveManualHidden(id, seasonObj?.[id], info);
                 list.push({
                     id,
                     ingame: info.ingame || `Đại Hiệp #${id.slice(-4)}`,
@@ -440,18 +473,41 @@ export default function SatTuongTab({
                     uid: info.uid || '—',
                     class: normalizeVoHocName(info.class || 'Lãng Khách'),
                     seasonPts: pts > 0 ? pts : titleInfo.level,
-                    titleInfo
+                    titleInfo,
+                    isManualHidden,
+                    isOutsideDanhLuc: false,
+                    isHidden: isManualHidden
                 });
             }
         });
 
-        return list.sort((a, b) => {
+        const sorted = list.sort((a, b) => {
             const levelA = a.titleInfo?.level || a.seasonPts;
             const levelB = b.titleInfo?.level || b.seasonPts;
             if (levelB !== levelA) return levelB - levelA;
             return b.seasonPts - a.seasonPts;
         });
-    }, [data, danhLuc]);
+
+        const visible = sorted.filter(u => !u.isHidden);
+        const hidden = sorted.filter(u => u.isHidden);
+        const rankMap: Record<string, number> = {};
+        visible.forEach((u, idx) => {
+            rankMap[u.id] = idx;
+        });
+
+        return {
+            seasonList: visible,
+            hiddenSeasonList: hidden,
+            visibleRankMap: rankMap
+        };
+    }, [data, danhLuc, tuViData]);
+
+    const displayedSeasonList = useMemo(() => {
+        if (isMaster && showHiddenSeason) {
+            return [...seasonList, ...hiddenSeasonList];
+        }
+        return seasonList;
+    }, [isMaster, showHiddenSeason, seasonList, hiddenSeasonList]);
 
     // 3. 🏆 BẢNG PHONG THẦN (TỔNG ĐIỂM THÁNG)
     const monthlyList = useMemo(() => {
@@ -612,6 +668,44 @@ export default function SatTuongTab({
             .filter(group => group.bosses.length > 0);
     }, [bossWeekGroups, selectedWeekFilter, searchQuery]);
 
+    // Xử lý ẩn / hiện thành viên khỏi Bảng Vàng Chiến Thần (đồng bộ Firebase + Discord Bot qua anBangVang)
+    const handleToggleHideSeason = async (user: SeasonPlayerItem) => {
+        if (!isMaster) return;
+        setTogglingHideId(user.id);
+        const nextHidden = !user.isManualHidden;
+        try {
+            const writes: Promise<void>[] = [
+                setDoc(
+                    doc(db, 'thanhlong_config', 'sat_tuong_data'),
+                    {
+                        seasonRanking: {
+                            [user.id]: { anBangVang: nextHidden }
+                        }
+                    },
+                    { merge: true }
+                )
+            ];
+
+            if (tuViData && tuViData[user.id] && typeof tuViData[user.id] === 'object') {
+                writes.push(
+                    setDoc(
+                        doc(db, 'thanhlong_config', 'chat_rank_data'),
+                        {
+                            [user.id]: { anBangVang: nextHidden }
+                        },
+                        { merge: true }
+                    )
+                );
+            }
+
+            await Promise.all(writes);
+        } catch {
+            alert('❌ Lỗi khi cập nhật trạng thái Ẩn/Hiện lên Firebase!');
+        } finally {
+            setTogglingHideId(null);
+        }
+    };
+
     // Xử lý lưu điểm Master
     const handleSavePts = async (uid: string) => {
         if (!isMaster) return;
@@ -768,8 +862,25 @@ export default function SatTuongTab({
                                 Vinh danh mốc danh hiệu chuẩn <b>✦ Võ Đạo Độc Tôn ✦</b> tăng tiến theo số mùa chinh phục.
                             </p>
                         </div>
-                        <div className="text-xs font-mono text-zinc-400">
-                            Tổng: <b className="text-amber-400">{seasonList.length}</b> cao thủ
+                        <div className="flex flex-wrap items-center gap-3">
+                            {isMaster && hiddenSeasonList.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHiddenSeason(prev => !prev)}
+                                    className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                        showHiddenSeason
+                                            ? 'bg-amber-500/20 border-amber-400/60 text-amber-200'
+                                            : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'
+                                    }`}
+                                >
+                                    {showHiddenSeason
+                                        ? `👁️ Đang hiện cả ${hiddenSeasonList.length} người đã ẩn`
+                                        : `🙈 Đã ẩn ${hiddenSeasonList.length} người (Xem)`}
+                                </button>
+                            )}
+                            <div className="text-xs font-mono text-zinc-400">
+                                Tổng: <b className="text-amber-400">{seasonList.length}</b> cao thủ
+                            </div>
                         </div>
                     </div>
 
@@ -786,27 +897,47 @@ export default function SatTuongTab({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-800/60 text-xs font-medium">
-                                {seasonList
+                                {displayedSeasonList
                                     .filter(u => {
                                         if (!searchQuery) return true;
                                         const q = searchQuery.toLowerCase();
                                         return u.ingame.toLowerCase().includes(q) || u.uid.toLowerCase().includes(q) || u.class.toLowerCase().includes(q);
                                     })
-                                    .map((user, idx) => {
+                                    .map((user) => {
                                         const isEditing = editingUid === user.id && editType === 'season';
+                                        const rankIdx = visibleRankMap[user.id];
 
                                         return (
-                                            <tr key={user.id} className="hover:bg-amber-950/20 transition-colors group">
+                                            <tr
+                                                key={user.id}
+                                                className={`transition-colors group ${
+                                                    user.isHidden
+                                                        ? 'bg-zinc-950/60 opacity-65 hover:opacity-100 hover:bg-zinc-900/60'
+                                                        : 'hover:bg-amber-950/20'
+                                                }`}
+                                            >
                                                 <td className="py-3.5 px-4 text-center font-mono font-bold">
-                                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (
-                                                        <span className="text-zinc-500">#{idx + 1}</span>
+                                                    {user.isHidden ? (
+                                                        <span title="Đang bị ẩn khỏi bảng công khai">🙈</span>
+                                                    ) : rankIdx === 0 ? '🥇' : rankIdx === 1 ? '🥈' : rankIdx === 2 ? '🥉' : (
+                                                        <span className="text-zinc-500">#{rankIdx + 1}</span>
                                                     )}
                                                 </td>
 
                                                 <td className="py-3.5 px-4">
                                                     <div>
-                                                        <div className="font-black text-amber-200 text-sm group-hover:text-amber-100">
-                                                            {user.ingame}
+                                                        <div className="font-black text-amber-200 text-sm group-hover:text-amber-100 flex flex-wrap items-center gap-1.5">
+                                                            <span>{user.ingame}</span>
+                                                            {user.isManualHidden && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-bold">
+                                                                    Đã ẩn
+                                                                </span>
+                                                            )}
+                                                            {user.isOutsideDanhLuc && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] font-bold">
+                                                                    Ngoài Danh Lục
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5 mt-0.5">
                                                             <span>UID: {user.uid}</span>
@@ -865,17 +996,42 @@ export default function SatTuongTab({
                                                                 </button>
                                                             </div>
                                                         ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setEditingUid(user.id);
-                                                                    setEditPts(user.seasonPts);
-                                                                    setEditType('season');
-                                                                }}
-                                                                className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs cursor-pointer"
-                                                            >
-                                                                ✏️ Sửa Mùa
-                                                            </button>
+                                                            <div className="inline-flex items-center gap-1.5">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setEditingUid(user.id);
+                                                                        setEditPts(user.seasonPts);
+                                                                        setEditType('season');
+                                                                    }}
+                                                                    className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs cursor-pointer"
+                                                                >
+                                                                    ✏️ Sửa Mùa
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={togglingHideId === user.id}
+                                                                    onClick={() => handleToggleHideSeason(user)}
+                                                                    title={
+                                                                        user.isOutsideDanhLuc && !user.isManualHidden
+                                                                            ? 'Đang tự động ẩn vì đã rời Sổ Danh Lục (bấm để đánh dấu ẩn đồng bộ Discord)'
+                                                                            : user.isManualHidden
+                                                                                ? 'Hiện lại trên Bảng Vàng (đồng bộ Web & Discord)'
+                                                                                : 'Ẩn khỏi Bảng Vàng (giữ nguyên số mùa, đồng bộ Web & Discord)'
+                                                                    }
+                                                                    className={`px-2 py-1 rounded-lg border font-bold text-xs cursor-pointer disabled:opacity-50 ${
+                                                                        user.isManualHidden
+                                                                            ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
+                                                                            : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
+                                                                    }`}
+                                                                >
+                                                                    {togglingHideId === user.id
+                                                                        ? '⏳...'
+                                                                        : user.isManualHidden
+                                                                            ? '👁️ Hiện'
+                                                                            : '🙈 Ẩn'}
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </td>
                                                 )}
