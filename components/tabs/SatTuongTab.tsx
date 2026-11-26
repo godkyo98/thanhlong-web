@@ -360,7 +360,7 @@ export default function SatTuongTab({
     danhLuc = {},
     isMaster = false,
 }: Props) {
-    const [activeSubTab, setActiveSubTab] = useState<'season' | 'monthly' | 'history'>('season');
+    const [activeSubTab, setActiveSubTab] = useState<'history' | 'monthly' | 'season'>('history');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedWeekFilter, setSelectedWeekFilter] = useState<number | 'ALL'>('ALL');
     const [showHiddenSeason, setShowHiddenSeason] = useState(false);
@@ -799,15 +799,15 @@ export default function SatTuongTab({
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => setActiveSubTab('season')}
+                        onClick={() => setActiveSubTab('history')}
                         className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                            activeSubTab === 'season'
-                                ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                            activeSubTab === 'history'
+                                ? 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]'
                                 : 'bg-black/40 text-zinc-400 hover:text-white border border-zinc-800'
                         }`}
                     >
-                        <span>🌟</span>
-                        <span>Chiến Thần PVE (Tích Lũy Mùa: {seasonList.length})</span>
+                        <span>⚔️</span>
+                        <span>Chiến Báo Tuần &amp; Tốc Độ Boss ({battleHistory.length})</span>
                     </button>
 
                     <button
@@ -823,20 +823,18 @@ export default function SatTuongTab({
                         <span>Bảng Phong Thần {data?.thang || data?.month || 'Tháng'} ({monthlyList.length})</span>
                     </button>
 
-                    {battleHistory.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => setActiveSubTab('history')}
-                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                                activeSubTab === 'history'
-                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow'
-                                    : 'bg-black/40 text-zinc-400 hover:text-white border border-zinc-800'
-                            }`}
-                        >
-                            <span>⚔️</span>
-                            <span>Chiến Báo & Tốc Độ Boss ({battleHistory.length})</span>
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => setActiveSubTab('season')}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                            activeSubTab === 'season'
+                                ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-zinc-950 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                                : 'bg-black/40 text-zinc-400 hover:text-white border border-zinc-800'
+                        }`}
+                    >
+                        <span>🌟</span>
+                        <span>Chiến Thần PVE (Tích Lũy Mùa: {seasonList.length})</span>
+                    </button>
                 </div>
 
                 <div className="w-full md:w-80">
@@ -1183,6 +1181,11 @@ export default function SatTuongTab({
             )}
 
             {/* 🔴 3C. BẢNG 3: NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS THEO TUẦN */}
+            {activeSubTab === 'history' && battleHistory.length === 0 && (
+                <div className="bg-[#0b0404]/90 border border-zinc-800 rounded-3xl p-12 text-center text-zinc-500 text-xs italic">
+                    Chưa có dữ liệu chiến báo &amp; tốc độ diệt boss trong tuần.
+                </div>
+            )}
             {activeSubTab === 'history' && battleHistory.length > 0 && (
                 <div className="space-y-6">
                     {/* THANH ĐIỀU HƯỚNG LỌC THEO TUẦN */}
