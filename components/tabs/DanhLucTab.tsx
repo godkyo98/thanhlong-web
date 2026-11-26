@@ -76,6 +76,30 @@ export default function DanhLucTab({
 
     const voHocList = useMemo(() => resolveVoHocList(wwmData), [wwmData]);
 
+    const sectSubtitles = useMemo(() => {
+        const grouped: Record<string, string[]> = {
+            MINH_KIM: [],
+            LIET_THACH: [],
+            KHIEN_TY: [],
+            PHA_TRUC: [],
+        };
+        voHocList.forEach((vh) => {
+            const sectKey = getSectStyle(vh).sectKey;
+            if (!grouped[sectKey]) return;
+            const match = vh.match(/\(([^)]+)\)/);
+            const branch = (match ? match[1] : vh).trim();
+            if (branch && !grouped[sectKey].includes(branch)) {
+                grouped[sectKey].push(branch);
+            }
+        });
+        return {
+            MINH_KIM: grouped.MINH_KIM.join(' • ') || 'Vô Danh • Cửu Kiếm • Thương',
+            LIET_THACH: grouped.LIET_THACH.join(' • ') || 'Tank • Dame',
+            KHIEN_TY: grouped.KHIEN_TY.join(' • ') || 'Dame • Heal • Buff',
+            PHA_TRUC: grouped.PHA_TRUC.join(' • ') || 'Song Đao • Dù • Quyền • Túy Quyền',
+        };
+    }, [voHocList]);
+
     // Dữ liệu Công Trạng dùng chung
     const pointAnalytics = useMemo(
         () => buildPointAnalytics(pointData, danhLuc),
@@ -342,7 +366,7 @@ export default function DanhLucTab({
                             >
                                 <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider">🗡️ Hệ Minh Kim</div>
                                 <div className="text-2xl font-black text-amber-300 font-mono mt-1">{sectCounts.MINH_KIM}</div>
-                                <div className="text-[10px] text-zinc-400 mt-0.5">Vô Danh • Cửu Kiếm</div>
+                                <div className="text-[10px] text-zinc-400 mt-0.5">{sectSubtitles.MINH_KIM}</div>
                             </button>
 
                             <button
@@ -356,7 +380,7 @@ export default function DanhLucTab({
                             >
                                 <div className="text-[10px] font-black text-orange-400 uppercase tracking-wider">🪓 Hệ Liệt Thạch</div>
                                 <div className="text-2xl font-black text-orange-300 font-mono mt-1">{sectCounts.LIET_THACH}</div>
-                                <div className="text-[10px] text-zinc-400 mt-0.5">Tank • Dame Đại Đao</div>
+                                <div className="text-[10px] text-zinc-400 mt-0.5">{sectSubtitles.LIET_THACH}</div>
                             </button>
 
                             <button
@@ -370,7 +394,7 @@ export default function DanhLucTab({
                             >
                                 <div className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">☂️ Hệ Khiên Ty</div>
                                 <div className="text-2xl font-black text-emerald-300 font-mono mt-1">{sectCounts.KHIEN_TY}</div>
-                                <div className="text-[10px] text-zinc-400 mt-0.5">Dame • Heal • Buff</div>
+                                <div className="text-[10px] text-zinc-400 mt-0.5">{sectSubtitles.KHIEN_TY}</div>
                             </button>
 
                             <button
@@ -384,7 +408,7 @@ export default function DanhLucTab({
                             >
                                 <div className="text-[10px] font-black text-cyan-400 uppercase tracking-wider">🎋 Hệ Phá Trúc</div>
                                 <div className="text-2xl font-black text-cyan-300 font-mono mt-1">{sectCounts.PHA_TRUC}</div>
-                                <div className="text-[10px] text-zinc-400 mt-0.5">Song Đao • Dù • Quyền</div>
+                                <div className="text-[10px] text-zinc-400 mt-0.5">{sectSubtitles.PHA_TRUC}</div>
                             </button>
                         </div>
 
