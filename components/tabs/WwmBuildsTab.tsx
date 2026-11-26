@@ -60,6 +60,14 @@ export const DEFAULT_GEAR_SETS: GearSetOption[] = [
     { key: 'Rainwhisper', labelVi: 'Rainwhisper (Bộ Vũ Ngữ - Giáp Phải)', labelEn: 'Rainwhisper Set', side: 'right' },
     { key: 'Jadeware', labelVi: 'Jadeware (Bộ Ngọc Khí - Hệ Minh Kim · 12s Uptime 100% v2.4)', labelEn: 'Jadeware Set', side: 'left' },
     { key: 'Formbend', labelVi: 'Formbend (Bộ Định Hình - Giáp Phải)', labelEn: 'Formbend Set', side: 'right' },
+    {
+        key: 'Frostgleam',
+        labelVi: 'Frostgleam (Bộ Hàn Mang - Vũ Khí/Trang Sức · Minh Kim Thương)',
+        labelEn: 'Frostgleam Set',
+        side: 'left',
+        warningText: '⚠️ Lưu ý: Bộ Hàn Mang (Frostgleam) yêu cầu vũ khí chính & phụ dùng cùng 1 loại vũ khí (hợp nhất với Minh Kim Thương)!'
+    },
+    { key: 'Shadecrest', labelVi: 'Shadecrest (Bộ Ẩn Loan - 4 Giáp Phải · Minh Kim Thương)', labelEn: 'Shadecrest Set', side: 'right' },
     { key: 'SwallowCall', labelVi: 'Swallow Call (Bộ Yến Minh - Phá Trúc)', labelEn: 'Swallow Call Set', side: 'left' },
     { key: 'Ironclad', labelVi: 'Ironclad (Bộ Thiết Giáp - Liệt Thạch / Tank)', labelEn: 'Ironclad Set', side: 'right' },
     {
@@ -780,6 +788,9 @@ const DEFAULT_BASELINE: CharacterBaseline = {
 
 const getDefaultWeaponForSpec = (specName: string, slot: SlotKey): string => {
     if (slot !== 'umbrella' && slot !== 'fan') return '';
+    if (specName.includes('Minh Kim') && specName.includes('Thương')) {
+        return 'SPEAR';
+    }
     if (specName.includes('Cửu Kiếm') || specName.includes('Vô Danh') || specName.includes('Minh Kim')) {
         return slot === 'umbrella' ? 'SWORD' : 'SPEAR';
     }
@@ -797,12 +808,15 @@ const getDefaultWeaponForSpec = (specName: string, slot: SlotKey): string => {
 
 const createSampleBiSGear = (slot: SlotKey, specName = ""): GearItem => {
     const meta = SLOTS_CONFIG.find(s => s.key === slot)!;
+    const isBellstrikeBolt = specName.includes('Minh Kim') && specName.includes('Thương');
     return {
         slot,
         name: `${meta.labelVi} Bậc 100`,
         weaponType: getDefaultWeaponForSpec(specName, slot),
         tier: 100,
-        gearSet: meta.side === 'left' ? 'Mistwillow' : 'BeyondTheChill',
+        gearSet: isBellstrikeBolt
+            ? (meta.side === 'left' ? 'Frostgleam' : 'Shadecrest')
+            : (meta.side === 'left' ? 'Mistwillow' : 'BeyondTheChill'),
         slot1: {
             statKey: 'MAX_PHYS_ATK',
             value: 85.0
@@ -964,6 +978,10 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             { id: 'PHANTOM_RALLY', vi: 'Phantom Rally', en: 'Phantom Rally' },
             { id: 'SOARING_HIGH', vi: 'Soaring High', en: 'Soaring High' },
             { id: 'SEASONAL_EDGE', vi: 'Seasonal Edge', en: 'Seasonal Edge' },
+            { id: 'SACRED_SUNDERPOINT', vi: 'Sacred Sunderpoint', en: 'Sacred Sunderpoint' },
+            { id: 'FULIANG_NOCTURNE', vi: 'Fuliang Nocturne', en: 'Fuliang Nocturne' },
+            { id: 'LUCID_JUDICATURE', vi: 'Lucid Judicature', en: 'Lucid Judicature' },
+            { id: 'ETERNAL_SPOILS', vi: 'Eternal Spoils', en: 'Eternal Spoils' },
         ];
         defaults.forEach(d => {
             const exists = list.some(
@@ -2117,6 +2135,8 @@ QUY TẮC TỐI QUAN TRỌNG VỀ THỨ TỰ 6 DÒNG TRÊN TRANG BỊ:
    - "Công kích Ngoại công tối đa" / "Tấn công ngoại công tối đa" = MAX_PHYS_ATK
    - "Kình" / "Lực" / "Sức mạnh" = POWER
    - "Liễu khói dày đặc" / "Thời Vũ" = Mistwillow
+   - "Hàn Mang" / "Bộ Hàn Mang" = Frostgleam
+   - "Ẩn Loan" / "Bộ Ẩn Loan" = Shadecrest
 
 Hãy trả về DUY NHẤT 1 JSON object chuẩn xác theo cấu trúc sau:
 {

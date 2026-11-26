@@ -25,6 +25,7 @@ export const LEGACY_CLASS_MAP: Record<string, string> = {
 export const DEFAULT_VO_HOC_LIST = [
     'Minh Kim (Vô Danh)',
     'Minh Kim (Cửu Kiếm)',
+    'Minh Kim (Thương)',
     'Liệt Thạch (Tank)',
     'Liệt Thạch (Dame)',
     'Khiên Ty (Dame)',
