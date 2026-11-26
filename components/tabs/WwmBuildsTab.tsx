@@ -978,10 +978,10 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
             { id: 'PHANTOM_RALLY', vi: 'Phantom Rally', en: 'Phantom Rally' },
             { id: 'SOARING_HIGH', vi: 'Soaring High', en: 'Soaring High' },
             { id: 'SEASONAL_EDGE', vi: 'Seasonal Edge', en: 'Seasonal Edge' },
-            { id: 'SACRED_SUNDERPOINT', vi: 'Sacred Sunderpoint', en: 'Sacred Sunderpoint' },
-            { id: 'FULIANG_NOCTURNE', vi: 'Fuliang Nocturne', en: 'Fuliang Nocturne' },
-            { id: 'LUCID_JUDICATURE', vi: 'Lucid Judicature', en: 'Lucid Judicature' },
-            { id: 'ETERNAL_SPOILS', vi: 'Eternal Spoils', en: 'Eternal Spoils' },
+            { id: 'SACRED_SUNDERPOINT', vi: 'Thần Đoạn Thanh Phong', en: 'Sacred Sunderpoint' },
+            { id: 'FULIANG_NOCTURNE', vi: 'Phù Lương Nhất Dạ', en: 'Fuliang Nocturne' },
+            { id: 'LUCID_JUDICATURE', vi: 'Minh Phi Thông Phán', en: 'Lucid Judicature' },
+            { id: 'ETERNAL_SPOILS', vi: 'Tuế Tinh Thiết Đào', en: 'Eternal Spoils' },
         ];
         defaults.forEach(d => {
             const exists = list.some(
@@ -1269,13 +1269,24 @@ export default function WwmBuildsTab({ wwmBuilds, wwmData, danhLuc, session }: P
         loadedTimestampRef.current = cloudStamp;
 
         const specTemplate = wwmData?.SPEC_TALENTS_MAP?.[selectedSpec] || getDefaultSpecTalentsTemplate(selectedSpec);
-        const specDefaultInnerWays = wwmData?.SPEC_INNER_WAYS_MAP?.[selectedSpec] || {
-            slot1: { name: 'Dịch Thủy Ca (Morale Chant)', tier: 6 },
-            slot2: { name: 'Hoa Vũ Mãn Thiên (Blossom Barrage)', tier: 6 },
-            slot3: { name: 'Vượt đất hái sao (Star Reacher)', tier: 6 },
-            slot4: { name: 'Chương sấm xuân (Thunderous Bloom)', tier: 5 },
-            note: ''
-        };
+        const isBellstrikeBolt = selectedSpec.includes('Minh Kim') && selectedSpec.includes('Thương');
+        const specDefaultInnerWays = wwmData?.SPEC_INNER_WAYS_MAP?.[selectedSpec] || (
+            isBellstrikeBolt
+                ? {
+                    slot1: { name: 'Thần Đoạn Thanh Phong (Sacred Sunderpoint)', tier: 6 },
+                    slot2: { name: 'Phù Lương Nhất Dạ (Fuliang Nocturne)', tier: 6 },
+                    slot3: { name: 'Minh Phi Thông Phán (Lucid Judicature)', tier: 6 },
+                    slot4: { name: 'Tuế Tinh Thiết Đào (Eternal Spoils)', tier: 6 },
+                    note: ''
+                }
+                : {
+                    slot1: { name: 'Dịch Thủy Ca (Morale Chant)', tier: 6 },
+                    slot2: { name: 'Hoa Vũ Mãn Thiên (Blossom Barrage)', tier: 6 },
+                    slot3: { name: 'Vượt đất hái sao (Star Reacher)', tier: 6 },
+                    slot4: { name: 'Chương sấm xuân (Thunderous Bloom)', tier: 5 },
+                    note: ''
+                }
+        );
 
         const specDefaultBaseline: CharacterBaseline = {
             ...DEFAULT_BASELINE,
