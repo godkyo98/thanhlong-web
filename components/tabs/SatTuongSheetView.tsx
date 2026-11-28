@@ -40,6 +40,7 @@ interface Props {
     isMaster: boolean;
     actorName: string;
     searchQuery: string;
+    onClearSearch?: () => void;
 }
 
 export default function SatTuongSheetView({
@@ -58,11 +59,17 @@ export default function SatTuongSheetView({
     canEdit,
     isMaster,
     actorName,
-    searchQuery
+    searchQuery,
+    onClearSearch
 }: Props) {
     const [unlockArchive, setUnlockArchive] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [saveMessage, setSaveMessage] = useState('');
+
+    // Smart Sort & View Filter
+    const [prioritizeActive, setPrioritizeActive] = useState(true);
+    const [onlyWithTimes, setOnlyWithTimes] = useState(false);
+    const [pinnedRowIds, setPinnedRowIds] = useState<string[]>([]);
 
     // Add Boss Column UI state
     const [showAddCol, setShowAddCol] = useState(false);
@@ -77,6 +84,7 @@ export default function SatTuongSheetView({
     const [editingCellKey, setEditingCellKey] = useState<string | null>(null);
     const [cellDraft, setCellDraft] = useState<string>('');
     const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+    const committedCellRef = useRef<string | null>(null);
 
     // Edit column header inline
     const [editingColId, setEditingColId] = useState<string | null>(null);
@@ -122,19 +130,84 @@ export default function SatTuongSheetView({
         return Object.keys(danhLuc).filter((uid) => !presentUids.has(uid)).length;
     }, [selectedMonth, danhLuc, derived.rowStats]);
 
-    const filteredRows = useMemo(() => {
-        if (!selectedMonth?.rows) return [];
+    const { activeWithTimesCount, emptyRowsCount, filteredRows } = useMemo(() => {
+        if (!selectedMonth?.rows) {
+            return { activeWithTimesCount: 0, emptyRowsCount: 0, filteredRows: [] as SatTuongRow[] };
+        }
+        const cols = selectedMonth.cols || [];
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return selectedMonth.rows;
-        return selectedMonth.rows.filter((r) => {
-            const uid = derived.rowStats[r.rowId]?.resolvedDiscordId || r.discordId;
+
+        let withTimes = 0;
+        let withoutTimes = 0;
+
+        const enriched = selectedMonth.rows.map((r, originalIdx) => {
+            const filledCount = cols.reduce((acc, c) => acc + (r.cells?.[c.id]?.trim() ? 1 : 0), 0);
+            if (filledCount > 0) withTimes++;
+            else withoutTimes++;
+
+            const stats = derived.rowStats[r.rowId] || { penaltySec: 0, monthlyPts: 0 };
+            const uid = stats.resolvedDiscordId || r.discordId;
             const member = uid ? danhLuc?.[uid] : null;
-            const ingame = String(member?.ingame || r.name || '').toLowerCase();
-            const mUid = String(member?.uid || '').toLowerCase();
-            const mClass = normalizeVoHocName(member?.class || '').toLowerCase();
-            return ingame.includes(q) || mUid.includes(q) || mClass.includes(q);
+            const displayName = String(member?.ingame || r.name || '').trim();
+            const pinOrder = pinnedRowIds.indexOf(r.rowId);
+
+            return {
+                row: r,
+                originalIdx,
+                filledCount,
+                monthlyPts: stats.monthlyPts || 0,
+                displayName,
+                mUid: String(member?.uid || '').toLowerCase(),
+                mClass: normalizeVoHocName(member?.class || '').toLowerCase(),
+                pinOrder
+            };
         });
-    }, [selectedMonth, searchQuery, derived.rowStats, danhLuc]);
+
+        const matched = enriched.filter((item) => {
+            if (q) {
+                return (
+                    item.displayName.toLowerCase().includes(q) ||
+                    item.mUid.includes(q) ||
+                    item.mClass.includes(q)
+                );
+            }
+            if (onlyWithTimes && item.filledCount === 0 && item.pinOrder === -1) {
+                return false;
+            }
+            return true;
+        });
+
+        if (prioritizeActive) {
+            matched.sort((a, b) => {
+                // 1. Pinned / newly added rows at top (most recently added first)
+                const aPinned = a.pinOrder !== -1;
+                const bPinned = b.pinOrder !== -1;
+                if (aPinned !== bPinned) return aPinned ? -1 : 1;
+                if (aPinned && bPinned && a.pinOrder !== b.pinOrder) return b.pinOrder - a.pinOrder;
+
+                // 2. Anyone with >= 1 time above empty rows
+                const aHas = a.filledCount > 0;
+                const bHas = b.filledCount > 0;
+                if (aHas !== bHas) return aHas ? -1 : 1;
+
+                // 3. Within active group: higher monthly points -> more bosses cleared -> alphabetical
+                if (aHas && bHas) {
+                    if (b.monthlyPts !== a.monthlyPts) return b.monthlyPts - a.monthlyPts;
+                    if (b.filledCount !== a.filledCount) return b.filledCount - a.filledCount;
+                    return a.displayName.localeCompare(b.displayName, 'vi');
+                }
+
+                // 4. Empty rows: keep original order
+                return a.originalIdx - b.originalIdx;
+            });
+        }
+
+        return {
+            activeWithTimesCount: withTimes,
+            emptyRowsCount: withoutTimes,
+            filteredRows: matched.map((m) => m.row)
+        };
+    }, [selectedMonth, searchQuery, derived.rowStats, danhLuc, prioritizeActive, onlyWithTimes, pinnedRowIds]);
 
     const persistMonth = async (
         nextMonth: SatTuongMonthSheet,
@@ -222,18 +295,22 @@ export default function SatTuongSheetView({
         });
     };
 
+    const focusCellById = (rowId: string, colId: string) => {
+        const key = `${rowId}__${colId}`;
+        const el = inputRefs.current[key];
+        if (el) {
+            el.focus();
+            el.select();
+        }
+    };
+
     const focusCell = (rIdx: number, cIdx: number) => {
         if (rIdx < 0 || rIdx >= filteredRows.length) return;
         const cols = selectedMonth?.cols || [];
         if (cIdx < 0 || cIdx >= cols.length) return;
         const targetRow = filteredRows[rIdx];
         const targetCol = cols[cIdx];
-        const key = `${targetRow.rowId}__${targetCol.id}`;
-        const el = inputRefs.current[key];
-        if (el) {
-            el.focus();
-            el.select();
-        }
+        focusCellById(targetRow.rowId, targetCol.id);
     };
 
     const handleSyncDanhLuc = async () => {
@@ -349,25 +426,70 @@ export default function SatTuongSheetView({
         });
     };
 
-    const handleAddManualRow = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const addPersonAndFocus = async (personName: string, clearSearchBox = false) => {
         if (!selectedMonth || !isEditable) return;
-        const raw = newRowName.trim();
+        const raw = personName.trim();
         if (!raw) return;
+
+        // If already exists, just pin to top and focus their latest column
+        const existing = selectedMonth.rows.find((r) => {
+            const uid = derived.rowStats[r.rowId]?.resolvedDiscordId || r.discordId;
+            const dName = String((uid && danhLuc?.[uid]?.ingame) || r.name || '').trim().toLowerCase();
+            return dName === raw.toLowerCase();
+        });
+
+        const cols = selectedMonth.cols || [];
+        const focusColId = cols.length > 0 ? cols[cols.length - 1].id : '';
+
+        if (existing) {
+            setPinnedRowIds((prev) => [...prev.filter((id) => id !== existing.rowId), existing.rowId]);
+            if (clearSearchBox && onClearSearch) onClearSearch();
+            if (focusColId) {
+                window.setTimeout(() => focusCellById(existing.rowId, focusColId), 60);
+            }
+            return;
+        }
 
         const newRow: SatTuongRow = {
             rowId: makeUniqueId('manual'),
             name: raw,
             cells: {}
         };
+        setPinnedRowIds((prev) => [...prev, newRow.rowId]);
         await persistMonth({
             ...selectedMonth,
-            rows: [...selectedMonth.rows, newRow]
+            rows: [newRow, ...selectedMonth.rows]
         }, {
-            msg: `Đã thêm thành viên "${raw}" vào bảng`
+            msg: `Đã thêm "${raw}" lên đầu bảng`
         });
         setNewRowName('');
         setShowAddRow(false);
+        if (clearSearchBox && onClearSearch) onClearSearch();
+        if (focusColId) {
+            window.setTimeout(() => focusCellById(newRow.rowId, focusColId), 80);
+        }
+    };
+
+    const handleAddManualRow = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await addPersonAndFocus(newRowName, false);
+    };
+
+    const handleDeleteRow = async (row: SatTuongRow, displayName: string) => {
+        if (!selectedMonth || !isEditable) return;
+        const filled = Object.values(row.cells || {}).filter((v) => Boolean(v?.trim())).length;
+        const msg = filled > 0
+            ? `Thành viên "${displayName}" đang có ${filled} kỷ lục trong tháng này. Xóa khỏi bảng?`
+            : `Xóa dòng "${displayName}" khỏi bảng?`;
+        if (!window.confirm(msg)) return;
+
+        setPinnedRowIds((prev) => prev.filter((id) => id !== row.rowId));
+        await persistMonth({
+            ...selectedMonth,
+            rows: selectedMonth.rows.filter((r) => r.rowId !== row.rowId)
+        }, {
+            msg: `Đã xóa "${displayName}" khỏi bảng`
+        });
     };
 
     const handleOpenNewMonth = async () => {
@@ -594,6 +716,47 @@ export default function SatTuongSheetView({
                     })}
                 </div>
 
+                {/* THANH LỌC & SẮP XẾP NHANH (CHO MỌI NGƯỜI) */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setPrioritizeActive((v) => !v)}
+                            className={`px-3 py-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-all ${
+                                prioritizeActive
+                                    ? 'bg-amber-500/20 border-amber-400/60 text-amber-200'
+                                    : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'
+                            }`}
+                        >
+                            {prioritizeActive ? '🔥 Đã đẩy người có giờ lên trên' : '📋 Đang xếp theo thứ tự gốc'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setOnlyWithTimes((v) => !v)}
+                            className={`px-3 py-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-all ${
+                                onlyWithTimes
+                                    ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-200'
+                                    : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:text-white'
+                            }`}
+                        >
+                            {onlyWithTimes
+                                ? `👁️ Chỉ hiện người có giờ (${activeWithTimesCount})`
+                                : `👥 Đang hiện tất cả (${activeWithTimesCount} có giờ · ${emptyRowsCount} chưa đánh)`}
+                        </button>
+                    </div>
+
+                    {isEditable && searchQuery.trim() !== '' && (
+                        <button
+                            type="button"
+                            onClick={() => addPersonAndFocus(searchQuery.trim(), true)}
+                            className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-[11px] font-black cursor-pointer transition-all"
+                        >
+                            ➕ Thêm &ldquo;{searchQuery.trim()}&rdquo; &amp; điền giờ ngay
+                        </button>
+                    )}
+                </div>
+
                 {/* THANH CÔNG CỤ CÁN BỘ / BANG CHỦ */}
                 {isEditable && (
                     <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-zinc-800/80">
@@ -774,8 +937,23 @@ export default function SatTuongSheetView({
                     <tbody className="divide-y divide-zinc-800/60">
                         {filteredRows.length === 0 ? (
                             <tr>
-                                <td colSpan={4 + selectedMonth.cols.length} className="py-12 text-center text-zinc-500 italic">
-                                    Không có thành viên nào khớp bộ lọc.
+                                <td colSpan={4 + selectedMonth.cols.length} className="py-12 text-center text-zinc-500 space-y-3">
+                                    <div className="italic text-xs">
+                                        {searchQuery.trim()
+                                            ? `Không tìm thấy "${searchQuery.trim()}" trong danh sách hiện tại.`
+                                            : 'Chưa có thành viên nào có giờ trong mục đã lọc.'}
+                                    </div>
+                                    {isEditable && searchQuery.trim() !== '' && (
+                                        <div>
+                                            <button
+                                                type="button"
+                                                onClick={() => addPersonAndFocus(searchQuery.trim(), true)}
+                                                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-black cursor-pointer transition-all shadow-lg"
+                                            >
+                                                ➕ Thêm &ldquo;{searchQuery.trim()}&rdquo; lên đầu bảng &amp; điền giờ ngay
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ) : (
@@ -784,15 +962,49 @@ export default function SatTuongSheetView({
                                 const uid = stats.resolvedDiscordId || row.discordId;
                                 const member = uid ? danhLuc?.[uid] : null;
                                 const displayName = member?.ingame ? String(member.ingame).trim() : row.name;
+                                const isPinned = pinnedRowIds.includes(row.rowId);
+                                const isOutsideDanhLuc = !uid || !danhLuc?.[uid];
 
                                 return (
-                                    <tr key={row.rowId} className="hover:bg-emerald-950/15 transition-colors">
+                                    <tr
+                                        key={row.rowId}
+                                        className={`group/row transition-colors ${
+                                            isPinned ? 'bg-emerald-950/20 hover:bg-emerald-950/30' : 'hover:bg-emerald-950/15'
+                                        }`}
+                                    >
                                         <td className="py-1.5 px-2 text-center font-mono text-[11px] text-zinc-500 border-r border-zinc-800/80 bg-[#0b0404] sticky left-0 z-10">
                                             {rIdx + 1}
                                         </td>
                                         <td className="py-1.5 px-3 border-r border-zinc-800 bg-[#0b0404] sticky left-10 z-10">
-                                            <div className="font-bold text-zinc-100 truncate max-w-[180px]" title={displayName}>
-                                                {displayName}
+                                            <div className="flex items-center justify-between gap-1.5 max-w-[195px]">
+                                                <div className="min-w-0 flex items-center gap-1.5">
+                                                    <span className="font-bold text-zinc-100 truncate" title={displayName}>
+                                                        {displayName}
+                                                    </span>
+                                                    {isPinned && (
+                                                        <span className="px-1 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black shrink-0">
+                                                            Mới
+                                                        </span>
+                                                    )}
+                                                    {!isPinned && isOutsideDanhLuc && (
+                                                        <span
+                                                            title="Chưa có trong Sổ Danh Lục Discord"
+                                                            className="px-1 py-0.2 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 text-[9px] font-bold shrink-0"
+                                                        >
+                                                            Ngoài
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {isEditable && isOutsideDanhLuc && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteRow(row, displayName)}
+                                                        title={`Xóa "${displayName}"`}
+                                                        className="opacity-0 group-hover/row:opacity-100 text-rose-400 hover:text-rose-300 text-[10px] px-1 shrink-0 cursor-pointer transition-opacity"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="py-1.5 px-2 text-center font-mono text-[11px] border-r border-zinc-800/70">
@@ -837,11 +1049,18 @@ export default function SatTuongSheetView({
                                                                 placeholder="—"
                                                                 title={finalTime ? `Giờ gốc: ${rawVal} • Sau tạ (+${stats.penaltySec}s): ${finalTime}` : 'Nhập giây (vd: 45, 1m05s)'}
                                                                 onFocus={() => {
+                                                                    if (committedCellRef.current === cellKey) {
+                                                                        committedCellRef.current = null;
+                                                                    }
                                                                     setEditingCellKey(cellKey);
                                                                     setCellDraft(rawVal);
                                                                 }}
                                                                 onChange={(e) => setCellDraft(e.target.value)}
                                                                 onBlur={() => {
+                                                                    if (committedCellRef.current === cellKey) {
+                                                                        committedCellRef.current = null;
+                                                                        return;
+                                                                    }
                                                                     const draftVal = cellDraft;
                                                                     setEditingCellKey(null);
                                                                     commitCell(row, col.id, draftVal);
@@ -849,10 +1068,23 @@ export default function SatTuongSheetView({
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') {
                                                                         e.preventDefault();
+                                                                        committedCellRef.current = cellKey;
                                                                         const draftVal = cellDraft;
                                                                         setEditingCellKey(null);
                                                                         commitCell(row, col.id, draftVal);
                                                                         focusCell(rIdx + 1, cIdx);
+                                                                    } else if (e.key === 'Tab') {
+                                                                        const cols = selectedMonth.cols || [];
+                                                                        const nextColIdx = cIdx + (e.shiftKey ? -1 : 1);
+                                                                        if (nextColIdx >= 0 && nextColIdx < cols.length) {
+                                                                            e.preventDefault();
+                                                                            committedCellRef.current = cellKey;
+                                                                            const draftVal = cellDraft;
+                                                                            const targetColId = cols[nextColIdx].id;
+                                                                            setEditingCellKey(null);
+                                                                            commitCell(row, col.id, draftVal);
+                                                                            window.requestAnimationFrame(() => focusCellById(row.rowId, targetColId));
+                                                                        }
                                                                     } else if (e.key === 'ArrowDown') {
                                                                         e.preventDefault();
                                                                         e.currentTarget.blur();
@@ -862,6 +1094,7 @@ export default function SatTuongSheetView({
                                                                         e.currentTarget.blur();
                                                                         focusCell(rIdx - 1, cIdx);
                                                                     } else if (e.key === 'Escape') {
+                                                                        committedCellRef.current = cellKey;
                                                                         setEditingCellKey(null);
                                                                         setCellDraft(rawVal);
                                                                         e.currentTarget.blur();

@@ -957,6 +957,7 @@ export default function SatTuongTab({
                     isMaster={isMaster}
                     actorName={session?.user?.name || (isMaster ? 'Bang Chủ' : 'Cán Bộ')}
                     searchQuery={searchQuery}
+                    onClearSearch={() => setSearchQuery('')}
                 />
             )}
 
