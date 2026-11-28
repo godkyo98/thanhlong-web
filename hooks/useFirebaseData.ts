@@ -15,7 +15,9 @@ export default function useFirebaseData() {
     const [pointData, setPointData] = useState<any>(null);
     const [satTuongData, setSatTuongData] = useState<any>(null);
     const [satTuongMeta, setSatTuongMeta] = useState<any>(null);
+    const [satTuongSheet, setSatTuongSheet] = useState<any>(null);
     const [bossRotation, setBossRotation] = useState<any>(null);
+    const [guildOfficers, setGuildOfficers] = useState<any>(null);
     const [webNotifications, setWebNotifications] = useState<any>(null);
     
     // 🟢 HỨNG DỮ LIỆU TỔNG ĐỒ BUILD (wwm_builds -> Võ học -> ID)
@@ -47,6 +49,16 @@ export default function useFirebaseData() {
             setBossRotation(snap.exists() ? snap.data() : null);
         });
 
+        // 🟢 SÁT TƯỚNG SHEET GỐC & LỊCH SỬ CÁC THÁNG (sat_tuong_sheet)
+        const unsub9e = onSnapshot(doc(db, 'thanhlong_config', 'sat_tuong_sheet'), (snap) => {
+            setSatTuongSheet(snap.exists() ? snap.data() : null);
+        });
+
+        // 🟢 DANH SÁCH CÁN BỘ SERVER (guild_officers)
+        const unsub9f = onSnapshot(doc(db, 'thanhlong_config', 'guild_officers'), (snap) => {
+            setGuildOfficers(snap.exists() ? snap.data() : null);
+        });
+
         // 🟢 BẢNG THÔNG BÁO & LỊCH SỰ WEB (web_notifications)
         const unsub10 = onSnapshot(doc(db, 'thanhlong_config', 'web_notifications'), (snap) => {
             setWebNotifications(snap.exists() ? snap.data() : { items: [] });
@@ -69,12 +81,12 @@ export default function useFirebaseData() {
 
         return () => { 
             unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); 
-            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub10(); unsub11(); 
+            unsub6(); unsub7(); unsub8(); unsub9(); unsub9b(); unsub9c(); unsub9d(); unsub9e(); unsub9f(); unsub10(); unsub11(); 
         };
     }, []);
 
     return { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, webNotifications, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, satTuongSheet, bossRotation, guildOfficers, webNotifications, wwmBuilds 
     };
 }

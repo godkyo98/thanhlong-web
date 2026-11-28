@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/tabs/SatTuongTab.tsx
 'use client';
 
@@ -9,6 +10,12 @@ import {
     SatTuongBadge,
     SatTuongTitleInfo
 } from '@/lib/satTuongUtils';
+import {
+    SatTuongSheetDoc,
+    SatTuongMonthSheet,
+    computeSatTuongMonthDerived
+} from '@/lib/satTuongSheetUtils';
+import SatTuongSheetView from '@/components/tabs/SatTuongSheetView';
 import { normalizeVoHocName } from '@/components/tabs/DanhLucTab';
 
 export interface ParsedRecord {
@@ -122,45 +129,6 @@ function findMemberInDanhLuc(nameOrId: string, danhLuc: Record<string, any>) {
 function extractWeekNumber(bossTitle: string): number {
     const match = bossTitle.match(/tuần\s*(\d+)/i);
     return match ? parseInt(match[1], 10) : 0;
-}
-
-/**
- * Tìm tên nhân vật Ingame chuẩn nhất từ danhLuc hoặc đối tượng hoặc key
- */
-function resolvePlayerName(key: string, val: any, danhLuc: Record<string, any>): string {
-    // 1. Nếu val là object và có chứa trường tên
-    if (val && typeof val === 'object') {
-        const directName = val.ingame || val.name || val.playerName || val.player || val.displayName || val.username || val.sheetName || val.user;
-        if (directName && typeof directName === 'string' && directName.trim() && directName !== 'Hiệp Khách') {
-            const member = findMemberInDanhLuc(directName, danhLuc);
-            if (member?.ingame) return member.ingame;
-            return directName.trim();
-        }
-        const possibleId = String(val.id || val.uid || val.discordId || val.userId || '').trim();
-        if (possibleId) {
-            const member = findMemberInDanhLuc(possibleId, danhLuc);
-            if (member?.ingame) return member.ingame;
-        }
-    }
-
-    // 2. Tra theo key trong danhLuc
-    if (key) {
-        const member = findMemberInDanhLuc(key, danhLuc);
-        if (member?.ingame) return member.ingame;
-        if (member?.discordName) return member.discordName;
-
-        const cleanKey = key.trim();
-        const isSnowflake = /^\d{16,21}$/.test(cleanKey);
-        if (!isSnowflake && !['record', 'records', 'time', 'data', 'battle', 'boss'].includes(cleanKey.toLowerCase())) {
-            return cleanKey;
-        }
-
-        if (isSnowflake) {
-            return `Hiệp Khách #${cleanKey.slice(-4)}`;
-        }
-    }
-
-    return 'Hiệp Khách';
 }
 
 function parseBossRecords(bossData: any, danhLuc: Record<string, any>): ParsedRecord[] {
@@ -344,23 +312,30 @@ interface SeasonPlayerItem {
 interface Props {
     data: any;             // sat_tuong_data từ Firebase
     metadata?: any;        // sattuong_metadata từ Firebase
+    sheetDoc?: SatTuongSheetDoc | null; // sat_tuong_sheet từ Firebase
     bossRotation?: any;    // boss_rotation từ Firebase
     pointData?: any;       // points_data
     tuViData?: Record<string, Record<string, unknown>>; // chat_rank_data (chứa anBangVang live từ Discord Bot)
     danhLuc: Record<string, any>;
     isMaster?: boolean;
+    isOfficer?: boolean;
     session?: any;
 }
 
 export default function SatTuongTab({
     data,
     metadata,
+    sheetDoc = null,
     bossRotation,
     tuViData = {},
     danhLuc = {},
     isMaster = false,
+    isOfficer = false,
+    session,
 }: Props) {
-    const [activeSubTab, setActiveSubTab] = useState<'history' | 'monthly' | 'season'>('history');
+    const canManageSheet = Boolean(isMaster || isOfficer);
+    const [activeSubTab, setActiveSubTab] = useState<'history' | 'sheet' | 'monthly' | 'season'>('history');
+    const [userSelectedMonthKey, setUserSelectedMonthKey] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedWeekFilter, setSelectedWeekFilter] = useState<number | 'ALL'>('ALL');
     const [showHiddenSeason, setShowHiddenSeason] = useState(false);
@@ -409,6 +384,44 @@ export default function SatTuongTab({
             totalPool: remainingCount
         };
     }, [bossRotation, data]);
+
+    const sortedMonthKeys = useMemo(() => {
+        if (!sheetDoc?.months) return [];
+        return Object.keys(sheetDoc.months).sort((a, b) => {
+            const ma = sheetDoc.months[a];
+            const mb = sheetDoc.months[b];
+            if ((mb?.year || 0) !== (ma?.year || 0)) return (mb?.year || 0) - (ma?.year || 0);
+            return (mb?.monthNum || 0) - (ma?.monthNum || 0);
+        });
+    }, [sheetDoc]);
+
+    const selectedMonthKey = useMemo(() => {
+        if (userSelectedMonthKey && sheetDoc?.months?.[userSelectedMonthKey]) {
+            return userSelectedMonthKey;
+        }
+        if (sheetDoc?.activeMonthKey && sheetDoc?.months?.[sheetDoc.activeMonthKey]) {
+            return sheetDoc.activeMonthKey;
+        }
+        return sortedMonthKeys[0] || '';
+    }, [userSelectedMonthKey, sheetDoc, sortedMonthKeys]);
+
+    const selectedMonthSheet: SatTuongMonthSheet | null = useMemo(() => {
+        if (!selectedMonthKey || !sheetDoc?.months) return null;
+        return sheetDoc.months[selectedMonthKey] || null;
+    }, [selectedMonthKey, sheetDoc]);
+
+    const sheetDerived = useMemo(() => {
+        return computeSatTuongMonthDerived(
+            selectedMonthSheet,
+            danhLuc,
+            data?.seasonRanking || {},
+            tuViData,
+            targetBoss1
+        );
+    }, [selectedMonthSheet, danhLuc, data?.seasonRanking, tuViData, targetBoss1]);
+
+    const activeMonthTitle = selectedMonthSheet?.title || data?.thang || data?.month || 'Tháng';
+    const isViewingActiveMonth = Boolean(!sheetDoc?.activeMonthKey || !selectedMonthKey || selectedMonthKey === sheetDoc.activeMonthKey);
 
     // 2. 🌟 BẢNG VÀNG CHIẾN THẦN PVE (TÍCH LŨY MÙA)
     const { seasonList, hiddenSeasonList, visibleRankMap } = useMemo(() => {
@@ -511,7 +524,9 @@ export default function SatTuongTab({
 
     // 3. 🏆 BẢNG PHONG THẦN (TỔNG ĐIỂM THÁNG)
     const monthlyList = useMemo(() => {
-        const monthlyObj = data?.monthlyRanking || data?.monthly_ranking || {};
+        const monthlyObj = selectedMonthSheet
+            ? sheetDerived.monthlyRanking
+            : (data?.monthlyRanking || data?.monthly_ranking || {});
         const playerMap = new Map<string, {
             id: string;
             ingame: string;
@@ -584,10 +599,22 @@ export default function SatTuongTab({
         });
 
         return Array.from(playerMap.values()).sort((a, b) => b.points - a.points);
-    }, [data, danhLuc]);
+    }, [data, danhLuc, selectedMonthSheet, sheetDerived.monthlyRanking]);
 
     // 4. ⚔️ NHẬT KÝ CHIẾN BÁO & TỐC ĐỘ DIỆT BOSS
     const battleHistory = useMemo(() => {
+        if (selectedMonthSheet) {
+            return (selectedMonthSheet.cols || []).map((col) => {
+                const rawRecords = sheetDerived.bossRecords[col.title] || [];
+                const parsedRecords = parseBossRecords(rawRecords, danhLuc);
+                return {
+                    bossTitle: col.title,
+                    week: col.week || extractWeekNumber(col.title),
+                    records: parsedRecords
+                };
+            });
+        }
+
         const historyObj = (data?.history && typeof data.history === 'object') ? data.history : {};
         const recordsObj = (data?.bossRecords && typeof data.bossRecords === 'object') ? data.bossRecords : {};
         const battlesObj = (data?.battles && typeof data.battles === 'object') ? data.battles : {};
@@ -604,7 +631,7 @@ export default function SatTuongTab({
                 records: parsedRecords
             };
         });
-    }, [data, metadata, danhLuc]);
+    }, [data, metadata, danhLuc, selectedMonthSheet, sheetDerived.bossRecords]);
 
     // Gom nhóm theo Tuần và sắp xếp từ Tuần mới nhất (4 -> 3 -> 2 -> 1)
     const bossWeekGroups = useMemo(() => {
@@ -752,10 +779,21 @@ export default function SatTuongTab({
                         </p>
                     </div>
 
-                    <div className="bg-black/50 border border-zinc-800 rounded-2xl px-4 py-2 text-right shrink-0">
-                        <div className="text-[10px] text-zinc-400 font-bold uppercase">Tiến Độ Vòng Xoay Boss</div>
-                        <div className="text-sm font-mono font-black text-amber-300 mt-0.5">
-                            {totalUsed} Đã Sát Phạt • Còn {totalPool} Trong Bể
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                        {canManageSheet && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveSubTab('sheet')}
+                                className="px-4 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/60 text-emerald-200 text-xs font-black cursor-pointer transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                            >
+                                📝 Mở Bảng Sheet Nhập Liệu
+                            </button>
+                        )}
+                        <div className="bg-black/50 border border-zinc-800 rounded-2xl px-4 py-2 text-right shrink-0">
+                            <div className="text-[10px] text-zinc-400 font-bold uppercase">Tiến Độ Vòng Xoay Boss</div>
+                            <div className="text-sm font-mono font-black text-amber-300 mt-0.5">
+                                {totalUsed} Đã Sát Phạt • Còn {totalPool} Trong Bể
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -812,6 +850,21 @@ export default function SatTuongTab({
 
                     <button
                         type="button"
+                        onClick={() => setActiveSubTab('sheet')}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                            activeSubTab === 'sheet'
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                                : canManageSheet
+                                    ? 'bg-emerald-950/40 text-emerald-300 hover:text-white border border-emerald-500/40'
+                                    : 'bg-black/40 text-zinc-400 hover:text-white border border-zinc-800'
+                        }`}
+                    >
+                        <span>📊</span>
+                        <span>Bảng Sheet ({activeMonthTitle})</span>
+                    </button>
+
+                    <button
+                        type="button"
                         onClick={() => setActiveSubTab('monthly')}
                         className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
                             activeSubTab === 'monthly'
@@ -820,7 +873,7 @@ export default function SatTuongTab({
                         }`}
                     >
                         <span>🏆</span>
-                        <span>Bảng Phong Thần {data?.thang || data?.month || 'Tháng'} ({monthlyList.length})</span>
+                        <span>Bảng Phong Thần {activeMonthTitle} ({monthlyList.length})</span>
                     </button>
 
                     <button
@@ -847,6 +900,65 @@ export default function SatTuongTab({
                     />
                 </div>
             </div>
+
+            {/* 🔴 2B. BỘ CHỌN THÁNG LỊCH SỬ CHO CHIẾN BÁO & BẢNG PHONG THẦN */}
+            {activeSubTab !== 'season' && activeSubTab !== 'sheet' && sortedMonthKeys.length > 0 && (
+                <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl px-4 py-2.5 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-black uppercase text-zinc-400 tracking-wider mr-1">
+                        🗓️ Xem Tháng:
+                    </span>
+                    {sortedMonthKeys.map((mKey) => {
+                        const mObj = sheetDoc?.months?.[mKey];
+                        const isSel = mKey === selectedMonthKey;
+                        const isLive = mKey === sheetDoc?.activeMonthKey;
+                        return (
+                            <button
+                                key={mKey}
+                                type="button"
+                                onClick={() => {
+                                    setUserSelectedMonthKey(mKey);
+                                    setSelectedWeekFilter('ALL');
+                                }}
+                                className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center gap-1 ${
+                                    isSel
+                                        ? 'bg-amber-500 text-zinc-950 shadow-[0_0_10px_rgba(245,158,11,0.35)]'
+                                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                }`}
+                            >
+                                <span>{mObj?.title || mKey}</span>
+                                {isLive && (
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isSel ? 'bg-zinc-950' : 'bg-emerald-400'}`} />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* 🔴 3S. BẢNG SHEET NHẬP LIỆU TRỰC TIẾP TRÊN WEB */}
+            {activeSubTab === 'sheet' && (
+                <SatTuongSheetView
+                    sheetDoc={sheetDoc}
+                    selectedMonth={selectedMonthSheet}
+                    selectedMonthKey={selectedMonthKey}
+                    onSelectMonthKey={(k) => {
+                        setUserSelectedMonthKey(k);
+                        setSelectedWeekFilter('ALL');
+                    }}
+                    derived={sheetDerived}
+                    danhLuc={danhLuc}
+                    satTuongData={data}
+                    tuViData={tuViData}
+                    bossRotation={bossRotation}
+                    metadata={metadata}
+                    targetBoss1={targetBoss1}
+                    targetBoss2={targetBoss2}
+                    canEdit={canManageSheet}
+                    isMaster={isMaster}
+                    actorName={session?.user?.name || (isMaster ? 'Bang Chủ' : 'Cán Bộ')}
+                    searchQuery={searchQuery}
+                />
+            )}
 
             {/* 🔴 3A. BẢNG 1: BẢNG VÀNG CHIẾN THẦN PVE (TÍCH LŨY MÙA - VÕ ĐẠO ĐỘC TÔN) */}
             {activeSubTab === 'season' && (
@@ -1048,10 +1160,10 @@ export default function SatTuongTab({
                     <div className="bg-zinc-950/80 px-6 py-4 border-b border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                             <h3 className="text-lg font-black text-rose-400 flex items-center gap-2">
-                                <span>🏆 Bảng Phong Thần ({data?.thang || data?.month || 'Tổng Điểm Tháng'})</span>
+                                <span>🏆 Bảng Phong Thần ({activeMonthTitle})</span>
                             </h3>
                             <p className="text-xs text-zinc-400 mt-0.5">
-                                Mỗi Boss: <b>Top 1 = 3đ</b> | <b>Top 2 = 2đ</b> | <b>Top 3 = 1đ</b> • Xếp hạng Dense Rank tự động từ Discord Bot.
+                                Mỗi Boss: <b>Top 1 = 3đ</b> | <b>Top 2 = 2đ</b> | <b>Top 3 = 1đ</b> • Xếp hạng Dense Rank tự động từ Bảng Sheet Web.
                             </p>
                         </div>
                         <div className="text-xs font-mono text-zinc-400">
@@ -1067,15 +1179,15 @@ export default function SatTuongTab({
                                     <th className="py-3.5 px-4">👤 Hiệp Khách In-game & UID</th>
                                     <th className="py-3.5 px-4">⚔️ Môn Phái</th>
                                     <th className="py-3.5 px-4">🎖️ Danh Hiệu Mùa Hiện Tại</th>
-                                    <th className="py-3.5 px-4 text-center font-mono">🏆 Điểm Phong Thần {data?.thang || data?.month || 'Tháng'}</th>
-                                    {isMaster && <th className="py-3.5 px-4 text-right">⚙️ Quản Trị</th>}
+                                    <th className="py-3.5 px-4 text-center font-mono">🏆 Điểm Phong Thần {activeMonthTitle}</th>
+                                    {isMaster && isViewingActiveMonth && <th className="py-3.5 px-4 text-right">⚙️ Quản Trị</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-800/60 text-xs font-medium">
                                 {monthlyList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={isMaster ? 6 : 5} className="py-12 text-center text-zinc-500 italic">
-                                            Chưa có dữ liệu điểm phong thần {data?.thang || data?.month || 'tháng này'}.
+                                        <td colSpan={isMaster && isViewingActiveMonth ? 6 : 5} className="py-12 text-center text-zinc-500 italic">
+                                            Chưa có dữ liệu điểm phong thần {activeMonthTitle.toLowerCase()}.
                                         </td>
                                     </tr>
                                 ) : (
@@ -1135,7 +1247,7 @@ export default function SatTuongTab({
                                                         )}
                                                     </td>
 
-                                                    {isMaster && (
+                                                    {isMaster && isViewingActiveMonth && (
                                                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                                             {isEditing ? (
                                                                 <div className="inline-flex items-center gap-1.5">
@@ -1283,14 +1395,27 @@ export default function SatTuongTab({
                                                                 Chưa có dữ liệu chiến báo...
                                                             </div>
                                                         ) : (
-                                                            boss.records.map((rec, rIdx) => (
+                                                            boss.records.map((rec, rIdx) => {
+                                                                let denseRank = 1;
+                                                                for (let prevI = 0; prevI < rIdx; prevI++) {
+                                                                    if (boss.records[prevI].seconds < rec.seconds) {
+                                                                        denseRank++;
+                                                                    }
+                                                                    // Note: increment only when strict step increases among unique times
+                                                                }
+                                                                const uniqueBetterTimes = new Set(
+                                                                    boss.records.slice(0, rIdx).filter(p => p.seconds < rec.seconds).map(p => p.seconds)
+                                                                ).size;
+                                                                denseRank = uniqueBetterTimes + 1;
+
+                                                                return (
                                                                 <div
                                                                     key={rIdx}
                                                                     className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/70 hover:border-zinc-700/80 transition-all"
                                                                 >
                                                                     <div className="flex items-center gap-2 min-w-0">
                                                                         <span className="text-sm shrink-0">
-                                                                            {rIdx === 0 ? '🥇' : rIdx === 1 ? '🥈' : rIdx === 2 ? '🥉' : (
+                                                                            {denseRank === 1 ? '🥇' : denseRank === 2 ? '🥈' : denseRank === 3 ? '🥉' : (
                                                                                 <span className="font-mono text-zinc-500 font-bold text-xs">#{rIdx + 1}</span>
                                                                             )}
                                                                         </span>
@@ -1316,7 +1441,8 @@ export default function SatTuongTab({
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                            ))
+                                                                );
+                                                            })
                                                         )}
                                                     </div>
                                                 </div>

@@ -49,7 +49,7 @@ export default function Home() {
 
     const { 
         danhLuc, talent, wwmData, playerProfiles, tuViData, 
-        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, bossRotation, webNotifications, wwmBuilds 
+        giftcodeData, giftcodeClaims, pointData, satTuongData, satTuongMeta, satTuongSheet, bossRotation, guildOfficers, webNotifications, wwmBuilds 
     } = useFirebaseData();
 
     const [lastSeenNotifAt, setLastSeenNotifAt] = useState<number>(0);
@@ -160,7 +160,28 @@ export default function Home() {
         );
     }
 
-    const isMaster = session?.user?.name === "kyo_98" || session?.user?.name === "Master";
+    const isMaster =
+        Boolean((session?.user as any)?.isMaster) ||
+        session?.user?.name === "kyo_98" ||
+        session?.user?.name === "Master";
+
+    const isOfficer = (() => {
+        if (isMaster) return true;
+        if ((session?.user as any)?.isManager) return true;
+        const officerIds: string[] = Array.isArray(guildOfficers?.officerIds) ? guildOfficers.officerIds : [];
+        if (officerIds.length === 0) return false;
+        let resolvedId: string | undefined = (session?.user as any)?.id;
+        if (!resolvedId && session?.user?.name) {
+            const name = session.user.name;
+            const foundDl = Object.entries(danhLuc || {}).find(([, d]: any) => d?.discordName === name || d?.username === name);
+            if (foundDl) resolvedId = foundDl[0];
+            if (!resolvedId && tuViData) {
+                const foundTv = Object.entries(tuViData).find(([, d]: any) => d?.username === name || d?.name === name || d?.displayName === name);
+                if (foundTv) resolvedId = foundTv[0];
+            }
+        }
+        return Boolean(resolvedId && officerIds.includes(resolvedId));
+    })();
 
     return (
         <main className="min-h-screen bg-transparent text-zinc-100 pb-12 relative overflow-x-hidden">
@@ -265,12 +286,14 @@ export default function Home() {
                     <SatTuongTab
                         data={satTuongData}
                         metadata={satTuongMeta}
+                        sheetDoc={satTuongSheet}
                         bossRotation={bossRotation}
                         pointData={pointData}
                         tuViData={tuViData}
                         danhLuc={danhLuc}
                         session={session}
                         isMaster={isMaster}
+                        isOfficer={isOfficer}
                     />
                 )}
 
